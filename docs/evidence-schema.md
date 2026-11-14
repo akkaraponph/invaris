@@ -1,6 +1,6 @@
 # Evidence reports
 
-`run`, `check`, and `challenge` emit `invaris.evidence/v1alpha2`; [`mutate`](#mutation-experiments) emits v1alpha3. Each action prints one JSON report on stdout. `--report` also saves an identical copy to a new file.
+`run`, `check`, and `challenge` emit `invaris.evidence/v1alpha2`; [`mutate`](#mutation-experiments) emits v1alpha3; [`campaign`](#campaign-reports) (unreleased) emits v1alpha4. Each action prints one JSON report on stdout. `--report` also saves an identical copy to a new file.
 
 CLI errors, such as a failed harness load or report save, go to stderr and exit 2 without a verdict. Check, proof, and gate diagnostics appear inside the report.
 
@@ -172,3 +172,40 @@ Each attempted command links to a bounded, redacted observation with its exit co
 | `INCONCLUSIVE` | Insufficient evidence or a failed execution precondition | For example `unhealthy_baseline`, `timeout`, `canceled`, `malformed_evidence`, or `cleanup_failed` | 2 |
 
 The offline verification suite targets Linux and macOS with a POSIX shell and Go 1.27.4 or later. The [fixture harnesses](../examples/mutation) require no external analyzer. See the [threat model](threat-model.md) for command trust and stage-boundary integrity.
+
+## Campaign reports
+
+> Unreleased. Available on the `dev` branch; see [Campaigns](campaigns.md).
+
+`campaign` emits [`invaris.evidence/v1alpha4`](../schemas/evidence-v1alpha4.schema.json) through the same stdout and optional `--report` path. `--format text` changes stdout only; the report file is always JSON. Serialization follows the rules above: fixed field order, explicit `null`, `[]` for empty lists, declaration order for experiments and attempt order within them.
+
+| Field | Meaning |
+| --- | --- |
+| `schemaVersion`, `runId`, `action` | `invaris.evidence/v1alpha4`, a random 128-bit hex ID, and `campaign` |
+| `campaign`, `campaignConfigDigest` | The campaign `name` and `sha256:` of the exact campaign file bytes |
+| `engineVersion` | Module version of the CLI; `null` for development builds |
+| `sourceIdentity` | `snapshotSha256` and `files` of the frozen snapshot (`null` if it was never prepared), `gitRevision` and `gitDirty` of the campaign directory (`null` when unknown), and `excluded`, always `[".git", ".invaris"]` |
+| `environment`, `startedAt`, `finishedAt`, `durationMs` | OS/architecture and UTC timing |
+| `selection` | `mode` (`all` or `filtered`), the `--only` IDs, and the counts of selected and filtered experiments |
+| `stages` | `snapshot`, then `cleanup` whenever a snapshot directory existed, each `OK` or `FAILED` with a detail |
+| `experiments` | One entry per declared experiment; see below |
+| `mutationSummary`, `guardrailSummary` | Counts per experiment, and the mutation `score` (`null` when nothing is eligible). See [scores](campaigns.md#scores-and-summaries). |
+| `acceptancePolicy` | The policy from the campaign file, with `requireNoInvalid` false and `minMutationScore` `null` when omitted |
+| `acceptanceEvaluation` | `complete` and one `{requirement, status, experiments}` entry per enabled requirement |
+| `decision` | `ACCEPT`, `REJECT` or `REFUSE`; exit 0, 1, 2 |
+| `diagnostics`, `artifacts` | Report-level diagnostics such as `SNAPSHOT_FAILED`, `PREFLIGHT_PROVIDER`, `SNAPSHOT_CHANGED`, `CLEANUP_FAILED` and `CAMPAIGN_INCOMPLETE`; persisted artifacts (currently none) |
+
+Each experiment records `id`, `kind`, `harness`, `harnessDigest`, `referenceId`, `repeat`, `selection` (`SELECTED` or `FILTERED_OUT`), its `attempts`, and the aggregate: `stability` (`CONSISTENT`, `MIXED`, `INCOMPLETE`, `NOT_EVALUATED`), `aggregateVerdict` (only for `CONSISTENT`) and `stabilityReason`.
+
+Each attempt records `id` (`<experiment>#<n>`), `index`, `execution` (`EXECUTED`, `CANCELED`, `REFUSED`, `NOT_STARTED`), `verdict`, `reason`, `reasonCategory`, `detail`, timing, and the child evidence of its kind: `mutation` holds a [v1alpha3 experiment record](#mutation-experiments) and `proof` holds a [v1alpha2 proof](#result-details). `observations` holds the observations that child evidence refers to. An attempt that did not start has no verdict, no child evidence and no observations.
+
+Go validation (`evidence.ValidateCampaign`) rejects a report unless:
+
+- IDs are unique, attempts are numbered `1..repeat` in order, filtered experiments have no attempts, and the selection agrees with the experiments.
+- Executed and canceled attempts carry the child evidence of their kind and nothing else, and their verdict and reason equal the child's. A `CANCELED` attempt has reason `canceled`.
+- Every child record passes the same rules as a single report: `KILLED` needs a completed assertion failure, every conclusive mutation verdict needs verified cleanup, and `PROVEN` needs a recorded mutation, a passing baseline, exactly one finding for the policy at the target, strong evidence and verified cleanup.
+- Every child `sourceSnapshot` equals `sourceIdentity.snapshotSha256`, and every conclusive child has one.
+- Aggregates, both summaries, `acceptanceEvaluation.complete`, every requirement status and the decision equal the values recomputed from the attempts.
+
+The digests identify content. They are not signatures and do not identify who ran the campaign.
+

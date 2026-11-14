@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add the `campaign` action and the [`invaris.campaign/v1alpha1`](schemas/campaign-v1alpha1.schema.json) contract. A campaign references existing v1alpha3 mutation experiments and v1alpha2 structured challenges in its directory, runs them in sequence from one frozen source snapshot, repeats each up to five times from fresh copies, and emits [`invaris.evidence/v1alpha4`](schemas/evidence-v1alpha4.schema.json). See [Campaigns](docs/campaigns.md).
+- Campaign reports keep every attempt, classify repeats as `CONSISTENT`, `MIXED` or `INCOMPLETE` without voting, compute a mutation score over consistent killed and surviving mutants (`null` when none), count guardrail results separately, and evaluate a typed acceptance policy. Incomplete evidence gives `REFUSE` before any `REJECT`.
+- Add `--only ID` and `--format text` for `campaign`. Exit codes stay `0` ACCEPT, `1` REJECT, `2` REFUSE or error.
+- Add Go example campaigns with six outcomes and a deterministic mixed-result fixture, plus campaigns for the shell mutation and forbidden-dependency examples. `scripts/smoke.sh` and `scripts/validate-schemas.py` cover them.
+- `run`, `check`, `challenge` and `mutate`, and the v1alpha2 and v1alpha3 reports, are unchanged.
+
 - Add `reason` and `reasonCategory` to every proof and `reasonCategory` to mutation experiments, with one shared vocabulary (`result`, `setup`, `infrastructure`, `evidence`).
 - Record input and execution details: `gitDirty`, a `sourceSnapshot` digest per proof and experiment, and per-observation `executable` (path and SHA-256), `timeoutSeconds` and `envAllowlist`. Unknown values are `null`.
 - `challenge` now verifies workspace integrity across the baseline and challenged check, as `mutate` does. A guard that writes into the workspace now yields `INCONCLUSIVE` (`workspace_changed`) instead of a proof.

@@ -31,9 +31,7 @@ func runMutationEvidence(ctx context.Context, spec Specification, root string) e
 	experiment, observations := runMutation(ctx, spec, root, workspace.Prepare, (*workspace.Workspace).Close)
 	r := evidenceMetadata(ctx, spec, root, "mutate", started, time.Now().UTC())
 	r.SchemaVersion = evidence.MutationSchemaVersion
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		experiment.EngineVersion = &info.Main.Version
-	}
+	experiment.EngineVersion = engineVersion()
 	r.Gate = domain.Gate{Precedence: domain.FailureFirst}
 	r.Experiment, r.Observations = &experiment, observations
 	r.Decision = domain.MutationDecision(experiment.Verdict)
@@ -202,6 +200,16 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		e.Verdict, e.Reason = domain.MutationSurvived, "all_tests_passed"
 	}
 	return
+}
+
+// engineVersion is the module version of this build, or nil for a
+// development build whose version is unknown.
+func engineVersion() *string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		v := info.Main.Version
+		return &v
+	}
+	return nil
 }
 
 func commandFailure(err error) string {

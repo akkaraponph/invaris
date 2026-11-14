@@ -4,7 +4,7 @@
 
 Invaris is an experimental Go CLI that runs project checks and tests whether those checks detect a deliberate file change. A JSON harness defines the commands, guards, and changes to test. Each run produces a JSON report.
 
-Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
+Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The unreleased `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
 Version [0.1.0](CHANGELOG.md#010).
 
@@ -49,6 +49,19 @@ These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1al
 
 The [Go project example](examples/go-project/README.md) shows tests detecting and missing a code change, plus a guard catching a forbidden import. Its guide explains how to read each result.
 
+## Campaign example (unreleased)
+
+A [campaign](docs/campaigns.md) runs existing mutation and challenge harnesses in sequence from one frozen copy of the source and decides on the whole set:
+
+```sh
+go build -o /tmp/invaris ./cmd/invaris
+cd examples/go-project
+/tmp/invaris campaign --format text campaign.json        # six outcomes, REFUSE, exit 2
+/tmp/invaris campaign campaign-accept.json               # ACCEPT, exit 0
+```
+
+The report is `invaris.evidence/v1alpha4`. Exit `0` means ACCEPT, `1` REJECT, and `2` REFUSE or an error. See the [Go project example](examples/go-project/README.md#run-a-campaign) for the expected results.
+
 ## Single-mutant example
 
 Build the CLI and run the three offline POSIX fixtures:
@@ -70,6 +83,7 @@ The JSON harness describes ordered `steps`, policy checks called `guards`, and d
 - `check`: execute guards without steps.
 - `challenge`: create a separate temporary workspace, run a clean baseline guard there, replace one expected marker, and require the selected guard to produce the expected finding for that policy, native rule, and file. Legacy marker-only guards can produce weak proofs.
 - `mutate`: run selected tests on the original code, apply one replacement, validate the changed code, then run the same tests again.
+- `campaign` (unreleased): run several `mutate` and `challenge` experiments from one frozen source snapshot, repeat them, and evaluate an acceptance policy.
 
 A challenge is `PROVEN` under the legacy weak output-marker contract only when the baseline passed and the mutated guard failed with the expected evidence. This does not establish a structured rule identity. A missing executable, timeout, workspace error, or ambiguous replacement is `INCONCLUSIVE`. A challenge that does not detect the injected violation is `UNPROVEN`.
 

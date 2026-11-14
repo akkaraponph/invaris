@@ -252,22 +252,8 @@ func validateAccepted(r Report, bad func(string, ...any)) {
 		}
 	}
 	for _, p := range r.Proofs {
-		if p.Status != domain.Proven {
-			continue
-		}
-		if p.Baseline == nil || p.Baseline.Status != domain.Pass {
-			bad("proven %q requires a passing baseline", p.ID)
-		}
-		if p.Challenged == nil || p.Challenged.Status != domain.Fail {
-			bad("proven %q requires a failing challenged check", p.ID)
-		}
-		if p.FaultID == "" || p.Target == "" {
-			bad("proven %q requires a fault and target", p.ID)
-		}
-		if p.EvidenceStrength == domain.StrengthStrong && p.Challenged != nil {
-			if f := p.Challenged.Findings; len(f) != 1 || f[0].PolicyID != p.PolicyID || f[0].Path != p.Target {
-				bad("strong proof %q requires exactly one finding for its policy at its target", p.ID)
-			}
+		if p.Status == domain.Proven {
+			validateProvenEvidence(p, bad)
 		}
 	}
 	for _, a := range r.Artifacts {
@@ -277,6 +263,26 @@ func validateAccepted(r Report, bad func(string, ...any)) {
 	}
 	if r.Compatibility.Status != "native" && r.Compatibility.Status != "legacy" {
 		bad("compatibility status must be native or legacy")
+	}
+}
+
+// validateProvenEvidence checks what a PROVEN proof must show about its
+// checks: a passing baseline, a failing challenged check, a fault and target,
+// and for strong evidence exactly one finding for its policy at its target.
+func validateProvenEvidence(p domain.Proof, bad func(string, ...any)) {
+	if p.Baseline == nil || p.Baseline.Status != domain.Pass {
+		bad("proven %q requires a passing baseline", p.ID)
+	}
+	if p.Challenged == nil || p.Challenged.Status != domain.Fail {
+		bad("proven %q requires a failing challenged check", p.ID)
+	}
+	if p.FaultID == "" || p.Target == "" {
+		bad("proven %q requires a fault and target", p.ID)
+	}
+	if p.EvidenceStrength == domain.StrengthStrong && p.Challenged != nil {
+		if f := p.Challenged.Findings; len(f) != 1 || f[0].PolicyID != p.PolicyID || f[0].Path != p.Target {
+			bad("strong proof %q requires exactly one finding for its policy at its target", p.ID)
+		}
 	}
 }
 
@@ -330,22 +336,31 @@ func normalize(r Report) Report {
 	}
 	proofs := make([]domain.Proof, len(r.Proofs))
 	for i, p := range r.Proofs {
-		if p.Baseline != nil {
-			c := normalizeCheck(*p.Baseline)
-			p.Baseline = &c
-		}
-		if p.Challenged != nil {
-			c := normalizeCheck(*p.Challenged)
-			p.Challenged = &c
-		}
-		if p.Stages == nil {
-			p.Stages = []domain.Stage{}
-		}
-		proofs[i] = p
+		proofs[i] = normalizeProof(p)
 	}
 	r.Proofs = proofs
-	observations := make([]Observation, len(r.Observations))
-	for i, o := range r.Observations {
+	r.Observations = normalizeObservations(r.Observations)
+	return r
+}
+
+func normalizeProof(p domain.Proof) domain.Proof {
+	if p.Baseline != nil {
+		c := normalizeCheck(*p.Baseline)
+		p.Baseline = &c
+	}
+	if p.Challenged != nil {
+		c := normalizeCheck(*p.Challenged)
+		p.Challenged = &c
+	}
+	if p.Stages == nil {
+		p.Stages = []domain.Stage{}
+	}
+	return p
+}
+
+func normalizeObservations(in []Observation) []Observation {
+	out := make([]Observation, len(in))
+	for i, o := range in {
 		if o.Args == nil {
 			o.Args = []string{}
 		}
@@ -355,10 +370,9 @@ func normalize(r Report) Report {
 		if o.Diagnostics == nil {
 			o.Diagnostics = []domain.Diagnostic{}
 		}
-		observations[i] = o
+		out[i] = o
 	}
-	r.Observations = observations
-	return r
+	return out
 }
 
 func normalizeChecks(in []domain.Check) []domain.Check {

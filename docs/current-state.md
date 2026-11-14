@@ -1,6 +1,6 @@
 # Current implementation
 
-Invaris runs trusted local commands in sequence. It supports four actions:
+Invaris runs trusted local commands in sequence. It supports five actions:
 
 | Action | Harness version | Report version | Purpose |
 | --- | --- | --- | --- |
@@ -8,8 +8,9 @@ Invaris runs trusted local commands in sequence. It supports four actions:
 | `check` | v1alpha1 or v1alpha2 | v1alpha2 | Run guards |
 | `challenge` | v1alpha1 or v1alpha2 | v1alpha2 | Test whether a guard detects a declared violation |
 | `mutate` | v1alpha3 | v1alpha3 | Test whether selected tests detect one declared code change |
+| `campaign` (unreleased) | campaign v1alpha1 | v1alpha4 | Run several mutation and challenge experiments in sequence, with repeats, scores and an acceptance policy |
 
-Harness versions use the `invaris.dev/` prefix; reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
+Harness versions use the `invaris.dev/` prefix, campaign files use `invaris.campaign/`, and reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
 
 ## Experiments and results
 
@@ -23,10 +24,16 @@ Use `preimageSha256` to require an exact target file before a mutation. Use `min
 
 Reports record whole-file digests for each edit. To inspect the edit later, retain the harness and original target bytes as described in [inspecting the actual edit](evidence-schema.md#inspecting-the-actual-edit). The CLI currently writes reports without additional artifact files.
 
+## Campaigns
+
+> Unreleased; available on the `dev` branch.
+
+A [campaign](campaigns.md) references existing mutation and challenge harnesses in one directory, copies that directory once into a frozen snapshot, and runs each selected experiment up to five times from fresh copies of it. The report keeps every attempt, marks disagreeing repeats as `MIXED`, computes a mutation score only over consistent killed and surviving mutants, counts guardrail results separately, and evaluates a typed acceptance policy. Incomplete evidence gives `REFUSE`. `--only` runs a subset and records the reduced scope, and `--format text` prints a summary. The [Go project example](../examples/go-project/README.md) includes six outcomes and a deterministic mixed-result fixture.
+
 ## Providers and verification
 
 Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
 
 The release workflow tests pull requests targeting `main` on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
 
-Mutation campaigns, scoring, parallel execution, and equivalent-mutant detection are future work. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).
+Parallel execution, baseline reuse, multi-directory campaigns, and equivalent-mutant detection are future work. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).

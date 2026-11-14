@@ -95,6 +95,20 @@ The harness's containing folder is the workspace root. A relative `--report` des
 
 Custom tools and providers installed outside `/usr/bin:/bin` need `"envAllowlist": ["PATH"]` on the relevant command or adapter, or an absolute executable path. Allowlist `PATH` separately for child commands that need your terminal's search path. Provider dependencies may need their own allowlists; see the [adapter protocol](adapter-protocol.md#the-generic-command-provider).
 
+## Run a campaign (unreleased)
+
+The `campaign` action is not in the 0.1.0 archives. Build the CLI from the `dev` branch to try it:
+
+```sh
+git clone --branch dev https://github.com/akkaraponph/invaris.git "$HOME/invaris-dev"
+cd "$HOME/invaris-dev"
+go build -o "$HOME/.local/share/invaris/invaris" ./cmd/invaris
+cd examples/go-project
+invaris campaign --format text campaign-accept.json
+```
+
+This requires the Go version in `go.mod`. The last command prints a summary that ends with `Acceptance: ACCEPT` and exits 0. See [Campaigns](campaigns.md).
+
 ## Windows CMD and PowerShell through WSL
 
 Use an installed WSL Linux distribution. From CMD or PowerShell, enter it:

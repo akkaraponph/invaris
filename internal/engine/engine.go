@@ -7,6 +7,7 @@ import (
 
 	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/evidence"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -159,6 +160,25 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	}
 	report.FinishedAt = time.Now().UTC()
 	return report
+}
+
+// runChallengeEvidence runs one challenge of a harness exactly as `challenge`
+// would, and returns its proof and observations. The harness gate is dropped
+// because it may name other challenges; the campaign applies its own policy.
+// ok is false when the evidence does not contain exactly that proof.
+func runChallengeEvidence(ctx context.Context, spec Specification, root, challengeID string) (domain.Proof, []evidence.Observation, bool) {
+	one := spec
+	one.Gate, one.Challenges = nil, nil
+	for _, c := range spec.Challenges {
+		if c.ID == challengeID {
+			one.Challenges = []Challenge{c}
+		}
+	}
+	r := buildEvidence(ctx, one, root, "challenge", Run(ctx, one, root, "challenge"))
+	if len(r.Proofs) != 1 || r.Proofs[0].ID != challengeID {
+		return domain.Proof{}, r.Observations, false
+	}
+	return r.Proofs[0], r.Observations, true
 }
 
 func challenge(ctx context.Context, root string, spec Specification, providers providerState, c Challenge) (r Result) {

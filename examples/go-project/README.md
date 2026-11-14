@@ -34,6 +34,26 @@ Each mutation harness declares one replacement. Choose the file for the outcome 
 | `mutation-survived.json` | clamp `return 0` to `return 1` | selected tests still pass: SURVIVED, `all_tests_passed` |
 | `mutation-invalid.json` | `percent <= 0` to `percent <= "0"` | `go build` fails: INVALID, `mutant_invalid`, tests never run |
 
+## Run a campaign
+
+A campaign runs several of these harnesses in one sequence and decides on the whole set. See [Campaigns](../../docs/campaigns.md) for the rules.
+
+```sh
+/tmp/invaris campaign --format text campaign.json                     # six outcomes: REFUSE, exit 2
+/tmp/invaris campaign campaign-accept.json                            # ACCEPT, exit 0
+/tmp/invaris campaign --only mutation-survived campaign.json          # REJECT, exit 1
+INVARIS_FIXTURE_STATE=$(mktemp -d) /tmp/invaris campaign campaign-mixed.json  # MIXED: REFUSE, exit 2
+```
+
+| Campaign file | Experiments | Expected |
+| --- | --- | --- |
+| `campaign.json` | the three mutation harnesses; `guardrail.json` (PROVEN); `guardrail-unproven.json`, which injects `_ "os/exec"`, an import the guard allows (UNPROVEN, `guard_passed`); `guardrail-inconclusive.json`, which injects an unterminated import that the guard cannot parse (INCONCLUSIVE, `execution_failed`) | Score 50.0% (1 of 2 eligible; the invalid mutant is excluded). The inconclusive guardrail makes the evidence incomplete, so the decision is REFUSE, exit 2, even though a survivor and an unproven guardrail are also present. |
+| `campaign-accept.json` | `mutation-killed.json` and `guardrail.json` | ACCEPT, exit 0 |
+| `campaign.json` with `--only mutation-survived` | only the surviving mutant; the others are `FILTERED_OUT` | REJECT, exit 1 |
+| `campaign-mixed.json` | `mutation-sequence.json` three times | KILLED, SURVIVED, KILLED: MIXED, no score, REFUSE, exit 2 |
+
+`mutation-sequence.json` uses `tools/sequence/test.sh` instead of `go test`. It is deliberately unstable but not random: on a mutant it fails on odd runs and passes on even runs, counting runs in the directory named by `INVARIS_FIXTURE_STATE`. Use a new, empty directory for each run. Without one the test exits 2 and every attempt is INCONCLUSIVE.
+
 ## Read the report
 
 Read the answers from the JSON report (`--report new.json` saves it). Field paths are for `mutate` (`experiment.*`) and `challenge` (`proofs[0].*`).

@@ -3,8 +3,9 @@
 
 Builds the CLI into a temporary directory, runs it on the shipped examples and
 on temporary harnesses, checks the exit codes, validates every emitted report
-against schemas/evidence-v1alpha2.schema.json, validates the v1alpha2 example
-harness, and requires deliberate counterexamples to be rejected.
+against its evidence schema (v1alpha2, v1alpha3 for mutate, v1alpha4 for
+campaign), validates the example harnesses and campaigns against their input
+schemas, and requires deliberate counterexamples to be rejected.
 
 Requires the pinned validator: pip install -r scripts/requirements-schema.txt
 Exit status: 0 all checks passed, 1 a check failed, 2 the environment is unusable.
@@ -54,9 +55,12 @@ def valid(v, doc):
     return v.is_valid(doc)
 
 
-def run_cli(binary, cwd, *args):
+def run_cli(binary, cwd, *args, path_prefix=None):
     # A clean environment: the CLI must not depend on the caller's variables.
-    env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(cwd)}
+    path = os.environ.get("PATH", "/usr/bin:/bin")
+    if path_prefix:
+        path = str(path_prefix) + os.pathsep + path
+    env = {"PATH": path, "HOME": str(cwd)}
     p = subprocess.run([str(binary), *args], cwd=cwd, env=env, capture_output=True, text=True, timeout=120)
     return p.returncode, p.stdout, p.stderr
 
@@ -170,6 +174,100 @@ def mutation_checks(binary):
             bad = copy.deepcopy(doc)
             edit(bad)
             check(not valid(ev, bad), f"mutation evidence accepted {description}")
+
+
+def campaign_checks(binary, provider_dir):
+    """Validate the shipped campaigns and actual campaign evidence."""
+    cv = validator(load("campaign-v1alpha1.schema.json"))
+    ev = validator(load("evidence-v1alpha4.schema.json"))
+    older = [validator(load("evidence-v1alpha2.schema.json")), validator(load("evidence-v1alpha3.schema.json"))]
+    ex = ROOT / "examples"
+    files = [ex / "mutation" / "campaign.json", ex / "forbidden-dependency" / "campaign.json",
+             ex / "go-project" / "campaign.json", ex / "go-project" / "campaign-accept.json", ex / "go-project" / "campaign-mixed.json"]
+    for path in files:
+        check(valid(cv, json.loads(path.read_text())), f"campaign violates schema: {path.relative_to(ROOT)}")
+    base = json.loads(files[0].read_text())
+
+    def mutated(edit):
+        doc = copy.deepcopy(base)
+        edit(doc)
+        return doc
+
+    for label, edit in {
+        "repeat 0": lambda d: d["experiments"][0].update(repeat=0),
+        "repeat 6": lambda d: d["experiments"][0].update(repeat=6),
+        "harness in a subdirectory": lambda d: d["experiments"][0].update(harness="a/b.json"),
+        "harness parent": lambda d: d["experiments"][0].update(harness=".."),
+        "unknown field": lambda d: d.update(parallel=True),
+        "unknown experiment field": lambda d: d["experiments"][0].update(timeoutSeconds=5),
+        "missing acceptance": lambda d: d.pop("acceptance"),
+        "missing required requirement": lambda d: d["acceptance"].pop("requireNoMixed"),
+        "mutation with challengeId": lambda d: d["experiments"][0].update(challengeId="c"),
+        "guardrail with experimentId": lambda d: d["experiments"][0].update(kind="guardrail"),
+        "unknown kind": lambda d: d["experiments"][0].update(kind="fuzz"),
+        "wrong version": lambda d: d.update(version="invaris.campaign/v1alpha2"),
+        "restricted network": lambda d: d.update(networkPolicy="none"),
+        "empty campaign": lambda d: d.update(experiments=[]),
+        "score above one": lambda d: d["acceptance"].update(minMutationScore=1.5),
+        "null name": lambda d: d.update(name=None),
+    }.items():
+        check(not valid(cv, mutated(edit)), f"campaign counterexample accepted: {label}")
+
+    reports = {}
+    for label, path, want_exit, want_decision, prefix in (
+        ("mutation campaign", files[0], 1, "REJECT", None),
+        ("forbidden-dependency campaign", files[1], 0, "ACCEPT", provider_dir),
+    ):
+        code, out, err = run_cli(binary, path.parent, "campaign", path.name, path_prefix=prefix)
+        check(code == want_exit, f"{label}: exit {code}, want {want_exit} ({err.strip()})")
+        try:
+            doc = json.loads(out)
+        except ValueError:
+            check(False, f"{label}: stdout is not JSON")
+            continue
+        errors = sorted(ev.iter_errors(doc), key=lambda e: list(e.path))
+        check(not errors, f"{label}: report violates schema: {errors[0].message if errors else ''}")
+        check(doc.get("decision") == want_decision, f"{label}: decision {doc.get('decision')}")
+        for v in older:
+            check(not valid(v, doc), f"{label}: an older evidence schema accepts a campaign report")
+        reports[label] = doc
+    # Without the provider on PATH the campaign is refused before any attempt.
+    code, out, _ = run_cli(binary, files[1].parent, "campaign", files[1].name)
+    try:
+        doc = json.loads(out)
+        check(code == 2 and valid(ev, doc) and doc["experiments"][0]["attempts"][0]["execution"] == "NOT_STARTED",
+              "missing provider: expected a valid REFUSE report with NOT_STARTED attempts")
+    except (ValueError, KeyError, IndexError):
+        check(False, "missing provider: no campaign report")
+    code, out, err = run_cli(binary, files[0].parent, "campaign", "--only", "absent", files[0].name)
+    check(code == 2 and out == "" and err.strip() != "", "unknown --only must exit 2 with no stdout")
+
+    doc = reports.get("mutation campaign")
+    if doc is None:
+        check(False, "no campaign report to derive counterexamples from")
+        return
+    for key in load("evidence-v1alpha4.schema.json")["required"]:
+        check(not valid(ev, {k: v for k, v in doc.items() if k != key}), f"campaign evidence missing {key} accepted")
+    for label, edit in {
+        "unknown top-level field": lambda d: d.update(extra=1),
+        "unknown execution": lambda d: d["experiments"][0]["attempts"][0].update(execution="SKIPPED"),
+        "unknown stability": lambda d: d["experiments"][0].update(stability="STABLE"),
+        "unknown selection": lambda d: d["experiments"][0].update(selection="MAYBE"),
+        "unknown decision": lambda d: d.update(decision="PASS"),
+        "missing attempts": lambda d: d["experiments"][0].pop("attempts"),
+        "bad config digest": lambda d: d.update(campaignConfigDigest="md5:1"),
+        "bad harness digest": lambda d: d["experiments"][0].update(harnessDigest="sha256:1"),
+        "bad snapshot digest": lambda d: d["sourceIdentity"].update(snapshotSha256="xyz"),
+        "score as string": lambda d: d["mutationSummary"].update(score="0.5"),
+        "score above one": lambda d: d["mutationSummary"].update(score=2),
+        "cleanup before snapshot": lambda d: d.update(stages=list(reversed(d["stages"]))),
+        "attempt without verdict": lambda d: d["experiments"][0]["attempts"][0].update(verdict=None),
+        "unknown requirement": lambda d: d["acceptanceEvaluation"]["requirements"][0].update(requirement="requireMagic"),
+        "excluded changed": lambda d: d["sourceIdentity"].update(excluded=[]),
+    }.items():
+        bad = copy.deepcopy(doc)
+        edit(bad)
+        check(not valid(ev, bad), f"campaign evidence counterexample accepted: {label}")
 
 
 def main():
@@ -317,6 +415,7 @@ def main():
                 check(valid(evidence, mutated(refused, lambda d: d.update(configDigest=None, targetCount=None))), "REFUSE report with null unknowns rejected")
 
         mutation_checks(binary)
+        campaign_checks(binary, tmp)
 
     adapter_checks()
     print(f"{checks} checks, {len(failures)} failed")

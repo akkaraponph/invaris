@@ -1,0 +1,1594 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/evidence-v1alpha4.schema.json",
+  "title": "Invaris campaign evidence v1alpha4",
+  "description": "Structure of a campaign report. Go validation additionally recomputes every aggregate, summary, completeness flag, acceptance evaluation and decision from the attempts, checks attempt order and counts, holds each attempt's child evidence to the v1alpha2 proof and v1alpha3 mutation rules, and requires every attempt to have evaluated the recorded source snapshot.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "action",
+    "campaign",
+    "campaignConfigDigest",
+    "engineVersion",
+    "sourceIdentity",
+    "environment",
+    "selection",
+    "startedAt",
+    "finishedAt",
+    "durationMs",
+    "stages",
+    "experiments",
+    "mutationSummary",
+    "guardrailSummary",
+    "acceptancePolicy",
+    "acceptanceEvaluation",
+    "decision",
+    "diagnostics",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "invaris.evidence/v1alpha4"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "action": {
+      "const": "campaign"
+    },
+    "campaign": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "campaignConfigDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "engineVersion": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshotSha256",
+        "files",
+        "gitRevision",
+        "gitDirty",
+        "excluded"
+      ],
+      "properties": {
+        "snapshotSha256": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sha256"
+            }
+          ]
+        },
+        "files": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        },
+        "gitRevision": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{40,64}$"
+            }
+          ]
+        },
+        "gitDirty": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "excluded": {
+          "const": [
+            ".git",
+            ".invaris"
+          ]
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "arch"
+      ],
+      "properties": {
+        "os": {
+          "type": "string",
+          "minLength": 1
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "only",
+        "selected",
+        "filtered"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "all",
+            "filtered"
+          ]
+        },
+        "only": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "selected": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "filtered": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "prefixItems": [
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/campaignStage"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "snapshot"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/$defs/campaignStage"
+            },
+            {
+              "properties": {
+                "name": {
+                  "const": "cleanup"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "experiments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/experimentResult"
+      }
+    },
+    "mutationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "killed",
+        "survived",
+        "invalid",
+        "inconclusive",
+        "mixed",
+        "notExecuted",
+        "filtered",
+        "eligible",
+        "excluded",
+        "score"
+      ],
+      "properties": {
+        "killed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "survived": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalid": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inconclusive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mixed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notExecuted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filtered": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "eligible": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "score": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        }
+      }
+    },
+    "guardrailSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proven",
+        "unproven",
+        "inconclusive",
+        "mixed",
+        "notExecuted",
+        "filtered"
+      ],
+      "properties": {
+        "proven": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unproven": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inconclusive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mixed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notExecuted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "filtered": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "acceptancePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requireNoSurvivors",
+        "requireAllGuardrailsProven",
+        "requireNoInconclusive",
+        "requireNoMixed",
+        "requireNoInvalid",
+        "minMutationScore"
+      ],
+      "properties": {
+        "requireNoSurvivors": {
+          "type": "boolean"
+        },
+        "requireAllGuardrailsProven": {
+          "type": "boolean"
+        },
+        "requireNoInconclusive": {
+          "type": "boolean"
+        },
+        "requireNoMixed": {
+          "type": "boolean"
+        },
+        "requireNoInvalid": {
+          "type": "boolean"
+        },
+        "minMutationScore": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            }
+          ]
+        }
+      }
+    },
+    "acceptanceEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "requirements"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "requirements": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "requirement",
+              "status",
+              "experiments"
+            ],
+            "properties": {
+              "requirement": {
+                "enum": [
+                  "requireNoSurvivors",
+                  "requireAllGuardrailsProven",
+                  "requireNoInconclusive",
+                  "requireNoMixed",
+                  "requireNoInvalid",
+                  "minMutationScore"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "SATISFIED",
+                  "VIOLATED",
+                  "UNSUPPORTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "experiments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/id"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "enum": [
+        "ACCEPT",
+        "REJECT",
+        "REFUSE"
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "decision": {
+        "const": "ACCEPT"
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "acceptanceEvaluation": {
+        "properties": {
+          "complete": {
+            "const": true
+          }
+        }
+      },
+      "stages": {
+        "minItems": 2
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nullableInt": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        }
+      ]
+    },
+    "nullableString": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "nullableTime": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time"
+        }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyId",
+        "ruleId",
+        "path",
+        "message"
+      ],
+      "properties": {
+        "policyId": {
+          "type": "string"
+        },
+        "ruleId": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policyId",
+        "providerId",
+        "status",
+        "inspected",
+        "findings",
+        "diagnostics",
+        "exitCode"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "providerId": {
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "REFUSE",
+            "NOT_RUN"
+          ]
+        },
+        "inspected": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diagnostic"
+          }
+        },
+        "exitCode": {
+          "$ref": "#/$defs/nullableInt"
+        }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "policyId",
+        "guardId",
+        "target",
+        "faultId",
+        "evidenceStrength",
+        "status",
+        "reason",
+        "reasonCategory",
+        "detail",
+        "sourceSnapshot",
+        "mutation",
+        "stages",
+        "baseline",
+        "challenged"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policyId": {
+          "type": "string"
+        },
+        "guardId": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "faultId": {
+          "type": "string"
+        },
+        "evidenceStrength": {
+          "enum": [
+            "weak",
+            "strong"
+          ]
+        },
+        "status": {
+          "enum": [
+            "PROVEN",
+            "UNPROVEN",
+            "INCONCLUSIVE"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/reason"
+        },
+        "reasonCategory": {
+          "$ref": "#/$defs/reasonCategory"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "sourceSnapshot": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sourceSnapshot"
+            }
+          ]
+        },
+        "mutation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "beforeSha256",
+                "afterSha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "beforeSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "afterSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "status",
+              "durationMs",
+              "detail"
+            ],
+            "properties": {
+              "name": {
+                "enum": [
+                  "prepare",
+                  "baseline",
+                  "mutate",
+                  "challenged",
+                  "cleanup"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "OK",
+                  "FAILED"
+                ]
+              },
+              "durationMs": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "detail": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/check"
+            }
+          ]
+        },
+        "challenged": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/check"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PROVEN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mutation": {
+                "type": "object"
+              },
+              "stages": {
+                "contains": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "const": "cleanup"
+                    },
+                    "status": {
+                      "const": "OK"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PROVEN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidenceStrength": {
+                "const": "strong"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reason": {
+      "enum": [
+        "",
+        "guard_detected",
+        "marker_matched",
+        "guard_passed",
+        "marker_not_found",
+        "assertion_failed",
+        "all_tests_passed",
+        "mutant_invalid",
+        "invalid_target",
+        "guard_not_found",
+        "provider_unavailable",
+        "unhealthy_baseline",
+        "mutation_rejected",
+        "no_targets_inspected",
+        "finding_mismatch",
+        "workspace_prepare_failed",
+        "timeout",
+        "canceled",
+        "missing_executable",
+        "output_limit",
+        "execution_failed",
+        "cleanup_failed",
+        "malformed_evidence",
+        "workspace_changed"
+      ]
+    },
+    "reasonCategory": {
+      "enum": [
+        "",
+        "result",
+        "setup",
+        "infrastructure",
+        "evidence"
+      ]
+    },
+    "sourceSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "files"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "beforeSha256",
+        "afterSha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "beforeSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "afterSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "caseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "ASSERTION_FAILED"
+          ]
+        }
+      }
+    },
+    "commandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observationId",
+        "tests",
+        "validity"
+      ],
+      "properties": {
+        "observationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tests": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "items": {
+                "$ref": "#/$defs/caseResult"
+              }
+            }
+          ]
+        },
+        "validity": {
+          "enum": [
+            "",
+            "VALID",
+            "INVALID"
+          ]
+        }
+      }
+    },
+    "mutationExperiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mutationId",
+        "engineVersion",
+        "operator",
+        "target",
+        "testCommandId",
+        "validationCommandId",
+        "testIds",
+        "verdict",
+        "reason",
+        "reasonCategory",
+        "sourceSnapshot",
+        "mutation",
+        "stages",
+        "baseline",
+        "validation",
+        "tests"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mutationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "engineVersion": {
+          "$ref": "#/$defs/nullableString"
+        },
+        "operator": {
+          "const": "replace"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testCommandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validationCommandId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "verdict": {
+          "enum": [
+            "KILLED",
+            "SURVIVED",
+            "INVALID",
+            "INCONCLUSIVE"
+          ]
+        },
+        "reasonCategory": {
+          "$ref": "#/$defs/reasonCategory"
+        },
+        "sourceSnapshot": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sourceSnapshot"
+            }
+          ]
+        },
+        "reason": {
+          "enum": [
+            "assertion_failed",
+            "all_tests_passed",
+            "mutant_invalid",
+            "workspace_prepare_failed",
+            "unhealthy_baseline",
+            "mutation_rejected",
+            "workspace_changed",
+            "malformed_evidence",
+            "missing_executable",
+            "timeout",
+            "canceled",
+            "output_limit",
+            "execution_failed",
+            "cleanup_failed"
+          ]
+        },
+        "mutation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/mutation"
+            }
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/mutationStage"
+          }
+        },
+        "baseline": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/commandResult"
+            }
+          ]
+        },
+        "validation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/commandResult"
+            }
+          ]
+        },
+        "tests": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/commandResult"
+            }
+          ]
+        }
+      }
+    },
+    "mutationStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "status",
+        "durationMs",
+        "detail"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "prepare",
+            "baseline",
+            "mutate",
+            "validation",
+            "tests",
+            "cleanup"
+          ]
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "FAILED"
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "program",
+        "args",
+        "provider",
+        "scope",
+        "startedAt",
+        "finishedAt",
+        "exitCode",
+        "stdout",
+        "stderr",
+        "truncated",
+        "diagnostics",
+        "executable",
+        "timeoutSeconds",
+        "envAllowlist"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "baseline",
+            "validation",
+            "tests",
+            "challenged",
+            "discover"
+          ]
+        },
+        "program": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "version",
+            "toolName",
+            "toolVersion"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "$ref": "#/$defs/nullableString"
+            },
+            "toolName": {
+              "$ref": "#/$defs/nullableString"
+            },
+            "toolVersion": {
+              "$ref": "#/$defs/nullableString"
+            }
+          }
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startedAt": {
+          "$ref": "#/$defs/nullableTime"
+        },
+        "finishedAt": {
+          "$ref": "#/$defs/nullableTime"
+        },
+        "exitCode": {
+          "$ref": "#/$defs/nullableInt"
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/diagnostic"
+          }
+        },
+        "executable": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "timeoutSeconds": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        },
+        "envAllowlist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "campaignStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "status",
+        "durationMs",
+        "detail"
+      ],
+      "properties": {
+        "name": {
+          "enum": [
+            "snapshot",
+            "cleanup"
+          ]
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "FAILED"
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "index",
+        "execution",
+        "verdict",
+        "reason",
+        "reasonCategory",
+        "detail",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "mutation",
+        "proof",
+        "observations"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}#[1-5]$"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "execution": {
+          "enum": [
+            "EXECUTED",
+            "CANCELED",
+            "REFUSED",
+            "NOT_STARTED"
+          ]
+        },
+        "verdict": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "KILLED",
+                "SURVIVED",
+                "INVALID",
+                "INCONCLUSIVE",
+                "PROVEN",
+                "UNPROVEN"
+              ]
+            }
+          ]
+        },
+        "reason": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/reason"
+            },
+            {
+              "not": {
+                "const": ""
+              }
+            }
+          ]
+        },
+        "reasonCategory": {
+          "enum": [
+            "result",
+            "setup",
+            "infrastructure",
+            "evidence"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/nullableTime"
+        },
+        "finishedAt": {
+          "$ref": "#/$defs/nullableTime"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mutation": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/mutationExperiment"
+            }
+          ]
+        },
+        "proof": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/proof"
+            }
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "execution": {
+            "enum": [
+              "REFUSED",
+              "NOT_STARTED"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verdict": {
+            "type": "null"
+          },
+          "mutation": {
+            "type": "null"
+          },
+          "proof": {
+            "type": "null"
+          },
+          "observations": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "verdict": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "experimentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "harness",
+        "harnessDigest",
+        "referenceId",
+        "repeat",
+        "selection",
+        "attempts",
+        "aggregateVerdict",
+        "stability",
+        "stabilityReason"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "mutation",
+            "guardrail"
+          ]
+        },
+        "harness": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^/\\\\:\\u0000]+$"
+        },
+        "harnessDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "referenceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "selection": {
+          "enum": [
+            "SELECTED",
+            "FILTERED_OUT"
+          ]
+        },
+        "attempts": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/attempt"
+          }
+        },
+        "aggregateVerdict": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                "KILLED",
+                "SURVIVED",
+                "INVALID",
+                "PROVEN",
+                "UNPROVEN"
+              ]
+            }
+          ]
+        },
+        "stability": {
+          "enum": [
+            "CONSISTENT",
+            "MIXED",
+            "INCOMPLETE",
+            "NOT_EVALUATED"
+          ]
+        },
+        "stabilityReason": {
+          "type": "string"
+        }
+      },
+      "if": {
+        "properties": {
+          "selection": {
+            "const": "FILTERED_OUT"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attempts": {
+            "maxItems": 0
+          },
+          "aggregateVerdict": {
+            "type": "null"
+          },
+          "stability": {
+            "const": "NOT_EVALUATED"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "attempts": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  }
+}

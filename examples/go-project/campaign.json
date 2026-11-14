@@ -1,0 +1,56 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "go-project-verification",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {
+      "id": "mutation-killed",
+      "kind": "mutation",
+      "harness": "mutation-killed.json",
+      "experimentId": "go-mutation-killed",
+      "repeat": 1
+    },
+    {
+      "id": "mutation-survived",
+      "kind": "mutation",
+      "harness": "mutation-survived.json",
+      "experimentId": "go-mutation-survived",
+      "repeat": 1
+    },
+    {
+      "id": "mutation-invalid",
+      "kind": "mutation",
+      "harness": "mutation-invalid.json",
+      "experimentId": "go-mutation-invalid",
+      "repeat": 1
+    },
+    {
+      "id": "guardrail-proven",
+      "kind": "guardrail",
+      "harness": "guardrail.json",
+      "challengeId": "inject-net-http",
+      "repeat": 1
+    },
+    {
+      "id": "guardrail-unproven",
+      "kind": "guardrail",
+      "harness": "guardrail-unproven.json",
+      "challengeId": "inject-os-exec",
+      "repeat": 1
+    },
+    {
+      "id": "guardrail-inconclusive",
+      "kind": "guardrail",
+      "harness": "guardrail-inconclusive.json",
+      "challengeId": "inject-broken-import",
+      "repeat": 1
+    }
+  ],
+  "acceptance": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

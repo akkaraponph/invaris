@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/akkaraponph/invaris/internal/domain"
@@ -122,6 +123,65 @@ func TestGoProjectExample(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("campaign", func(t *testing.T) {
+		t.Setenv("INVARIS_FIXTURE_STATE", t.TempDir())
+		type want struct{ verdict, reason string }
+		for _, tc := range []struct {
+			name     string
+			args     []string
+			code     int
+			decision domain.Decision
+			results  map[string]want
+		}{
+			{"six scenarios", []string{"campaign", "campaign.json"}, 2, domain.RefuseDecision, map[string]want{
+				"mutation-killed": {"KILLED", "assertion_failed"}, "mutation-survived": {"SURVIVED", "all_tests_passed"},
+				"mutation-invalid": {"INVALID", "mutant_invalid"}, "guardrail-proven": {"PROVEN", "guard_detected"},
+				"guardrail-unproven": {"UNPROVEN", "guard_passed"}, "guardrail-inconclusive": {"INCONCLUSIVE", "execution_failed"}}},
+			{"accept", []string{"campaign", "campaign-accept.json"}, 0, domain.Accept, map[string]want{
+				"mutation-killed": {"KILLED", "assertion_failed"}, "guardrail-proven": {"PROVEN", "guard_detected"}}},
+			{"filtered survivor", []string{"campaign", "--only", "mutation-survived", "campaign.json"}, 1, domain.Reject, map[string]want{
+				"mutation-survived": {"SURVIVED", "all_tests_passed"}}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				code, out, stderr := invoke(t, dir, tc.args...)
+				r := decodeCampaign(t, out)
+				if code != tc.code || r.Decision != tc.decision {
+					t.Fatalf("exit %d decision %s: %s", code, r.Decision, stderr)
+				}
+				for _, x := range r.Experiments {
+					w, selected := tc.results[x.ID]
+					if !selected {
+						if x.Selection != domain.FilteredOut {
+							t.Fatalf("%s should be filtered", x.ID)
+						}
+						continue
+					}
+					if a := x.Attempts[0]; a.Verdict == nil || *a.Verdict != w.verdict || a.Reason != w.reason {
+						t.Fatalf("%s: %v %s, want %+v", x.ID, a.Verdict, a.Reason, w)
+					}
+				}
+			})
+		}
+		t.Run("score in text", func(t *testing.T) {
+			code, out, _ := invoke(t, dir, "campaign", "--format", "text", "campaign.json")
+			if code != 2 || !strings.Contains(string(out), "Score:         50.0%") || !strings.Contains(string(out), "Acceptance: REFUSE") {
+				t.Fatalf("exit %d:\n%s", code, out)
+			}
+		})
+		t.Run("mixed", func(t *testing.T) {
+			code, out, stderr := invoke(t, dir, "campaign", "campaign-mixed.json")
+			r := decodeCampaign(t, out)
+			x := r.Experiments[0]
+			var got []string
+			for _, a := range x.Attempts {
+				got = append(got, *a.Verdict)
+			}
+			if code != 2 || strings.Join(got, ",") != "KILLED,SURVIVED,KILLED" || x.Stability != domain.Mixed || x.AggregateVerdict != nil || r.MutationSummary.Score != nil {
+				t.Fatalf("exit %d %v %s: %s", code, got, x.Stability, stderr)
+			}
+		})
+	})
 
 	t.Run("preimage pin matches the source", func(t *testing.T) {
 		raw, err := os.ReadFile(filepath.Join(dir, "mutation-killed.json"))

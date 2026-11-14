@@ -23,7 +23,7 @@ func mainExit() int {
 	return runCLI(ctx, os.Args[1:], os.Stdout, os.Stderr)
 }
 
-// runCLI returns the process exit code: 0 PASS, 1 FAIL, 2 otherwise. The report
+// runCLI returns the process exit code: 0 ACCEPT, 1 REJECT, 2 otherwise. The report
 // goes to stdout only after any requested report file has been published, so a
 // publication failure never leaves a verdict on stdout.
 func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -35,8 +35,12 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
+	if len(args) >= 1 && args[0] == "campaign" {
+		return runCampaignCLI(ctx, reportPath, args[1:], stdout, stderr)
+	}
 	if len(args) < 1 || len(args) > 2 {
 		fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|check|challenge|mutate> [harness.json]")
+		fmt.Fprintln(stderr, "       "+campaignUsage)
 		return 2
 	}
 	action := args[0]

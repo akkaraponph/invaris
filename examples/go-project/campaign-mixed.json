@@ -1,0 +1,21 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "go-project-mixed",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {
+      "id": "mutation-sequence",
+      "kind": "mutation",
+      "harness": "mutation-sequence.json",
+      "experimentId": "go-mutation-sequence",
+      "repeat": 3
+    }
+  ],
+  "acceptance": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": false,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

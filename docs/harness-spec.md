@@ -1,6 +1,6 @@
 # Harness configuration
 
-A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. See the [evidence schema](evidence-schema.md).
+A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action (unreleased). See the [evidence schema](evidence-schema.md).
 
 ## Common fields and validation
 
@@ -117,3 +117,33 @@ Each selected case appears exactly once, in any order. Exit 0 requires all `PASS
 Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"}` with exit 0 or `INVALID` with exit 1.
 
 Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.
+
+## Campaign file
+
+> Unreleased. Available on the `dev` branch; see [Campaigns](campaigns.md) for behavior and examples.
+
+`invaris campaign` reads an `invaris.campaign/v1alpha1` file. The published schema is [`schemas/campaign-v1alpha1.schema.json`](../schemas/campaign-v1alpha1.schema.json). The file is one UTF-8 JSON object of at most 1 MiB; unknown, duplicate and `null` fields and trailing values are rejected, as for harnesses.
+
+| Field | Requirement |
+| --- | --- |
+| `version` | `invaris.campaign/v1alpha1` |
+| `name` | Nonblank |
+| `trustMode`, `networkPolicy` | Only `trusted-local` and `unrestricted`. Neither adds isolation. |
+| `experiments` | 1 to 64 entries, run in this order |
+| `acceptance` | The acceptance policy below |
+
+Each experiment entry:
+
+| Field | Requirement |
+| --- | --- |
+| `id` | Unique; 1 to 128 characters from `A-Z a-z 0-9 . _ -`, starting with a letter or digit. Used by `--only`. |
+| `kind` | `mutation` or `guardrail` |
+| `harness` | A file name in the campaign file's directory: no `/`, `\`, `:`, `.` or `..`. It must be a regular file, not a symbolic link, and not the campaign file itself. |
+| `experimentId` | For `mutation` only: the `experiment.id` of a v1alpha3 harness |
+| `challengeId` | For `guardrail` only: a challenge ID in a v1alpha2 harness whose guard declares a `policyId` (structured command guard or provider guard) |
+| `repeat` | Integer from 1 to 5 |
+
+The same harness and reference may appear only once. Every referenced harness is fully validated before anything runs; an invalid harness invalidates the campaign. v1alpha1 harnesses and output-marker guards are rejected, so campaign proofs are always strong evidence. The harness `gate` is ignored.
+
+`acceptance` must contain the booleans `requireNoSurvivors`, `requireAllGuardrailsProven`, `requireNoInconclusive` and `requireNoMixed`. Optional `requireNoInvalid` is a boolean and optional `minMutationScore` is a number greater than 0 and at most 1. At least one requirement must be enabled. A mutation requirement (`requireNoSurvivors`, `requireNoInvalid`, `minMutationScore`) needs at least one mutation entry, and `requireAllGuardrailsProven` needs at least one guardrail entry. See [acceptance policy](campaigns.md#acceptance-policy) for their meaning.
+

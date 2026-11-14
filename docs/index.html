@@ -48,6 +48,10 @@
           <dt><code>mutate</code></dt>
           <dd>Run selected tests on the original code and on one validated code change in a disposable copy.</dd>
         </div>
+        <div>
+          <dt><code>campaign</code></dt>
+          <dd>Unreleased. Run several challenges and mutations from one frozen copy, repeat them, and decide on the whole set with an acceptance policy.</dd>
+        </div>
       </dl>
     </section>
 
@@ -65,6 +69,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
       <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
+      <p>The unreleased <code>campaign</code> action, available on the <code>dev</code> branch, runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a>.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
@@ -77,8 +82,10 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <ul class="reference">
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Unreleased: sequential experiments, repeats, scores, and acceptance</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness, campaign, adapter, and evidence contracts</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
