@@ -4,9 +4,11 @@
 
 **Execution under invariants.**
 
-Invaris is an experimental, standalone harness execution and guardrail-verification engine. It is designed for multi-language workflows and tool adapters. The initial implementation is a deliberately small Go CLI with a standard-library Go core and optional external analyzers.
+Invaris is an experimental, standalone harness execution, guardrail verification, and mutation-testing engine. It is designed for multi-language workflows and tool adapters. The initial implementation is a deliberately small Go CLI with a standard-library Go core and optional external analyzers.
 
-> **Status: experimental local CLI.** Invaris runs trusted commands and provider guards and verifies controlled file-mutation proofs. See the [provider support matrix](docs/provider-support.md) for the tested integrations.
+> **Status: experimental local CLI.** Invaris runs trusted commands and provider guards and verifies controlled file-mutation proofs and single-mutant test experiments. See the [provider support matrix](docs/provider-support.md) for the tested integrations.
+
+Version [0.1.0](CHANGELOG.md#010).
 
 ## Quick start
 
@@ -19,7 +21,20 @@ go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json
 ```
 
-The commands emit `invaris.evidence/v1alpha2` JSON for both supported harness versions. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
+These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1alpha2 harnesses. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
+
+## Single-mutant example
+
+Build the CLI and run the three offline POSIX fixtures:
+
+```sh
+go build -o /tmp/invaris ./cmd/invaris
+/tmp/invaris mutate examples/mutation/killed.json
+/tmp/invaris mutate examples/mutation/survived.json
+/tmp/invaris mutate examples/mutation/invalid.json
+```
+
+The fixtures report `KILLED` (exit 0), `SURVIVED` (exit 1), and `INVALID` (exit 2), respectively. Each uses a v1alpha3 harness and emits v1alpha3 evidence. An unhealthy baseline or insufficient evidence reports `INCONCLUSIVE` (exit 2). See the [single-mutant harness contract](docs/harness-spec.md#single-mutant-harness) and [mutation evidence](docs/evidence-schema.md#mutation-experiments).
 
 ## How it works
 
@@ -43,9 +58,13 @@ Run only trusted harnesses, executables, and analyzer configs. Commands have the
 
 See [`docs/architecture.md`](docs/architecture.md) for runtime, adapter contracts, and guard lifecycle, and the [roadmap](docs/roadmap.md) for follow-up work. Invaris is intentionally independent from Panda Suite and can be called from any AI skill, CI job, or developer workflow.
 
+## Related Projects
+
+Invaris runs checks and uses controlled changes to verify that a guard detects the expected violation. The [open-source ecosystem catalog](docs/ecosystem.md) lists related tools for API and integration testing, architecture rules, fault injection, mutation and property-based testing, policy enforcement, and security scanning.
+
 ## Contributing
 
-Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Both branches require the Linux, macOS, and Dependency-Cruiser checks. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) for merge requirements.
+Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Pull requests targeting `main` require the Linux, macOS, and Dependency-Cruiser checks. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) for merge requirements.
 
 ## License
 

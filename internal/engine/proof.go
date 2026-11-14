@@ -66,14 +66,7 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 	p.Status, p.Detail = proofStages(ctx, ws, c, expect, evaluate, &p, stage)
 
 	start = time.Now()
-	cerr := cleanup(ws)
-	if cerr == nil {
-		if _, serr := os.Lstat(ws.Root); serr == nil {
-			cerr = errors.New("workspace still exists after cleanup")
-		} else if !errors.Is(serr, os.ErrNotExist) {
-			cerr = fmt.Errorf("verify workspace removal: %w", serr)
-		}
-	}
+	cerr := closeWorkspace(ws, cleanup)
 	if !stage(domain.StageCleanup, start, cerr) {
 		// A proof whose disposable copy could not be removed is not certified,
 		// whatever the checks showed.
@@ -87,6 +80,19 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 		p.Status, p.Detail = domain.Inconclusive, note
 	}
 	return p
+}
+
+// closeWorkspace also checks cleanup implementations injected by tests.
+func closeWorkspace(ws *workspace.Workspace, cleanup func(*workspace.Workspace) error) error {
+	if err := cleanup(ws); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(ws.Root); err == nil {
+		return errors.New("workspace still exists after cleanup")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("verify workspace removal: %w", err)
+	}
+	return nil
 }
 
 // proofStages runs baseline, mutation and challenged check in ws and returns

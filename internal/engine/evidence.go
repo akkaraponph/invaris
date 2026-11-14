@@ -23,15 +23,18 @@ const (
 	commandProvider = "invaris-command"
 )
 
-// RunEvidence runs the harness and returns the invaris.evidence/v1alpha2
-// report. Configured secrets are redacted from the report before it is
-// returned; the decision can only be ACCEPT when the report validates.
+// RunEvidence runs the harness and builds the action’s versioned report.
+// Configured secrets are redacted before the report is returned. The report
+// validator must accept the evidence before it can be published.
 func RunEvidence(ctx context.Context, spec Specification, root, action string) evidence.Report {
+	if action == "mutate" {
+		return runMutationEvidence(ctx, spec, root)
+	}
 	legacy := Run(ctx, spec, root, action)
 	return buildEvidence(ctx, spec, root, action, legacy)
 }
 
-func buildEvidence(ctx context.Context, spec Specification, root, action string, legacy Report) evidence.Report {
+func evidenceMetadata(ctx context.Context, spec Specification, root, action string, started, finished time.Time) evidence.Report {
 	r := evidence.Report{
 		SchemaVersion: evidence.SchemaVersion,
 		RunID:         newRunID(),
@@ -39,9 +42,9 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 		Target:        root,
 		Harness:       spec.Name,
 		Environment:   evidence.Environment{OS: runtime.GOOS, Arch: runtime.GOARCH},
-		StartedAt:     legacy.StartedAt,
-		FinishedAt:    legacy.FinishedAt,
-		DurationMs:    legacy.FinishedAt.Sub(legacy.StartedAt).Milliseconds(),
+		StartedAt:     started,
+		FinishedAt:    finished,
+		DurationMs:    finished.Sub(started).Milliseconds(),
 		GitRevision:   gitRevision(ctx, root),
 		Compatibility: evidence.Compatibility{Status: "native", InputVersion: spec.Version, Warnings: []string{}},
 	}
@@ -49,6 +52,11 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 		d := spec.ConfigDigest
 		r.ConfigDigest = &d
 	}
+	return r
+}
+
+func buildEvidence(ctx context.Context, spec Specification, root, action string, legacy Report) evidence.Report {
+	r := evidenceMetadata(ctx, spec, root, action, legacy.StartedAt, legacy.FinishedAt)
 	legacyInput := spec.Version != versionV2
 	if legacyInput {
 		r.Compatibility.Status = "legacy"
@@ -74,10 +82,7 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 	for _, c := range spec.Challenges {
 		challenges[c.ID] = c
 	}
-	limit := excerptLimit
-	if spec.StoreSensitiveOutput {
-		limit = sensitiveLimit
-	}
+	limit := observationLimit(spec)
 	units := 0
 	count := func(c domain.Check) {
 		if c.Status != domain.Pass && c.Status != domain.Fail {
@@ -307,6 +312,13 @@ func toProof(res Result, ch Challenge, guard Command) domain.Proof {
 	}
 	p.Detail = res.Detail
 	return p
+}
+
+func observationLimit(spec Specification) int {
+	if spec.StoreSensitiveOutput {
+		return sensitiveLimit
+	}
+	return excerptLimit
 }
 
 func observation(res Result, kind string, cmd Command, limit int) evidence.Observation {

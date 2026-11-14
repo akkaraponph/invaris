@@ -130,6 +130,48 @@ def adapter_checks():
         check(not valid(v, mutated(base, edit)), f"adapter counterexample accepted: {label}")
 
 
+def mutation_checks(binary):
+    """Validate the shipped mutation harnesses and actual CLI evidence."""
+    hv = validator(load("harness-v1alpha3.schema.json"))
+    ev = validator(load("evidence-v1alpha3.schema.json"))
+    directory = ROOT / "examples" / "mutation"
+    for name, expected_exit in (("killed", 0), ("survived", 1), ("invalid", 2)):
+        path = directory / f"{name}.json"
+        config = json.loads(path.read_text())
+        check(valid(hv, config), f"invalid mutation harness: {name}")
+        check(not valid(harness, config), f"v1alpha2 accepts mutation harness: {name}")
+        code, stdout, stderr = run_cli(binary, ROOT, "mutate", str(path))
+        check(code == expected_exit, f"mutate {name}: exit {code}: {stderr}")
+        try:
+            doc = json.loads(stdout)
+        except ValueError:
+            check(False, f"mutate {name}: stdout is not JSON")
+            continue
+        check(valid(ev, doc), f"invalid mutation evidence: {name}")
+        check(not valid(evidence, doc), f"v1alpha2 accepts mutation evidence: {name}")
+        check(doc.get("experiment", {}).get("verdict") == name.upper(), f"wrong mutation verdict: {name}")
+        for description, edit in {
+            "missing test IDs": lambda d: d["experiment"].pop("testIds"),
+            "null validation": lambda d: d["experiment"].update(validation=None),
+            "bad operator": lambda d: d["experiment"]["mutation"].update(operator="patch"),
+            "unsafe target": lambda d: d["experiment"]["mutation"].update(path="../source"),
+            "empty write scope": lambda d: d.update(writablePaths=[]),
+        }.items():
+            bad = copy.deepcopy(config)
+            edit(bad)
+            check(not valid(hv, bad), f"mutation harness accepted {description}")
+        for description, edit in {
+            "missing baseline": lambda d: d["experiment"].update(baseline=None),
+            "missing mutation": lambda d: d["experiment"].update(mutation=None),
+            "missing cleanup": lambda d: d["experiment"]["stages"].pop(),
+            "failed cleanup": lambda d: d["experiment"]["stages"][-1].update(status="FAILED"),
+            "decision mismatch": lambda d: d.update(decision="ACCEPT" if d["decision"] != "ACCEPT" else "REFUSE"),
+        }.items():
+            bad = copy.deepcopy(doc)
+            edit(bad)
+            check(not valid(ev, bad), f"mutation evidence accepted {description}")
+
+
 def main():
     if shutil.which("go") is None:
         print("go toolchain not found", file=sys.stderr)
@@ -273,6 +315,8 @@ def main():
             refused = reports.get("precedence refusal-first")
             if refused:
                 check(valid(evidence, mutated(refused, lambda d: d.update(configDigest=None, targetCount=None))), "REFUSE report with null unknowns rejected")
+
+        mutation_checks(binary)
 
     adapter_checks()
     print(f"{checks} checks, {len(failures)} failed")
