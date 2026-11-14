@@ -73,15 +73,17 @@ func validCampaign() CampaignReport {
 	digest := "sha256:" + strings.Repeat("0", 64)
 	r := CampaignReport{
 		SchemaVersion: CampaignSchemaVersion, RunID: strings.Repeat("ab", 16), Action: "campaign", Campaign: "c", CampaignConfigDigest: digest,
-		SourceIdentity: SourceIdentity{SnapshotSHA256: ptr(snapshotHash), Files: ptr(2), Excluded: []string{".git", ".invaris"}},
-		Environment:    Environment{OS: "linux", Arch: "amd64"},
-		Selection:      CampaignSelection{Mode: "filtered", Only: []string{"killed", "proven"}, Selected: 2, Filtered: 1},
-		StartedAt:      campaignT0, FinishedAt: campaignT0.Add(3 * time.Second), DurationMs: 3000,
+		SourceIdentity: SourceIdentity{SnapshotSHA256: ptr(snapshotHash), Files: ptr(2), Excluded: []string{".git", ".invaris"},
+			Roots: []SourceRoot{{Path: ".", SHA256: snapshotHash, Files: 2}, {Path: "sub", SHA256: strings.Repeat("e", 64), Files: 1}}},
+		Environment: Environment{OS: "linux", Arch: "amd64"},
+		Selection:   CampaignSelection{Mode: "filtered", Only: []string{"killed", "proven"}, Selected: 2, Filtered: 1},
+		Parallelism: 1,
+		StartedAt:   campaignT0, FinishedAt: campaignT0.Add(3 * time.Second), DurationMs: 3000,
 		Stages: []domain.Stage{{Name: StageSnapshot, Status: domain.StageOK}, {Name: StageCleanup, Status: domain.StageOK}},
 		Experiments: []CampaignExperiment{
-			{ID: "killed", Kind: domain.KindMutation, Harness: "mut.json", HarnessDigest: digest, ReferenceID: "m1", Repeat: 1, Selection: domain.Selected, Attempts: []CampaignAttempt{killedAttempt("killed", 1)}},
-			{ID: "proven", Kind: domain.KindGuardrail, Harness: "guard.json", HarnessDigest: digest, ReferenceID: "c1", Repeat: 1, Selection: domain.Selected, Attempts: []CampaignAttempt{provenAttempt("proven", 1)}},
-			{ID: "skipped", Kind: domain.KindMutation, Harness: "mut2.json", HarnessDigest: digest, ReferenceID: "m2", Repeat: 2, Selection: domain.FilteredOut},
+			{ID: "killed", Kind: domain.KindMutation, Harness: "mut.json", Root: ".", HarnessDigest: digest, ReferenceID: "m1", Repeat: 1, Selection: domain.Selected, Attempts: []CampaignAttempt{killedAttempt("killed", 1)}},
+			{ID: "proven", Kind: domain.KindGuardrail, Harness: "guard.json", Root: ".", HarnessDigest: digest, ReferenceID: "c1", Repeat: 1, Selection: domain.Selected, Attempts: []CampaignAttempt{provenAttempt("proven", 1)}},
+			{ID: "skipped", Kind: domain.KindMutation, Harness: "sub/mut2.json", Root: "sub", HarnessDigest: digest, ReferenceID: "m2", Repeat: 2, Selection: domain.FilteredOut},
 		},
 		AcceptancePolicy: domain.AcceptancePolicy{RequireNoSurvivors: true, RequireAllGuardrailsProven: true, RequireNoInconclusive: true, RequireNoMixed: true},
 	}
@@ -109,13 +111,23 @@ func TestValidateCampaignRejects(t *testing.T) {
 		"snapshot digest":        func(r *CampaignReport) { r.SourceIdentity.SnapshotSHA256 = ptr("xyz") },
 		"snapshot without files": func(r *CampaignReport) { r.SourceIdentity.Files = nil },
 		"excluded list":          func(r *CampaignReport) { r.SourceIdentity.Excluded = []string{".git"} },
-		"time order":             func(r *CampaignReport) { r.FinishedAt = r.StartedAt.Add(-time.Second) },
-		"unknown kind":           func(r *CampaignReport) { r.Experiments[0].Kind = "fuzz" },
-		"unknown execution":      func(r *CampaignReport) { r.Experiments[0].Attempts[0].Execution = "SKIPPED" },
-		"unknown selection":      func(r *CampaignReport) { r.Experiments[0].Selection = "MAYBE" },
-		"unknown stability":      func(r *CampaignReport) { r.Experiments[0].Stability = "STABLE" },
-		"unknown decision":       func(r *CampaignReport) { r.Decision = "PASS" },
-		"missing cleanup stage":  func(r *CampaignReport) { r.Stages = r.Stages[:1] },
+		"root mismatch":          func(r *CampaignReport) { r.Experiments[0].Root = "sub" },
+		"root without digest":    func(r *CampaignReport) { r.SourceIdentity.Roots = r.SourceIdentity.Roots[:1] },
+		"whole root differs":     func(r *CampaignReport) { r.SourceIdentity.Roots[0].SHA256 = strings.Repeat("f", 64) },
+		"roots unsorted": func(r *CampaignReport) {
+			r.SourceIdentity.Roots[0], r.SourceIdentity.Roots[1] = r.SourceIdentity.Roots[1], r.SourceIdentity.Roots[0]
+		},
+		"no roots": func(r *CampaignReport) { r.SourceIdentity.Roots = nil },
+		"unsafe harness path": func(r *CampaignReport) {
+			r.Experiments[2].Harness, r.Experiments[2].Root = "../mut2.json", ".."
+		},
+		"time order":            func(r *CampaignReport) { r.FinishedAt = r.StartedAt.Add(-time.Second) },
+		"unknown kind":          func(r *CampaignReport) { r.Experiments[0].Kind = "fuzz" },
+		"unknown execution":     func(r *CampaignReport) { r.Experiments[0].Attempts[0].Execution = "SKIPPED" },
+		"unknown selection":     func(r *CampaignReport) { r.Experiments[0].Selection = "MAYBE" },
+		"unknown stability":     func(r *CampaignReport) { r.Experiments[0].Stability = "STABLE" },
+		"unknown decision":      func(r *CampaignReport) { r.Decision = "PASS" },
+		"missing cleanup stage": func(r *CampaignReport) { r.Stages = r.Stages[:1] },
 		"cleanup first": func(r *CampaignReport) {
 			r.Stages[0], r.Stages[1] = r.Stages[1], r.Stages[0]
 		},
@@ -184,6 +196,9 @@ func TestValidateCampaignRejects(t *testing.T) {
 		"score value":             func(r *CampaignReport) { r.MutationSummary.Score = ptr(0.5) },
 		"score null":              func(r *CampaignReport) { r.MutationSummary.Score = nil },
 		"guardrail summary":       func(r *CampaignReport) { r.GuardrailSummary.Unproven = 1 },
+		"proof rate value":        func(r *CampaignReport) { r.GuardrailSummary.ProofRate = ptr(0.5) },
+		"proof rate null":         func(r *CampaignReport) { r.GuardrailSummary.ProofRate = nil },
+		"proof rate denominator":  func(r *CampaignReport) { r.GuardrailSummary.Eligible = 2 },
 		"decision against policy": func(r *CampaignReport) { r.Decision = domain.Reject },
 		"evaluation tampered": func(r *CampaignReport) {
 			r.AcceptanceEvaluation.Requirements[0].Status = domain.RequirementViolated
@@ -192,7 +207,14 @@ func TestValidateCampaignRejects(t *testing.T) {
 		"ran without snapshot": func(r *CampaignReport) {
 			r.Stages = []domain.Stage{{Name: StageSnapshot, Status: domain.StageFailed}}
 		},
-		"artifact": func(r *CampaignReport) { r.Artifacts = []Artifact{{Path: "a", SHA256: "x"}} },
+		"artifact":         func(r *CampaignReport) { r.Artifacts = []Artifact{{Path: "a", SHA256: "x"}} },
+		"parallelism zero": func(r *CampaignReport) { r.Parallelism = 0 },
+		"parallelism nine": func(r *CampaignReport) { r.Parallelism = 9 },
+		"tool kind":        func(r *CampaignReport) { r.Tools = []Observation{obs("tool:go", "baseline", 0)} },
+		"tool id":          func(r *CampaignReport) { r.Tools = []Observation{obs("go", "tool", 0)} },
+		"tool repeated": func(r *CampaignReport) {
+			r.Tools = []Observation{obs("tool:go", "tool", 0), obs("tool:go", "tool", 0)}
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			r := validCampaign()
@@ -211,7 +233,7 @@ func TestValidateCampaignRejects(t *testing.T) {
 func TestValidateCampaignNotStarted(t *testing.T) {
 	r := validCampaign()
 	r.Stages = []domain.Stage{{Name: StageSnapshot, Status: domain.StageFailed, Detail: "copy failed"}}
-	r.SourceIdentity.SnapshotSHA256, r.SourceIdentity.Files = nil, nil
+	r.SourceIdentity.SnapshotSHA256, r.SourceIdentity.Files, r.SourceIdentity.Roots = nil, nil, nil
 	for i := range r.Experiments[:2] {
 		r.Experiments[i].Attempts[0] = CampaignAttempt{ID: r.Experiments[i].Attempts[0].ID, Index: 1, Execution: domain.NotStarted,
 			Reason: domain.ReasonPrepareFailed, ReasonCategory: domain.CategoryInfrastructure}

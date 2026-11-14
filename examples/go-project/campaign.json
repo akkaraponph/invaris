@@ -52,5 +52,19 @@
     "requireAllGuardrailsProven": true,
     "requireNoInconclusive": true,
     "requireNoMixed": true
-  }
+  },
+  "tools": [
+    {
+      "id": "go",
+      "program": "go",
+      "args": [
+        "version"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ],
+      "timeoutSeconds": 30
+    }
+  ]
 }

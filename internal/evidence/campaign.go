@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
 // CampaignSchemaVersion is the report emitted by the campaign action.
@@ -32,11 +34,21 @@ var ExcludedFromSnapshot = []string{".git", ".invaris"}
 // plus the Git state of the source when it could be determined. A digest
 // identifies content; it is not a signature or an attestation.
 type SourceIdentity struct {
-	SnapshotSHA256 *string  `json:"snapshotSha256"`
-	Files          *int     `json:"files"`
-	GitRevision    *string  `json:"gitRevision"`
-	GitDirty       *bool    `json:"gitDirty"`
-	Excluded       []string `json:"excluded"`
+	SnapshotSHA256 *string      `json:"snapshotSha256"`
+	Files          *int         `json:"files"`
+	Roots          []SourceRoot `json:"roots"`
+	GitRevision    *string      `json:"gitRevision"`
+	GitDirty       *bool        `json:"gitDirty"`
+	Excluded       []string     `json:"excluded"`
+}
+
+// SourceRoot is the manifest digest of one directory of the snapshot that an
+// experiment evaluates: the directory of its harness. Path "." is the whole
+// snapshot. Each attempt's copy of that directory must have this digest.
+type SourceRoot struct {
+	Path   string `json:"path"`
+	SHA256 string `json:"sha256"`
+	Files  int    `json:"files"`
 }
 
 // CampaignSelection records the scope of this run. Mode is "all", or
@@ -72,6 +84,7 @@ type CampaignExperiment struct {
 	ID               string                `json:"id"`
 	Kind             domain.ExperimentKind `json:"kind"`
 	Harness          string                `json:"harness"`
+	Root             string                `json:"root"`
 	HarnessDigest    string                `json:"harnessDigest"`
 	ReferenceID      string                `json:"referenceId"`
 	Repeat           int                   `json:"repeat"`
@@ -93,10 +106,12 @@ type CampaignReport struct {
 	SourceIdentity       SourceIdentity              `json:"sourceIdentity"`
 	Environment          Environment                 `json:"environment"`
 	Selection            CampaignSelection           `json:"selection"`
+	Parallelism          int                         `json:"parallelism"`
 	StartedAt            time.Time                   `json:"startedAt"`
 	FinishedAt           time.Time                   `json:"finishedAt"`
 	DurationMs           int64                       `json:"durationMs"`
 	Stages               []domain.Stage              `json:"stages"`
+	Tools                []Observation               `json:"tools"`
 	Experiments          []CampaignExperiment        `json:"experiments"`
 	MutationSummary      domain.MutationSummary      `json:"mutationSummary"`
 	GuardrailSummary     domain.GuardrailSummary     `json:"guardrailSummary"`
@@ -191,8 +206,14 @@ func ValidateCampaign(r CampaignReport) error {
 	if r.FinishedAt.Before(r.StartedAt) || r.DurationMs < 0 {
 		bad("finishedAt precedes startedAt or duration is negative")
 	}
-	validateSourceIdentity(r.SourceIdentity, bad)
+	roots := validateSourceIdentity(r.SourceIdentity, bad)
+	if r.Parallelism < 1 || r.Parallelism > 8 {
+		bad("parallelism must be 1 to 8")
+	}
 	snapshotOK := validateCampaignStages(r, bad)
+	if snapshotOK && len(roots) == 0 {
+		bad("a prepared snapshot requires root digests")
+	}
 	validateCampaignPolicy(r.AcceptancePolicy, bad)
 
 	ids, attemptIDs := map[string]bool{}, map[string]bool{}
@@ -205,8 +226,11 @@ func ValidateCampaign(r CampaignReport) error {
 		if x.Kind != domain.KindMutation && x.Kind != domain.KindGuardrail {
 			bad("experiment %q has unknown kind %q", x.ID, x.Kind)
 		}
-		if x.Harness == "" || strings.ContainsAny(x.Harness, "/\\\x00") || !digestPattern.MatchString(x.HarnessDigest) || x.ReferenceID == "" {
-			bad("experiment %q has an invalid harness, digest or reference", x.ID)
+		if !workspace.ValidPath(x.Harness) || x.Root != path.Dir(x.Harness) || !digestPattern.MatchString(x.HarnessDigest) || x.ReferenceID == "" {
+			bad("experiment %q has an invalid harness, root, digest or reference", x.ID)
+		}
+		if _, ok := roots[x.Root]; !ok && len(roots) > 0 {
+			bad("experiment %q root %q has no recorded digest", x.ID, x.Root)
 		}
 		if x.Repeat < 1 || x.Repeat > 5 {
 			bad("experiment %q has repeat %d outside 1..5", x.ID, x.Repeat)
@@ -233,7 +257,11 @@ func ValidateCampaign(r CampaignReport) error {
 			if !snapshotOK && a.Execution != domain.NotStarted {
 				bad("attempt %q ran without a campaign snapshot", a.ID)
 			}
-			validateAttempt(x, a, r.SourceIdentity.SnapshotSHA256, bad)
+			var want *string
+			if root, ok := roots[x.Root]; ok {
+				want = &root
+			}
+			validateAttempt(x, a, want, bad)
 		}
 		verdict, stability, reason := domain.Aggregate(x.Kind, attemptOutcomes(x.Attempts))
 		if x.Stability != stability || x.StabilityReason != reason || (x.AggregateVerdict == nil) != (verdict == "") ||
@@ -247,8 +275,8 @@ func ValidateCampaign(r CampaignReport) error {
 	if got, want := r.MutationSummary, domain.SummarizeMutations(outcomes); !equalMutationSummary(got, want) {
 		bad("mutation summary %+v does not match the experiments", got)
 	}
-	if r.GuardrailSummary != domain.SummarizeGuardrails(outcomes) {
-		bad("guardrail summary does not match the experiments")
+	if got, want := r.GuardrailSummary, domain.SummarizeGuardrails(outcomes); !equalGuardrailSummary(got, want) {
+		bad("guardrail summary %+v does not match the experiments", got)
 	}
 	eval, decision := domain.EvaluateAcceptance(r.AcceptancePolicy, outcomes, r.Complete())
 	if !reflect.DeepEqual(normalizeEvaluation(r.AcceptanceEvaluation), eval) {
@@ -256,6 +284,16 @@ func ValidateCampaign(r CampaignReport) error {
 	}
 	if r.Decision != decision {
 		bad("decision %s does not match the %s supported by the experiments", r.Decision, decision)
+	}
+	toolIDs := map[string]bool{}
+	for _, o := range r.Tools {
+		if o.Kind != "tool" || !strings.HasPrefix(o.ID, "tool:") || toolIDs[o.ID] || o.Program == "" {
+			bad("tool observation %q is malformed or repeated", o.ID)
+		}
+		toolIDs[o.ID] = true
+	}
+	if len(r.Tools) > 0 && !snapshotOK {
+		bad("tools were probed without a campaign snapshot")
 	}
 	for _, d := range r.Diagnostics {
 		if d.Code == "" {
@@ -270,9 +308,21 @@ func ValidateCampaign(r CampaignReport) error {
 	return errors.Join(problems...)
 }
 
-func validateSourceIdentity(s SourceIdentity, bad func(string, ...any)) {
+// validateSourceIdentity returns the recorded root digests by path.
+func validateSourceIdentity(s SourceIdentity, bad func(string, ...any)) map[string]string {
 	if s.SnapshotSHA256 != nil && !hashPattern.MatchString(*s.SnapshotSHA256) {
 		bad("snapshotSha256 must be 64 lowercase hex")
+	}
+	roots := map[string]string{}
+	for i, root := range s.Roots {
+		if root.Path != "." && !workspace.ValidPath(root.Path) || !hashPattern.MatchString(root.SHA256) || root.Files < 0 ||
+			i > 0 && s.Roots[i-1].Path >= root.Path {
+			bad("source root %q is invalid, unsorted or repeated", root.Path)
+		}
+		roots[root.Path] = root.SHA256
+	}
+	if whole, ok := roots["."]; ok && (s.SnapshotSHA256 == nil || whole != *s.SnapshotSHA256) {
+		bad(`source root "." must equal snapshotSha256`)
 	}
 	if (s.SnapshotSHA256 == nil) != (s.Files == nil) || s.Files != nil && *s.Files < 0 {
 		bad("snapshotSha256 and files must be set together")
@@ -283,6 +333,7 @@ func validateSourceIdentity(s SourceIdentity, bad func(string, ...any)) {
 	if !slices.Equal(s.Excluded, ExcludedFromSnapshot) {
 		bad("excluded must be %v", ExcludedFromSnapshot)
 	}
+	return roots
 }
 
 // validateCampaignStages accepts [snapshot] or [snapshot, cleanup]. A
@@ -425,15 +476,23 @@ func validateAttempt(x CampaignExperiment, a CampaignAttempt, snapshot *string, 
 		bad("attempt %q verdict or reason disagrees with its evidence", a.ID)
 	}
 	if childSnapshot != "" && (snapshot == nil || childSnapshot != *snapshot) || conclusive && childSnapshot == "" {
-		bad("attempt %q did not evaluate the campaign source snapshot", a.ID)
+		bad("attempt %q did not evaluate the recorded digest of root %q", a.ID, x.Root)
 	}
 }
 
 func equalMutationSummary(a, b domain.MutationSummary) bool {
 	as, bs := a.Score, b.Score
 	a.Score, b.Score = nil, nil
-	return a == b && (as == nil) == (bs == nil) && (as == nil || *as == *bs)
+	return a == b && equalRate(as, bs)
 }
+
+func equalGuardrailSummary(a, b domain.GuardrailSummary) bool {
+	ar, br := a.ProofRate, b.ProofRate
+	a.ProofRate, b.ProofRate = nil, nil
+	return a == b && equalRate(ar, br)
+}
+
+func equalRate(a, b *float64) bool { return (a == nil) == (b == nil) && (a == nil || *a == *b) }
 
 func normalizeEvaluation(e domain.AcceptanceEvaluation) domain.AcceptanceEvaluation {
 	if e.Requirements == nil {
@@ -472,12 +531,16 @@ func normalizeCampaign(r CampaignReport) CampaignReport {
 	if r.SourceIdentity.Excluded == nil {
 		r.SourceIdentity.Excluded = []string{}
 	}
+	if r.SourceIdentity.Roots == nil {
+		r.SourceIdentity.Roots = []SourceRoot{}
+	}
 	if r.Selection.Only == nil {
 		r.Selection.Only = []string{}
 	}
 	if r.Stages == nil {
 		r.Stages = []domain.Stage{}
 	}
+	r.Tools = normalizeObservations(r.Tools)
 	if r.Diagnostics == nil {
 		r.Diagnostics = []domain.Diagnostic{}
 	}
@@ -520,15 +583,18 @@ func RedactCampaign(r *CampaignReport, secrets []string) {
 	if len(usable(secrets)) == 0 {
 		return
 	}
+	truncated := func(obs []Observation) {
+		for k := range obs {
+			if obs[k].Truncated {
+				obs[k].Stdout = string(RedactTruncated([]byte(obs[k].Stdout), secrets))
+				obs[k].Stderr = string(RedactTruncated([]byte(obs[k].Stderr), secrets))
+			}
+		}
+	}
+	truncated(r.Tools)
 	for i := range r.Experiments {
 		for j := range r.Experiments[i].Attempts {
-			obs := r.Experiments[i].Attempts[j].Observations
-			for k := range obs {
-				if obs[k].Truncated {
-					obs[k].Stdout = string(RedactTruncated([]byte(obs[k].Stdout), secrets))
-					obs[k].Stderr = string(RedactTruncated([]byte(obs[k].Stderr), secrets))
-				}
-			}
+			truncated(r.Experiments[i].Attempts[j].Observations)
 		}
 	}
 	redactValue(reflect.ValueOf(r).Elem(), secrets)

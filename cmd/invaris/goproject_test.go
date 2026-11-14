@@ -137,7 +137,7 @@ func TestGoProjectExample(t *testing.T) {
 			{"six scenarios", []string{"campaign", "campaign.json"}, 2, domain.RefuseDecision, map[string]want{
 				"mutation-killed": {"KILLED", "assertion_failed"}, "mutation-survived": {"SURVIVED", "all_tests_passed"},
 				"mutation-invalid": {"INVALID", "mutant_invalid"}, "guardrail-proven": {"PROVEN", "guard_detected"},
-				"guardrail-unproven": {"UNPROVEN", "guard_passed"}, "guardrail-inconclusive": {"INCONCLUSIVE", "execution_failed"}}},
+				"guardrail-unproven": {"UNPROVEN", "guard_passed"}, "guardrail-inconclusive": {"INCONCLUSIVE", "malformed_evidence"}}},
 			{"accept", []string{"campaign", "campaign-accept.json"}, 0, domain.Accept, map[string]want{
 				"mutation-killed": {"KILLED", "assertion_failed"}, "guardrail-proven": {"PROVEN", "guard_detected"}}},
 			{"filtered survivor", []string{"campaign", "--only", "mutation-survived", "campaign.json"}, 1, domain.Reject, map[string]want{

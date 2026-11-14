@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/akkaraponph/invaris/internal/domain"
@@ -11,7 +12,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/evidence"
 )
 
-const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text] [campaign.json]"
+const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text] [--parallel N] [campaign.json]"
 
 // runCampaignCLI loads, runs and reports a campaign. Like the other actions it
 // writes nothing to stdout until the validated report has been published to
@@ -24,21 +25,28 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 		return 2
 	}
 	var only []string
-	format, file := "", ""
+	format, file, parallel := "", "", 0
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
-		case arg == "--only" || arg == "--format":
+		case arg == "--only" || arg == "--format" || arg == "--parallel":
 			if i+1 >= len(args) {
 				return usage(arg + " requires a value")
 			}
 			i++
-			if arg == "--only" {
+			switch {
+			case arg == "--only":
 				only = append(only, args[i])
-			} else if format != "" {
-				return usage("--format is repeated")
-			} else {
+			case arg == "--format" && format != "", arg == "--parallel" && parallel != 0:
+				return usage(arg + " is repeated")
+			case arg == "--format":
 				format = args[i]
+			default:
+				n, err := strconv.Atoi(args[i])
+				if err != nil || n < 1 || n > engine.MaxParallel {
+					return usage(fmt.Sprintf("--parallel must be an integer from 1 to %d", engine.MaxParallel))
+				}
+				parallel = n
 			}
 		case strings.HasPrefix(arg, "-"):
 			return usage("unknown flag: " + arg)
@@ -58,6 +66,9 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 	if file == "" {
 		file = "campaign.json"
 	}
+	if parallel == 0 {
+		parallel = 1
+	}
 	c, err := engine.LoadCampaign(file)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -74,7 +85,7 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 			return 2
 		}
 	}
-	report := engine.RunCampaign(ctx, c, selected, only)
+	report := engine.RunCampaign(ctx, c, selected, only, parallel)
 	data, err := evidence.MarshalCampaign(report)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -112,6 +123,9 @@ func campaignText(r evidence.CampaignReport) string {
 	line("Experiments: %d", len(r.Experiments))
 	line("Selected:    %d", r.Selection.Selected)
 	line("Filtered:    %d", r.Selection.Filtered)
+	if r.Parallelism > 1 {
+		line("Parallelism: %d", r.Parallelism)
+	}
 	kinds := map[domain.ExperimentKind]bool{}
 	for _, x := range r.Experiments {
 		kinds[x.Kind] = true
@@ -141,6 +155,11 @@ func campaignText(r evidence.CampaignReport) string {
 		line("  Inconclusive:  %d", g.Inconclusive)
 		line("  Mixed:         %d", g.Mixed)
 		line("  Not executed:  %d", g.NotExecuted)
+		if g.ProofRate != nil {
+			line("  Proof rate:    %.1f%% (%d of %d eligible; %d excluded)", *g.ProofRate*100, g.Proven, g.Eligible, g.Excluded)
+		} else {
+			line("  Proof rate:    n/a (no eligible challenges; %d excluded)", g.Excluded)
+		}
 	}
 	line("")
 	line("Results")

@@ -129,8 +129,15 @@ func TestMutationSummary(t *testing.T) {
 		outcome("gm", KindGuardrail, executed(string(Proven), string(Unproven))...),
 		outcome("gx", KindGuardrail, executed(string(Inconclusive))...),
 		filtered("gf", KindGuardrail)))
-	if g != (GuardrailSummary{Proven: 1, Unproven: 1, Mixed: 1, Inconclusive: 1, Filtered: 1}) {
+	if g.ProofRate == nil || *g.ProofRate != 0.5 {
+		t.Fatalf("proof rate %v, want 0.5", g.ProofRate)
+	}
+	g.ProofRate = nil
+	if g != (GuardrailSummary{Proven: 1, Unproven: 1, Mixed: 1, Inconclusive: 1, Filtered: 1, Eligible: 2, Excluded: 2}) {
 		t.Fatalf("guardrails: %+v", g)
+	}
+	if g := SummarizeGuardrails([]ExperimentOutcome{outcome("gx", KindGuardrail, executed(string(Inconclusive))...)}); g.ProofRate != nil || g.Eligible != 0 {
+		t.Fatalf("no eligible guardrail: %+v", g)
 	}
 }
 

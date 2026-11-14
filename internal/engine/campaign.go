@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/akkaraponph/invaris/internal/domain"
@@ -22,13 +24,21 @@ import (
 // existing mutation or challenge lifecycle with the snapshot as its source, so
 // each attempt gets its own fresh copy and no attempt sees another attempt's
 // files. The snapshot's manifest is checked before every attempt and before it
-// is removed; a change refuses every later attempt. Nothing runs in parallel.
-func RunCampaign(ctx context.Context, c Campaign, selected []bool, only []string) evidence.CampaignReport {
-	return runCampaign(ctx, c, selected, only, workspace.Prepare, (*workspace.Workspace).Close)
+// is removed; a change refuses every attempt that starts later.
+//
+// parallel (1 to MaxParallel) runs up to that many attempts at once. Each still
+// has its own workspace; commands that share caches, ports or other external
+// state can affect each other, which a sequential run (1) avoids.
+func RunCampaign(ctx context.Context, c Campaign, selected []bool, only []string, parallel int) evidence.CampaignReport {
+	return runCampaign(ctx, c, selected, only, parallel, workspace.Prepare, (*workspace.Workspace).Close)
 }
 
-func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string,
+// MaxParallel bounds --parallel.
+const MaxParallel = 8
+
+func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string, parallel int,
 	prepare func(string) (*workspace.Workspace, error), cleanup func(*workspace.Workspace) error) evidence.CampaignReport {
+	parallel = max(1, min(parallel, MaxParallel))
 
 	r := evidence.CampaignReport{
 		SchemaVersion: evidence.CampaignSchemaVersion, RunID: newRunID(), Action: "campaign",
@@ -37,13 +47,14 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 		StartedAt:   time.Now().UTC(), AcceptancePolicy: c.Acceptance,
 		SourceIdentity: evidence.SourceIdentity{GitRevision: gitRevision(ctx, c.Root), GitDirty: gitDirty(ctx, c.Root),
 			Excluded: slices.Clone(evidence.ExcludedFromSnapshot)},
-		Selection: evidence.CampaignSelection{Mode: "all", Only: []string{}},
+		Selection:   evidence.CampaignSelection{Mode: "all", Only: []string{}},
+		Parallelism: parallel,
 	}
 	if len(only) > 0 {
 		r.Selection.Mode, r.Selection.Only = "filtered", slices.Clone(only)
 	}
 	for i, x := range c.Experiments {
-		e := evidence.CampaignExperiment{ID: x.ID, Kind: x.Kind, Harness: x.Harness, HarnessDigest: x.HarnessDigest,
+		e := evidence.CampaignExperiment{ID: x.ID, Kind: x.Kind, Harness: x.Harness, Root: x.Dir, HarnessDigest: x.HarnessDigest,
 			ReferenceID: x.ReferenceID, Repeat: x.Repeat, Selection: domain.FilteredOut, Attempts: []evidence.CampaignAttempt{}}
 		if selected[i] {
 			e.Selection = domain.Selected
@@ -86,16 +97,19 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 		diagnose("SNAPSHOT_FAILED", err.Error())
 		notStarted(domain.ReasonPrepareFailed, "the campaign snapshot could not be prepared")
 	} else {
-		digest, err := freezeSnapshot(c, snap.Root, &r.SourceIdentity)
+		digest, roots, err := freezeSnapshot(c, snap.Root, &r.SourceIdentity)
 		stage(evidence.StageSnapshot, start, err)
 		if err != nil {
 			diagnose("SNAPSHOT_FAILED", err.Error())
 			notStarted(domain.ReasonWorkspaceChanged, "the campaign snapshot does not match the loaded configuration")
-		} else if why := preflight(ctx, c, selected, snap.Root); why != "" {
-			diagnose("PREFLIGHT_PROVIDER", why)
-			notStarted(domain.ReasonProviderUnavailable, why)
 		} else {
-			runAttempts(ctx, c, selected, snap.Root, digest, &r, diagnose)
+			r.Tools = probeTools(ctx, c.Tools, snap.Root)
+			if why := preflight(ctx, c, selected, snap.Root); why != "" {
+				diagnose("PREFLIGHT_PROVIDER", why)
+				notStarted(domain.ReasonProviderUnavailable, why)
+			} else {
+				runAttempts(ctx, c, selected, parallel, snap.Root, digest, roots, &r, diagnose)
+			}
 		}
 		start = time.Now()
 		err = nil
@@ -122,16 +136,31 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 	return r
 }
 
-// freezeSnapshot records the snapshot identity and checks that the campaign
-// file and every referenced harness inside the snapshot are the bytes that
-// were loaded and validated. It returns the manifest digest.
-func freezeSnapshot(c Campaign, root string, id *evidence.SourceIdentity) (string, error) {
+// freezeSnapshot records the snapshot identity, including the digest of every
+// directory an experiment evaluates, and checks that the campaign file and
+// every referenced harness inside the snapshot are the bytes that were loaded
+// and validated. It returns the whole-snapshot digest and the root digests.
+func freezeSnapshot(c Campaign, root string, id *evidence.SourceIdentity) (string, map[string]string, error) {
 	manifest, err := workspace.Snapshot(root)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	digest, files := workspace.ManifestDigest(manifest), len(manifest)
 	id.SnapshotSHA256, id.Files = &digest, &files
+	roots := map[string]string{}
+	var dirs []string
+	for _, x := range c.Experiments {
+		if _, seen := roots[x.Dir]; !seen {
+			roots[x.Dir] = ""
+			dirs = append(dirs, x.Dir)
+		}
+	}
+	slices.Sort(dirs)
+	for _, dir := range dirs {
+		sub := workspace.Subtree(manifest, dir)
+		roots[dir] = workspace.ManifestDigest(sub)
+		id.Roots = append(id.Roots, evidence.SourceRoot{Path: dir, SHA256: roots[dir], Files: len(sub)})
+	}
 	same := func(name, want string) error {
 		if e, ok := manifest[name]; !ok || e.Kind != "file" || "sha256:"+e.SHA256 != want {
 			return fmt.Errorf("%s changed after it was loaded", name)
@@ -142,7 +171,7 @@ func freezeSnapshot(c Campaign, root string, id *evidence.SourceIdentity) (strin
 	for _, x := range c.Experiments {
 		errs = append(errs, same(x.Harness, x.HarnessDigest))
 	}
-	return digest, errors.Join(errs...)
+	return digest, roots, errors.Join(errs...)
 }
 
 func verifySnapshot(root, digest string) error {
@@ -154,6 +183,24 @@ func verifySnapshot(root, digest string) error {
 		return errors.New("snapshot manifest differs from the recorded source identity")
 	}
 	return nil
+}
+
+// probeTools runs each declared version command once in the snapshot and
+// records it as a "tool" observation. A failing probe is recorded, not
+// refused: the output is provenance, not evidence about any experiment. A
+// probe that writes into the snapshot is caught by the next snapshot check.
+func probeTools(ctx context.Context, tools []Command, root string) []evidence.Observation {
+	out := []evidence.Observation{}
+	for _, t := range tools {
+		res := execute(ctx, root, t)
+		res.ID = "tool:" + t.ID
+		o := observation(res, "tool", t, excerptLimit)
+		if res.Status != "PASS" && len(o.Diagnostics) == 0 {
+			o.Diagnostics = []domain.Diagnostic{{Code: "TOOL_PROBE_FAILED", Message: res.Detail}}
+		}
+		out = append(out, o)
+	}
+	return out
 }
 
 // preflight discovers, once per harness, the providers that selected
@@ -180,7 +227,7 @@ func preflight(ctx context.Context, c Campaign, selected []bool, root string) st
 			continue
 		}
 		spec.ProviderGuards = used
-		st := discover(ctx, spec, root)
+		st := discover(ctx, spec, filepath.Join(root, filepath.FromSlash(x.Dir)))
 		for _, id := range spec.RequiredAdapters {
 			if why := st.unavailable(id); why != "" {
 				return x.Harness + ": " + why
@@ -204,35 +251,75 @@ func guardOf(spec Specification, challengeID string) string {
 	return ""
 }
 
-func runAttempts(ctx context.Context, c Campaign, selected []bool, root, digest string, r *evidence.CampaignReport, diagnose func(string, string)) {
-	tainted := false
+func runAttempts(ctx context.Context, c Campaign, selected []bool, parallel int, root, digest string, roots map[string]string,
+	r *evidence.CampaignReport, diagnose func(string, string)) {
+	type job struct{ experiment, index int }
+	var jobs []job
 	for i, x := range c.Experiments {
-		if !selected[i] {
-			continue
+		if selected[i] {
+			r.Experiments[i].Attempts = make([]evidence.CampaignAttempt, x.Repeat)
+			for n := 1; n <= x.Repeat; n++ {
+				jobs = append(jobs, job{i, n})
+			}
 		}
-		e := &r.Experiments[i]
-		for n := 1; n <= x.Repeat; n++ {
-			a := evidence.CampaignAttempt{ID: evidence.AttemptID(x.ID, n), Index: n, Observations: []evidence.Observation{}}
+	}
+	// Workers take jobs in declaration order. With one worker this is the
+	// sequential lifecycle. Each attempt writes only its own slot, so the
+	// report keeps declaration order whatever the completion order is.
+	notes := make([][2]string, len(jobs))
+	var mu sync.Mutex
+	next, tainted := 0, false
+	work := func() {
+		for {
+			mu.Lock()
+			if next >= len(jobs) {
+				mu.Unlock()
+				return
+			}
+			k, j := next, jobs[next]
+			next++
+			wasTainted := tainted
+			mu.Unlock()
+
+			x := c.Experiments[j.experiment]
+			a := evidence.CampaignAttempt{ID: evidence.AttemptID(x.ID, j.index), Index: j.index, Observations: []evidence.Observation{}}
 			switch {
 			case ctx.Err() != nil:
 				a.Execution, a.Reason, a.Detail = domain.NotStarted, domain.ReasonCanceled, "not started: "+ctx.Err().Error()
-			case tainted:
+			case wasTainted:
 				a.Execution, a.Reason, a.Detail = domain.Refused, domain.ReasonWorkspaceChanged, "not started: the campaign snapshot changed earlier"
 			default:
 				if err := verifySnapshot(root, digest); err != nil {
-					tainted = true
 					a.Execution, a.Reason, a.Detail = domain.Refused, domain.ReasonWorkspaceChanged, "not started: "+err.Error()
-					diagnose("SNAPSHOT_CHANGED", a.ID+": "+err.Error())
+					notes[k] = [2]string{"SNAPSHOT_CHANGED", a.ID + ": " + err.Error()}
 				} else {
-					a = runAttempt(ctx, x, root, digest, a)
+					a = runAttempt(ctx, x, filepath.Join(root, filepath.FromSlash(x.Dir)), roots[x.Dir], a)
 					if a.Execution == domain.Refused {
-						tainted = true
-						diagnose("SOURCE_IDENTITY_MISMATCH", a.ID+": "+a.Detail)
+						notes[k] = [2]string{"SOURCE_IDENTITY_MISMATCH", a.ID + ": " + a.Detail}
 					}
+				}
+				if a.Execution == domain.Refused {
+					mu.Lock()
+					tainted = true
+					mu.Unlock()
 				}
 			}
 			a.ReasonCategory = domain.ReasonCategory(a.Reason)
-			e.Attempts = append(e.Attempts, a)
+			r.Experiments[j.experiment].Attempts[j.index-1] = a
+		}
+	}
+	var wg sync.WaitGroup
+	for range max(1, min(parallel, len(jobs))) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			work()
+		}()
+	}
+	wg.Wait()
+	for _, n := range notes {
+		if n[0] != "" {
+			diagnose(n[0], n[1])
 		}
 	}
 }

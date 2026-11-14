@@ -127,15 +127,21 @@ type MutationSummary struct {
 	Score        *float64 `json:"score"`
 }
 
-// GuardrailSummary counts guardrail experiments. It has no rate: proof counts
-// are not a score and are never combined with the mutation score.
+// GuardrailSummary counts guardrail experiments. ProofRate is proven / eligible
+// over consistent PROVEN and UNPROVEN experiments, and null when nothing is
+// eligible. Campaigns accept only strong proofs, so every PROVEN counted here
+// matched the expected policy, rule and target. The rate is never combined
+// with the mutation score.
 type GuardrailSummary struct {
-	Proven       int `json:"proven"`
-	Unproven     int `json:"unproven"`
-	Inconclusive int `json:"inconclusive"`
-	Mixed        int `json:"mixed"`
-	NotExecuted  int `json:"notExecuted"`
-	Filtered     int `json:"filtered"`
+	Proven       int      `json:"proven"`
+	Unproven     int      `json:"unproven"`
+	Inconclusive int      `json:"inconclusive"`
+	Mixed        int      `json:"mixed"`
+	NotExecuted  int      `json:"notExecuted"`
+	Filtered     int      `json:"filtered"`
+	Eligible     int      `json:"eligible"`
+	Excluded     int      `json:"excluded"`
+	ProofRate    *float64 `json:"proofRate"`
 }
 
 func conclusive(kind ExperimentKind, verdict string) bool {
@@ -228,6 +234,12 @@ func SummarizeGuardrails(xs []ExperimentOutcome) GuardrailSummary {
 		default:
 			s.NotExecuted++
 		}
+	}
+	s.Eligible = s.Proven + s.Unproven
+	s.Excluded = s.Inconclusive + s.Mixed + s.NotExecuted
+	if s.Eligible > 0 {
+		rate := float64(s.Proven) / float64(s.Eligible)
+		s.ProofRate = &rate
 	}
 	return s
 }

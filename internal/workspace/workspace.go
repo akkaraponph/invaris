@@ -373,3 +373,19 @@ func ManifestDigest(m map[string]Entry) string {
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+// Subtree returns the entries of m below dir, with paths relative to dir, as
+// Snapshot would record them for a copy of that directory. Dir "." returns m.
+func Subtree(m map[string]Entry, dir string) map[string]Entry {
+	if dir == "." {
+		return m
+	}
+	prefix := dir + "/"
+	out := map[string]Entry{}
+	for p, e := range m {
+		if rest, ok := strings.CutPrefix(p, prefix); ok {
+			out[rest] = e
+		}
+	}
+	return out
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -20,6 +21,7 @@ const (
 	maxCampaignBytes       = 1 << 20
 	maxCampaignExperiments = 64
 	maxCampaignRepeat      = 5
+	maxCampaignTools       = 16
 )
 
 var campaignIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
@@ -32,14 +34,20 @@ type Campaign struct {
 	File                     string // base name of the campaign file
 	Experiments              []CampaignExperiment
 	Acceptance               domain.AcceptancePolicy
+	// Tools are version commands run once in the snapshot before any attempt.
+	// Their output is recorded for provenance and never affects the decision.
+	Tools []Command
 }
 
 // CampaignExperiment is one campaign entry with its loaded, validated harness.
-// ReferenceID is the mutation experiment ID or the challenge ID.
+// ReferenceID is the mutation experiment ID or the challenge ID. Dir is the
+// harness's directory relative to the campaign root ("." for the root): the
+// experiment evaluates that directory, as `mutate` or `challenge` would.
 type CampaignExperiment struct {
 	ID            string
 	Kind          domain.ExperimentKind
 	Harness       string
+	Dir           string
 	HarnessDigest string
 	ReferenceID   string
 	Repeat        int
@@ -53,6 +61,7 @@ type campaignWire struct {
 	NetworkPolicy string              `json:"networkPolicy"`
 	Experiments   []campaignEntryWire `json:"experiments"`
 	Acceptance    *acceptanceWire     `json:"acceptance"`
+	Tools         []Adapter           `json:"tools"`
 }
 
 type campaignEntryWire struct {
@@ -155,7 +164,8 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 			}
 			specs[e.Harness] = spec
 		}
-		x := CampaignExperiment{ID: e.ID, Kind: domain.ExperimentKind(e.Kind), Harness: e.Harness, HarnessDigest: spec.ConfigDigest, Repeat: e.Repeat, Spec: spec}
+		x := CampaignExperiment{ID: e.ID, Kind: domain.ExperimentKind(e.Kind), Harness: e.Harness, Dir: path.Dir(e.Harness),
+			HarnessDigest: spec.ConfigDigest, Repeat: e.Repeat, Spec: spec}
 		switch x.Kind {
 		case domain.KindMutation:
 			if e.ExperimentID == nil || e.ChallengeID != nil {
@@ -195,14 +205,46 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 		return Campaign{}, err
 	}
 	c.Acceptance = p
+	if c.Tools, err = campaignTools(in.Tools); err != nil {
+		return Campaign{}, err
+	}
 	return c, nil
 }
 
-// campaignHarnessName accepts only a plain file name in the campaign directory,
-// so every referenced harness evaluates the same root.
+// campaignTools validates the version commands with the rules that apply to
+// harness commands: literal arguments, an environment allowlist and a bounded
+// timeout. Their IDs have their own namespace.
+func campaignTools(in []Adapter) ([]Command, error) {
+	if len(in) > maxCampaignTools {
+		return nil, fmt.Errorf("tools must contain at most %d entries", maxCampaignTools)
+	}
+	var out []Command
+	seen := map[string]bool{}
+	for _, t := range in {
+		if !campaignIDPattern.MatchString(t.ID) || seen[t.ID] {
+			return nil, fmt.Errorf("tool ID %q is invalid or repeated", t.ID)
+		}
+		seen[t.ID] = true
+		c := Command{ID: t.ID, Program: t.Program, Args: t.Args, EnvAllowlist: t.EnvAllowlist, TimeoutSeconds: t.TimeoutSeconds}
+		check := Specification{Version: versionV2, Name: "tool", TrustMode: "trusted-local", NetworkPolicy: "unrestricted", Steps: []Command{c}}
+		if err := check.Validate(); err != nil {
+			return nil, fmt.Errorf("tool %s: %w", t.ID, err)
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
+// campaignHarnessName accepts a canonical relative slash path inside the
+// campaign directory. Directories the snapshot skips cannot hold a harness.
 func campaignHarnessName(name, campaignFile string) error {
-	if strings.Contains(name, "/") || validatePath(name) != nil {
-		return fmt.Errorf("harness %q must be a file name in the campaign directory", name)
+	if validatePath(name) != nil {
+		return fmt.Errorf("harness %q must be a relative path inside the campaign directory", name)
+	}
+	for _, part := range strings.Split(name, "/") {
+		if part == ".git" || part == ".invaris" {
+			return fmt.Errorf("harness %q is inside a directory the snapshot excludes", name)
+		}
 	}
 	if name == campaignFile {
 		return errors.New("harness cannot be the campaign file itself")
@@ -210,16 +252,26 @@ func campaignHarnessName(name, campaignFile string) error {
 	return nil
 }
 
+// loadCampaignHarness refuses symbolic links anywhere on the path, so the
+// harness and its directory are the ones the snapshot copies.
 func loadCampaignHarness(root, name string) (Specification, error) {
-	path := filepath.Join(root, name)
-	info, err := os.Lstat(path)
-	if err != nil {
-		return Specification{}, err
+	parts := strings.Split(name, "/")
+	current := root
+	for i, part := range parts {
+		current = filepath.Join(current, part)
+		info, err := os.Lstat(current)
+		if err != nil {
+			return Specification{}, err
+		}
+		last := i == len(parts)-1
+		if last && !info.Mode().IsRegular() {
+			return Specification{}, errors.New("not a regular file (symbolic links are not followed)")
+		}
+		if !last && !info.IsDir() {
+			return Specification{}, fmt.Errorf("%s is not a directory (symbolic links are not followed)", strings.Join(parts[:i+1], "/"))
+		}
 	}
-	if !info.Mode().IsRegular() {
-		return Specification{}, errors.New("not a regular file (symbolic links are not followed)")
-	}
-	return Load(path)
+	return Load(current)
 }
 
 // structuredChallenge requires the challenge to exist and its guard to declare

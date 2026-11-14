@@ -292,8 +292,12 @@ func toCheck(res Result, cmd Command) domain.Check {
 }
 
 // resultReason maps a command result that could not be evaluated to a reason:
-// the runner failure when there is one, otherwise unusable evidence.
+// rejected evidence from a completed assessment, then the runner failure,
+// otherwise unusable evidence.
 func resultReason(res Result) string {
+	if res.reason != "" {
+		return res.reason // set when the command exited but its evidence was rejected
+	}
 	if res.commandErr != nil {
 		return commandFailure(res.commandErr)
 	}

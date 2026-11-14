@@ -186,6 +186,9 @@ def campaign_checks(binary, provider_dir):
              ex / "go-project" / "campaign.json", ex / "go-project" / "campaign-accept.json", ex / "go-project" / "campaign-mixed.json"]
     for path in files:
         check(valid(cv, json.loads(path.read_text())), f"campaign violates schema: {path.relative_to(ROOT)}")
+    nested = json.loads(files[0].read_text())
+    nested["experiments"][0]["harness"] = "services/api/killed.json"
+    check(valid(cv, nested), "campaign schema rejects a harness in a subdirectory")
     base = json.loads(files[0].read_text())
 
     def mutated(edit):
@@ -196,8 +199,12 @@ def campaign_checks(binary, provider_dir):
     for label, edit in {
         "repeat 0": lambda d: d["experiments"][0].update(repeat=0),
         "repeat 6": lambda d: d["experiments"][0].update(repeat=6),
-        "harness in a subdirectory": lambda d: d["experiments"][0].update(harness="a/b.json"),
+        "harness escaping the directory": lambda d: d["experiments"][0].update(harness="../b.json"),
+        "harness with a dot segment": lambda d: d["experiments"][0].update(harness="a/./b.json"),
+        "harness in .git": lambda d: d["experiments"][0].update(harness=".git/b.json"),
         "harness parent": lambda d: d["experiments"][0].update(harness=".."),
+        "tool without program": lambda d: d.update(tools=[{"id": "go"}]),
+        "tool timeout 301": lambda d: d.update(tools=[{"id": "go", "program": "go", "timeoutSeconds": 301}]),
         "unknown field": lambda d: d.update(parallel=True),
         "unknown experiment field": lambda d: d["experiments"][0].update(timeoutSeconds=5),
         "missing acceptance": lambda d: d.pop("acceptance"),
@@ -264,6 +271,13 @@ def campaign_checks(binary, provider_dir):
         "attempt without verdict": lambda d: d["experiments"][0]["attempts"][0].update(verdict=None),
         "unknown requirement": lambda d: d["acceptanceEvaluation"]["requirements"][0].update(requirement="requireMagic"),
         "excluded changed": lambda d: d["sourceIdentity"].update(excluded=[]),
+        "missing roots": lambda d: d["sourceIdentity"].pop("roots"),
+        "missing experiment root": lambda d: d["experiments"][0].pop("root"),
+        "proof rate as string": lambda d: d["guardrailSummary"].update(proofRate="1"),
+        "missing proof rate": lambda d: d["guardrailSummary"].pop("proofRate"),
+        "parallelism 0": lambda d: d.update(parallelism=0),
+        "parallelism 9": lambda d: d.update(parallelism=9),
+        "tool with another kind": lambda d: d.update(tools=[dict(d["experiments"][0]["attempts"][0]["observations"][0], id="tool:x")]),
     }.items():
         bad = copy.deepcopy(doc)
         edit(bad)

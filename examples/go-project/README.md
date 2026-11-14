@@ -47,7 +47,7 @@ INVARIS_FIXTURE_STATE=$(mktemp -d) /tmp/invaris campaign campaign-mixed.json  # 
 
 | Campaign file | Experiments | Expected |
 | --- | --- | --- |
-| `campaign.json` | the three mutation harnesses; `guardrail.json` (PROVEN); `guardrail-unproven.json`, which injects `_ "os/exec"`, an import the guard allows (UNPROVEN, `guard_passed`); `guardrail-inconclusive.json`, which injects an unterminated import that the guard cannot parse (INCONCLUSIVE, `execution_failed`) | Score 50.0% (1 of 2 eligible; the invalid mutant is excluded). The inconclusive guardrail makes the evidence incomplete, so the decision is REFUSE, exit 2, even though a survivor and an unproven guardrail are also present. |
+| `campaign.json` | the three mutation harnesses; `guardrail.json` (PROVEN); `guardrail-unproven.json`, which injects `_ "os/exec"`, an import the guard allows (UNPROVEN, `guard_passed`); `guardrail-inconclusive.json`, which injects an unterminated import that the guard cannot parse, so it prints no inspection result (INCONCLUSIVE, `malformed_evidence`; `go run` reports the guard's exit 2 as exit 1) | Score 50.0% (1 of 2 eligible; the invalid mutant is excluded) and proof rate 50.0% (1 of 2 eligible; the inconclusive challenge is excluded). `tools` records `go version`. The inconclusive guardrail makes the evidence incomplete, so the decision is REFUSE, exit 2, even though a survivor and an unproven guardrail are also present. |
 | `campaign-accept.json` | `mutation-killed.json` and `guardrail.json` | ACCEPT, exit 0 |
 | `campaign.json` with `--only mutation-survived` | only the surviving mutant; the others are `FILTERED_OUT` | REJECT, exit 1 |
 | `campaign-mixed.json` | `mutation-sequence.json` three times | KILLED, SURVIVED, KILLED: MIXED, no score, REFUSE, exit 2 |

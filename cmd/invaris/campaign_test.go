@@ -113,6 +113,15 @@ func TestCampaignCLIDecisions(t *testing.T) {
 	}
 }
 
+func TestCampaignCLIParallel(t *testing.T) {
+	dir := cliCampaign(t, cliSurvive, cliGuard)
+	code, out, stderr := invoke(t, dir, "campaign", "--parallel", "3", "campaign.json")
+	r := decodeCampaign(t, out)
+	if code != 1 || r.Parallelism != 3 || r.Decision != domain.Reject || r.Experiments[0].ID != "killed" || r.Experiments[2].ID != "guard" {
+		t.Fatalf("exit %d parallelism %d decision %s: %s", code, r.Parallelism, r.Decision, stderr)
+	}
+}
+
 func TestCampaignCLIDefaultFile(t *testing.T) {
 	dir := cliCampaign(t, "", cliGuard)
 	if code, out, stderr := invoke(t, dir, "campaign"); code != 0 || decodeCampaign(t, out).Campaign != "cli" {
@@ -171,6 +180,10 @@ func TestCampaignCLIRefusesBeforeExecution(t *testing.T) {
 		{"only without value", []string{"campaign", "campaign.json", "--only"}, nil},
 		{"bad format", []string{"campaign", "--format", "xml", "campaign.json"}, nil},
 		{"repeated format", []string{"campaign", "--format", "json", "--format", "text", "campaign.json"}, nil},
+		{"parallel zero", []string{"campaign", "--parallel", "0", "campaign.json"}, nil},
+		{"parallel nine", []string{"campaign", "--parallel", "9", "campaign.json"}, nil},
+		{"parallel word", []string{"campaign", "--parallel", "many", "campaign.json"}, nil},
+		{"parallel repeated", []string{"campaign", "--parallel", "2", "--parallel", "2", "campaign.json"}, nil},
 		{"unknown flag", []string{"campaign", "--parallel", "campaign.json"}, nil},
 		{"two files", []string{"campaign", "campaign.json", "campaign.json"}, nil},
 		{"missing file", []string{"campaign", "absent.json"}, nil},

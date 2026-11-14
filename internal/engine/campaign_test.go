@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -70,7 +72,7 @@ func all(c Campaign) []bool {
 
 func run(t *testing.T, ctx context.Context, c Campaign) evidence.CampaignReport {
 	t.Helper()
-	r := RunCampaign(ctx, c, all(c), nil)
+	r := RunCampaign(ctx, c, all(c), nil, 1)
 	if err := evidence.ValidateCampaign(r); err != nil {
 		t.Fatalf("invalid campaign report: %v", err)
 	}
@@ -294,7 +296,7 @@ func TestCampaignCancellation(t *testing.T) {
 		}
 	}()
 	started := time.Now()
-	r := runCampaign(ctx, c, all(c), nil, prepare, (*workspace.Workspace).Close)
+	r := runCampaign(ctx, c, all(c), nil, 1, prepare, (*workspace.Workspace).Close)
 	if err := evidence.ValidateCampaign(r); err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +350,7 @@ func TestCampaignSnapshotFailures(t *testing.T) {
 	}
 	t.Run("prepare fails", func(t *testing.T) {
 		c, _ := project(t, harnesses, entries, policy)
-		r := runCampaign(context.Background(), c, all(c), nil, func(string) (*workspace.Workspace, error) { return nil, errors.New("disk full") }, (*workspace.Workspace).Close)
+		r := runCampaign(context.Background(), c, all(c), nil, 1, func(string) (*workspace.Workspace, error) { return nil, errors.New("disk full") }, (*workspace.Workspace).Close)
 		check(t, r, []string{"snapshot:FAILED"}, domain.ReasonPrepareFailed)
 	})
 	t.Run("cleanup fails", func(t *testing.T) {
@@ -361,7 +363,7 @@ func TestCampaignSnapshotFailures(t *testing.T) {
 			}
 			return ws, err
 		}
-		r := runCampaign(context.Background(), c, all(c), nil, prepare, func(*workspace.Workspace) error { return errors.New("busy") })
+		r := runCampaign(context.Background(), c, all(c), nil, 1, prepare, func(*workspace.Workspace) error { return errors.New("busy") })
 		os.RemoveAll(root)
 		check(t, r, []string{"snapshot:OK", "cleanup:FAILED"}, "")
 		if got := verdicts(r.Experiments[0]); !slices.Equal(got, []string{"KILLED", "KILLED"}) || r.AcceptanceEvaluation.Complete {
@@ -378,7 +380,7 @@ func TestCampaignSnapshotFailures(t *testing.T) {
 			}
 			return ws, err
 		}
-		r := runCampaign(context.Background(), c, all(c), nil, prepare, (*workspace.Workspace).Close)
+		r := runCampaign(context.Background(), c, all(c), nil, 1, prepare, (*workspace.Workspace).Close)
 		check(t, r, []string{"snapshot:FAILED", "cleanup:OK"}, domain.ReasonWorkspaceChanged)
 		if r.SourceIdentity.SnapshotSHA256 != nil {
 			t.Fatal("a snapshot digest was recorded for an unreadable manifest")
@@ -389,7 +391,7 @@ func TestCampaignSnapshotFailures(t *testing.T) {
 		body, _ := os.ReadFile(filepath.Join(dir, "mut.json"))
 		writeFile(t, dir, "mut.json", string(body)+" ")
 		t.Cleanup(func() { writeFile(t, dir, "mut.json", string(body)) })
-		r := RunCampaign(context.Background(), c, all(c), nil)
+		r := RunCampaign(context.Background(), c, all(c), nil, 1)
 		check(t, r, []string{"snapshot:FAILED", "cleanup:OK"}, domain.ReasonWorkspaceChanged)
 	})
 }
@@ -411,7 +413,7 @@ func TestCampaignSnapshotTampering(t *testing.T) {
 		"mut2.json": mutationHarness(t, "m2", shTests, shValid),
 	}, []entry{{"tamper", "mutation", "mut.json", "m1", 2}, {"after", "mutation", "mut2.json", "m2", 1}},
 		map[string]any{"requireNoSurvivors": true, "requireAllGuardrailsProven": false, "requireNoInconclusive": true, "requireNoMixed": true})
-	r := runCampaign(context.Background(), c, all(c), nil, prepare, (*workspace.Workspace).Close)
+	r := runCampaign(context.Background(), c, all(c), nil, 1, prepare, (*workspace.Workspace).Close)
 	if err := evidence.ValidateCampaign(r); err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +437,7 @@ func TestCampaignFilteredSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := RunCampaign(context.Background(), c, selected, []string{"killed"})
+	r := RunCampaign(context.Background(), c, selected, []string{"killed"}, 1)
 	if err := evidence.ValidateCampaign(r); err != nil {
 		t.Fatal(err)
 	}
@@ -445,5 +447,153 @@ func TestCampaignFilteredSelection(t *testing.T) {
 	}
 	if r.Decision != domain.Accept || r.AcceptanceEvaluation.Requirements[1].Status != domain.RequirementNotApplicable {
 		t.Fatalf("%s %+v", r.Decision, r.AcceptanceEvaluation)
+	}
+}
+
+// A harness in a subdirectory evaluates that directory, as `mutate` would
+// from there, and its attempts match the recorded digest of that root.
+func TestCampaignSubdirectoryRoot(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "src", "old")
+	writeFile(t, dir, "mut.json", mutationHarness(t, "m1", shTests, shValid))
+	if err := os.Mkdir(filepath.Join(dir, "svc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(dir, "svc"), "src", "old")
+	// The subdirectory's tests also require that the parent's files are absent.
+	writeFile(t, filepath.Join(dir, "svc"), "mut.json", mutationHarness(t, "m2", `[ ! -e mut.json ] || [ -e ../campaign.json ] && exit 2; `+shTests, shValid))
+	writeFile(t, dir, "campaign.json", campaignJSON(t, []entry{{"top", "mutation", "mut.json", "m1", 1}, {"svc", "mutation", "svc/mut.json", "m2", 2}},
+		map[string]any{"requireNoSurvivors": true, "requireAllGuardrailsProven": false, "requireNoInconclusive": true, "requireNoMixed": true}))
+	c, err := LoadCampaign(filepath.Join(dir, "campaign.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, context.Background(), c)
+	if r.Decision != domain.Accept {
+		t.Fatalf("decision %s: %+v", r.Decision, r.Experiments)
+	}
+	roots := r.SourceIdentity.Roots
+	if len(roots) != 2 || roots[0].Path != "." || roots[1].Path != "svc" || roots[0].SHA256 != *r.SourceIdentity.SnapshotSHA256 || roots[1].Files != 2 {
+		t.Fatalf("roots %+v", roots)
+	}
+	for _, a := range r.Experiments[1].Attempts {
+		if a.Mutation.SourceSnapshot.SHA256 != roots[1].SHA256 || a.Mutation.SourceSnapshot.Files != 2 {
+			t.Fatalf("attempt %s evaluated %+v", a.ID, a.Mutation.SourceSnapshot)
+		}
+	}
+	if r.Experiments[1].Root != "svc" || r.Experiments[0].Root != "." {
+		t.Fatalf("roots %q %q", r.Experiments[0].Root, r.Experiments[1].Root)
+	}
+}
+
+// Tool probes record versions once per campaign; a failing probe is recorded
+// and does not change the decision.
+func TestCampaignToolVersions(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "src", "old")
+	writeFile(t, dir, "mut.json", mutationHarness(t, "m1", shTests, shValid))
+	var m map[string]any
+	if err := json.Unmarshal([]byte(campaignJSON(t, []entry{{"killed", "mutation", "mut.json", "m1", 1}},
+		map[string]any{"requireNoSurvivors": true, "requireAllGuardrailsProven": false, "requireNoInconclusive": true, "requireNoMixed": true})), &m); err != nil {
+		t.Fatal(err)
+	}
+	m["tools"] = []any{
+		map[string]any{"id": "shell", "program": "sh", "args": []string{"-c", "echo fixture-tool 1.2.3"}},
+		map[string]any{"id": "absent", "program": "invaris-missing-tool-4242", "args": []string{"--version"}},
+	}
+	writeFile(t, dir, "campaign.json", marshalJSON(t, m))
+	c, err := LoadCampaign(filepath.Join(dir, "campaign.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, context.Background(), c)
+	if len(r.Tools) != 2 || r.Tools[0].ID != "tool:shell" || r.Tools[0].Kind != "tool" || r.Tools[0].Stdout != "fixture-tool 1.2.3\n" ||
+		r.Tools[0].ExitCode == nil || *r.Tools[0].ExitCode != 0 || r.Tools[0].Executable == nil {
+		t.Fatalf("tools %+v", r.Tools)
+	}
+	if r.Tools[1].ExitCode != nil || len(r.Tools[1].Diagnostics) == 0 {
+		t.Fatalf("missing tool %+v", r.Tools[1])
+	}
+	if r.Decision != domain.Accept {
+		t.Fatalf("a failing probe changed the decision: %s", r.Decision)
+	}
+}
+
+// With --parallel the attempts overlap, every attempt still has its own
+// workspace, and the report keeps declaration order.
+func TestCampaignParallel(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("INVARIS_STATE", state)
+	// On the mutant, hold a marker for a while and record how many are present.
+	overlap := `if [ "$(cat src)" = new ]; then touch "$INVARIS_STATE/active.$$"; sleep 0.5; ls "$INVARIS_STATE" | grep -c '^active' > "$INVARIS_STATE/seen.$$"; rm "$INVARIS_STATE/active.$$"; fi; ` + shTests
+	harnesses := map[string]string{}
+	var entries []entry
+	for _, id := range []string{"a", "b", "c", "d"} {
+		harnesses[id+".json"] = mutationHarness(t, "m-"+id, overlap, shValid, "INVARIS_STATE")
+		entries = append(entries, entry{id, "mutation", id + ".json", "m-" + id, 2})
+	}
+	c, _ := project(t, harnesses, entries, map[string]any{"requireNoSurvivors": true, "requireAllGuardrailsProven": false, "requireNoInconclusive": true, "requireNoMixed": true})
+	r := RunCampaign(context.Background(), c, all(c), nil, 4)
+	if err := evidence.ValidateCampaign(r); err != nil {
+		t.Fatal(err)
+	}
+	if r.Decision != domain.Accept || r.Parallelism != 4 {
+		t.Fatalf("decision %s parallelism %d", r.Decision, r.Parallelism)
+	}
+	for i, x := range r.Experiments {
+		if x.ID != entries[i].ID || !slices.Equal(verdicts(x), []string{"KILLED", "KILLED"}) {
+			t.Fatalf("experiment %d: %s %v", i, x.ID, verdicts(x))
+		}
+	}
+	files, _ := filepath.Glob(filepath.Join(state, "seen.*"))
+	most := 0
+	for _, f := range files {
+		b, _ := os.ReadFile(f)
+		n, _ := strconv.Atoi(strings.TrimSpace(string(b)))
+		most = max(most, n)
+	}
+	if len(files) != 8 || most < 2 {
+		t.Fatalf("attempts did not overlap: %d records, at most %d at once", len(files), most)
+	}
+}
+
+func TestCampaignParallelCancellation(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("INVARIS_STATE", state)
+	slow := `if [ "$(cat src)" = new ]; then touch "$INVARIS_STATE/started"; sleep 5; fi; ` + shTests
+	harnesses := map[string]string{}
+	var entries []entry
+	for _, id := range []string{"a", "b", "c"} {
+		harnesses[id+".json"] = mutationHarness(t, "m-"+id, slow, shValid, "INVARIS_STATE")
+		entries = append(entries, entry{id, "mutation", id + ".json", "m-" + id, 2})
+	}
+	c, _ := project(t, harnesses, entries, map[string]any{"requireNoSurvivors": true, "requireAllGuardrailsProven": false, "requireNoInconclusive": true, "requireNoMixed": true})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		for {
+			if _, err := os.Stat(filepath.Join(state, "started")); err == nil {
+				cancel()
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+	started := time.Now()
+	r := RunCampaign(ctx, c, all(c), nil, 2)
+	if err := evidence.ValidateCampaign(r); err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(started) > 4*time.Second || r.Decision != domain.RefuseDecision || r.Stages[1].Status != domain.StageOK {
+		t.Fatalf("took %s, decision %s, stages %+v", time.Since(started), r.Decision, r.Stages)
+	}
+	counts := map[domain.Execution]int{}
+	for _, x := range r.Experiments {
+		for _, a := range x.Attempts {
+			counts[a.Execution]++
+		}
+	}
+	if counts[domain.Canceled] < 1 || counts[domain.NotStarted] < 3 || counts[domain.Executed] != 0 {
+		t.Fatalf("executions %v", counts)
 	}
 }

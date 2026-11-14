@@ -183,9 +183,20 @@ func TestLoadCampaignRejects(t *testing.T) {
 		{name: "repeat missing", body: edit(func(m map[string]any) { delete(exp(m, 0), "repeat") }), want: "repeat must be 1 to 5"},
 		{name: "repeat six", body: edit(func(m map[string]any) { exp(m, 0)["repeat"] = 6 }), want: "repeat must be 1 to 5"},
 		{name: "repeat fraction", body: edit(func(m map[string]any) { exp(m, 0)["repeat"] = 1.5 }), want: "parse"},
-		{name: "harness parent", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "../mut.json" }), want: "file name in the campaign directory"},
-		{name: "harness subdirectory", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "a/mut.json" }), want: "file name in the campaign directory"},
-		{name: "harness absolute", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "/tmp/mut.json" }), want: "file name in the campaign directory"},
+		{name: "harness parent", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "../mut.json" }), want: "relative path inside the campaign directory"},
+		{name: "harness dot segment", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "./mut.json" }), want: "relative path inside the campaign directory"},
+		{name: "harness absolute", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "/tmp/mut.json" }), want: "relative path inside the campaign directory"},
+		{name: "harness backslash", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = `a\mut.json` }), want: "relative path inside the campaign directory"},
+		{name: "harness missing directory", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "a/mut.json" }), want: "no such file"},
+		{name: "harness in excluded directory", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = ".git/mut.json" }), want: "excludes"},
+		{name: "harness through symlinked directory", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "linked/mut.json" }), want: "not a directory",
+			setup: func(t *testing.T, dir string) {
+				os.Mkdir(filepath.Join(dir, "real"), 0o700)
+				writeFile(t, filepath.Join(dir, "real"), "mut.json", mutationHarness(t, "m1", shTests, shValid))
+				if err := os.Symlink(filepath.Join(dir, "real"), filepath.Join(dir, "linked")); err != nil {
+					t.Fatal(err)
+				}
+			}},
 		{name: "harness is the campaign", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "campaign.json" }), want: "campaign file itself"},
 		{name: "harness missing", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "absent.json" }), want: "no such file"},
 		{name: "harness symlink", body: edit(func(m map[string]any) { exp(m, 0)["harness"] = "link.json" }), want: "not a regular file",
@@ -224,6 +235,27 @@ func TestLoadCampaignRejects(t *testing.T) {
 		{name: "score as string", body: edit(func(m map[string]any) { acc(m)["minMutationScore"] = "0.5" }), want: "parse"},
 		{name: "survivor rule without mutations", body: only(validEntries[1]), want: "no mutation experiment"},
 		{name: "guardrail rule without guardrails", body: only(validEntries[0]), want: "no guardrail experiment"},
+		{name: "tool without id", body: edit(func(m map[string]any) { m["tools"] = []any{map[string]any{"program": "go"}} }), want: "tool ID"},
+		{name: "tool repeated", body: edit(func(m map[string]any) {
+			m["tools"] = []any{map[string]any{"id": "go", "program": "go"}, map[string]any{"id": "go", "program": "go"}}
+		}), want: "tool ID"},
+		{name: "tool without program", body: edit(func(m map[string]any) { m["tools"] = []any{map[string]any{"id": "go", "program": " "}} }), want: "tool go"},
+		{name: "tool timeout", body: edit(func(m map[string]any) {
+			m["tools"] = []any{map[string]any{"id": "go", "program": "go", "timeoutSeconds": 301}}
+		}), want: "tool go"},
+		{name: "tool env key", body: edit(func(m map[string]any) {
+			m["tools"] = []any{map[string]any{"id": "go", "program": "go", "envAllowlist": []string{"A=B"}}}
+		}), want: "tool go"},
+		{name: "tool unknown field", body: edit(func(m map[string]any) {
+			m["tools"] = []any{map[string]any{"id": "go", "program": "go", "policyId": "p"}}
+		}), want: "unknown or duplicate field"},
+		{name: "too many tools", body: edit(func(m map[string]any) {
+			var ts []any
+			for i := range 17 {
+				ts = append(ts, map[string]any{"id": "t" + strings.Repeat("x", i), "program": "true"})
+			}
+			m["tools"] = ts
+		}), want: "at most 16"},
 		{name: "invalid rule without mutations", body: campaignJSON(t, validEntries[1:], map[string]any{"requireNoSurvivors": false, "requireAllGuardrailsProven": true, "requireNoInconclusive": true, "requireNoMixed": true, "requireNoInvalid": true}), want: "no mutation experiment"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -254,6 +286,20 @@ func TestLoadCampaignRejects(t *testing.T) {
 	})
 }
 
+func TestLoadCampaignSubdirectoryHarness(t *testing.T) {
+	entries := []entry{{"killed", "mutation", "svc/mut.json", "m1", 1}, {"proven", "guardrail", "guard.json", "c1", 1}}
+	dir := campaignProject(t, campaignJSON(t, entries, allRequirements()))
+	os.Mkdir(filepath.Join(dir, "svc"), 0o700)
+	writeFile(t, filepath.Join(dir, "svc"), "mut.json", mutationHarness(t, "m1", shTests, shValid))
+	c, err := LoadCampaign(filepath.Join(dir, "campaign.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Experiments[0].Dir != "svc" || c.Experiments[1].Dir != "." {
+		t.Fatalf("dirs %q %q", c.Experiments[0].Dir, c.Experiments[1].Dir)
+	}
+}
+
 func TestLoadCampaignOptionalRequirements(t *testing.T) {
 	a := allRequirements()
 	a["requireNoInvalid"], a["minMutationScore"] = true, 0.75
@@ -279,8 +325,8 @@ func TestSelect(t *testing.T) {
 	}
 }
 
-// FuzzCampaignHarnessPath: an accepted harness name is one plain path element,
-// so it always resolves to a direct child of the campaign root.
+// FuzzCampaignHarnessPath: an accepted harness path is relative, has no "."
+// or ".." element and no excluded directory, so it resolves inside the root.
 func FuzzCampaignHarnessPath(f *testing.F) {
 	for _, s := range []string{"mut.json", "../x.json", "a/b.json", "/abs.json", ".", "..", "", "a\\b", "a\x00b", "c:d", "a..b.json", "campaign.json"} {
 		f.Add(s)
@@ -290,10 +336,15 @@ func FuzzCampaignHarnessPath(f *testing.F) {
 		if campaignHarnessName(name, "campaign.json") != nil {
 			return
 		}
-		if strings.ContainsAny(name, "/\\\x00") || name == "." || name == ".." || name == "" || name == "campaign.json" {
+		if strings.ContainsAny(name, "\\\x00:") || name == "" || name == "campaign.json" || strings.HasPrefix(name, "/") {
 			t.Fatalf("accepted %q", name)
 		}
-		if p := filepath.Join(root, name); filepath.Dir(p) != root || filepath.Base(p) != name {
+		for _, part := range strings.Split(name, "/") {
+			if part == "" || part == "." || part == ".." || part == ".git" || part == ".invaris" {
+				t.Fatalf("accepted %q", name)
+			}
+		}
+		if p := filepath.Join(root, name); !strings.HasPrefix(p, root+string(filepath.Separator)) || filepath.ToSlash(p[len(root)+1:]) != name {
 			t.Fatalf("%q resolves to %q", name, p)
 		}
 	})

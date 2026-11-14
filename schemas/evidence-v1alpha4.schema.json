@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://invaris.dev/schemas/evidence-v1alpha4.schema.json",
   "title": "Invaris campaign evidence v1alpha4",
-  "description": "Structure of a campaign report. Go validation additionally recomputes every aggregate, summary, completeness flag, acceptance evaluation and decision from the attempts, checks attempt order and counts, holds each attempt's child evidence to the v1alpha2 proof and v1alpha3 mutation rules, and requires every attempt to have evaluated the recorded source snapshot.",
+  "description": "Structure of a campaign report. Go validation additionally checks each experiment root against its harness path and recorded digest, recomputes every aggregate, summary, completeness flag, acceptance evaluation and decision from the attempts, checks attempt order and counts, holds each attempt's child evidence to the v1alpha2 proof and v1alpha3 mutation rules, and requires every attempt to have evaluated the recorded source snapshot.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,10 +15,12 @@
     "sourceIdentity",
     "environment",
     "selection",
+    "parallelism",
     "startedAt",
     "finishedAt",
     "durationMs",
     "stages",
+    "tools",
     "experiments",
     "mutationSummary",
     "guardrailSummary",
@@ -63,6 +65,7 @@
       "required": [
         "snapshotSha256",
         "files",
+        "roots",
         "gitRevision",
         "gitDirty",
         "excluded"
@@ -88,6 +91,31 @@
               "minimum": 0
             }
           ]
+        },
+        "roots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "sha256",
+              "files"
+            ],
+            "properties": {
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "files": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         },
         "gitRevision": {
           "oneOf": [
@@ -167,6 +195,33 @@
           "type": "integer",
           "minimum": 0
         }
+      }
+    },
+    "parallelism": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    },
+    "tools": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/observation"
+          },
+          {
+            "properties": {
+              "kind": {
+                "const": "tool"
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^tool:"
+              }
+            }
+          }
+        ]
       }
     },
     "startedAt": {
@@ -299,7 +354,10 @@
         "inconclusive",
         "mixed",
         "notExecuted",
-        "filtered"
+        "filtered",
+        "eligible",
+        "excluded",
+        "proofRate"
       ],
       "properties": {
         "proven": {
@@ -325,6 +383,26 @@
         "filtered": {
           "type": "integer",
           "minimum": 0
+        },
+        "eligible": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "proofRate": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
         }
       }
     },
@@ -1175,7 +1253,8 @@
             "validation",
             "tests",
             "challenged",
-            "discover"
+            "discover",
+            "tool"
           ]
         },
         "program": {
@@ -1485,6 +1564,7 @@
         "id",
         "kind",
         "harness",
+        "root",
         "harnessDigest",
         "referenceId",
         "repeat",
@@ -1507,7 +1587,11 @@
         "harness": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^/\\\\:\\u0000]+$"
+          "pattern": "^(?!/)(?!.*//)(?!(?:.*/)?\\.{1,2}(?:/|$))(?!(?:.*/)?\\.(?:git|invaris)(?:/|$))[^\\\\:\\u0000]+$"
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
         },
         "harnessDigest": {
           "$ref": "#/$defs/digest"
