@@ -1,0 +1,1 @@
+{"version":"invaris.adapter/v1alpha1","requestId":"$ID","provider":{"name":"golden","version":"1.0.0","toolName":null,"toolVersion":null},"capabilities":{"languages":["javascript"],"policyIds":["no-forbidden-import"],"operations":["discover","check"],"proofTypes":[],"reportFormats":["json"],"available":true,"prerequisites":[]}}

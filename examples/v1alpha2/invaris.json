@@ -1,0 +1,29 @@
+{
+  "version": "invaris.dev/v1alpha2",
+  "name": "structured-v1alpha2",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": ["source.txt"],
+  "policies": [{"id": "no-forbidden-marker"}],
+  "guards": [{
+    "id": "fixture-guard",
+    "policyId": "no-forbidden-marker",
+    "program": "sh",
+    "args": ["guard.sh"]
+  }],
+  "challenges": [{
+    "id": "detect-marker",
+    "guard": "fixture-guard",
+    "file": "source.txt",
+    "before": "SAFE",
+    "after": "FORBIDDEN"
+  }],
+  "gate": {
+    "requiredGuards": ["fixture-guard"],
+    "requiredProofs": ["detect-marker"],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "redactEnv": [],
+  "storeSensitiveOutput": false
+}

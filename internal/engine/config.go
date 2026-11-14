@@ -32,6 +32,24 @@ func decodeSpecification(raw []byte) (Specification, error) {
 	if len(raw) > 1<<20 {
 		return Specification{}, errors.New("harness exceeds 1 MiB")
 	}
+	var s Specification
+	var err error
+	if peekVersion(raw) == versionV2 {
+		s, err = decodeV2(raw)
+	} else {
+		s, err = decodeV1(raw)
+	}
+	if err != nil {
+		return s, err
+	}
+	if err := s.Validate(); err != nil {
+		return s, err
+	}
+	s.ConfigDigest = fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
+	return s, nil
+}
+
+func decodeV1(raw []byte) (Specification, error) {
 	if err := checkConfigJSON(raw); err != nil {
 		return Specification{}, fmt.Errorf("parse harness: %w", err)
 	}
@@ -45,16 +63,17 @@ func decodeSpecification(raw []byte) (Specification, error) {
 	if err := d.Decode(&extra); err != io.EOF {
 		return s, errors.New("harness must contain exactly one JSON object")
 	}
-	if err := s.Validate(); err != nil {
-		return s, err
-	}
-	s.ConfigDigest = fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
 	return s, nil
 }
 
 func (s Specification) Validate() error {
-	if s.Version != "invaris.dev/v1alpha1" {
+	if s.Version != versionV1 && s.Version != versionV2 {
 		return fmt.Errorf("unsupported harness version %q", s.Version)
+	}
+	if s.Version == versionV2 {
+		if err := s.validateV2(); err != nil {
+			return err
+		}
 	}
 	if strings.TrimSpace(s.Name) == "" {
 		return errors.New("harness name is required")
@@ -67,6 +86,9 @@ func (s Specification) Validate() error {
 	}
 	if len(s.RequiredAdapters) > 0 {
 		return errors.New("required adapters are unsupported")
+	}
+	if len(s.Adapters) > 0 || len(s.ProviderGuards) > 0 {
+		return errors.New("provider adapters and provider guards are declared but not yet executable; refusing rather than falling back to a local command")
 	}
 	policies := map[string]bool{}
 	for _, id := range s.Policies {

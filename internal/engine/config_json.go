@@ -18,6 +18,9 @@ func validateJSONValue(d *json.Decoder, typ reflect.Type, depth int) error {
 	for typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
+	if typ == reflect.TypeOf(json.RawMessage(nil)) {
+		return validateOpaque(d, depth, true)
+	}
 	token, err := d.Token()
 	if err != nil {
 		return err
@@ -79,12 +82,55 @@ func validateJSONValue(d *json.Decoder, typ reflect.Type, depth int) error {
 	_, err = d.Token()
 	return err
 }
+
+// validateOpaque consumes one JSON value of unknown shape (provider options),
+// rejecting duplicate object keys at any depth and, at top level, null.
+func validateOpaque(d *json.Decoder, depth int, top bool) error {
+	if depth > 64 {
+		return fmt.Errorf("JSON nesting exceeds limit")
+	}
+	token, err := d.Token()
+	if err != nil {
+		return err
+	}
+	if token == nil && top {
+		return fmt.Errorf("null is not permitted")
+	}
+	delim, composite := token.(json.Delim)
+	if !composite {
+		return nil
+	}
+	seen := map[string]bool{}
+	for d.More() {
+		if delim == '{' {
+			k, e := d.Token()
+			if e != nil {
+				return e
+			}
+			key, _ := k.(string)
+			if seen[key] {
+				return fmt.Errorf("duplicate field %q", key)
+			}
+			seen[key] = true
+		}
+		if e := validateOpaque(d, depth+1, false); e != nil {
+			return e
+		}
+	}
+	_, err = d.Token()
+	return err
+}
+
 func checkConfigJSON(raw []byte) error {
+	return checkConfigJSONType(raw, reflect.TypeOf(Specification{}))
+}
+
+func checkConfigJSONType(raw []byte, typ reflect.Type) error {
 	if !utf8.Valid(raw) {
 		return fmt.Errorf("config is not UTF-8")
 	}
 	d := json.NewDecoder(bytes.NewReader(raw))
-	if err := validateJSONValue(d, reflect.TypeOf(Specification{}), 0); err != nil {
+	if err := validateJSONValue(d, typ, 0); err != nil {
 		return err
 	}
 	if _, err := d.Token(); err != io.EOF {

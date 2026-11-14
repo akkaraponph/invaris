@@ -60,8 +60,9 @@ func Run(ctx context.Context, root string, command Command) Result {
 }
 
 // RunInput executes command in root, supplying stdin when it is non-nil.
-func RunInput(ctx context.Context, root string, command Command, stdin []byte) Result {
-	result := Result{StartedAt: time.Now().UTC()}
+func RunInput(ctx context.Context, root string, command Command, stdin []byte) (result Result) {
+	result.StartedAt = time.Now().UTC()
+	// result is a named return so the deferred update reaches the caller.
 	defer func() { result.FinishedAt = time.Now().UTC() }()
 	if err := ctx.Err(); err != nil {
 		result.Err = fmt.Errorf("not started: %w", err)

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Invaris runs local workflows, checks system invariants, and tests whether guards detect controlled violations.">
+  <title>Invaris — The Guardian of System Invariants</title>
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="./">Invaris</a>
+    <nav aria-label="Main navigation">
+      <a href="#quick-start">Quick start</a>
+      <a href="#reference">Reference</a>
+      <a href="https://github.com/akkaraponph/invaris">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="title">
+      <h1 id="title"><span>Invaris</span>The Guardian of System Invariants</h1>
+      <p>Run a local workflow, verify the conditions that must hold, and test whether a guard catches a deliberate violation.</p>
+      <a class="button" href="#quick-start">Run the example</a>
+    </section>
+
+    <section aria-labelledby="workflow">
+      <h2 id="workflow">From execution to evidence</h2>
+      <dl class="commands">
+        <div>
+          <dt><code>run</code></dt>
+          <dd>Execute the configured steps in order. Stop on the first failed step and still run the guards.</dd>
+        </div>
+        <div>
+          <dt><code>check</code></dt>
+          <dd>Run the guards on their own to verify the current workspace.</dd>
+        </div>
+        <div>
+          <dt><code>challenge</code></dt>
+          <dd>Establish a passing baseline in a disposable copy, inject a configured file mutation, and check that the selected guard reports the expected evidence.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section aria-labelledby="quick-start">
+      <h2 id="quick-start">Quick start</h2>
+      <p>Use Go 1.23 or later and a POSIX shell. The bundled example guards against a forbidden marker in a text file.</p>
+      <pre><code>git clone https://github.com/akkaraponph/invaris.git
+cd invaris
+go run ./cmd/invaris check examples/invaris.json
+go run ./cmd/invaris challenge examples/invaris.json
+go run ./cmd/invaris run examples/invaris.json</code></pre>
+      <p>The CLI writes a JSON report to standard output. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path.</p>
+      <ul class="exit-codes">
+        <li><code>0</code> Successful action</li>
+        <li><code>1</code> Failure or unproven challenge</li>
+        <li><code>2</code> Inconclusive result, refusal, or CLI error</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="reference">
+      <h2 id="reference">Reference</h2>
+      <ul class="reference">
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
+      </ul>
+    </section>
+
+    <aside aria-labelledby="limits">
+      <h2 id="limits">Execution limits</h2>
+      <p>Invaris is an experimental Go CLI for trusted harnesses. Child commands run with your user privileges and can access files outside the disposable copy and use the network.</p>
+    </aside>
+  </main>
+
+  <footer>
+    <span>Invaris</span>
+    <a href="https://github.com/akkaraponph/invaris/blob/main/LICENSE">Apache-2.0 license</a>
+  </footer>
+</body>
+</html>

@@ -224,3 +224,19 @@ func TestResolveUsesEffectivePath(t *testing.T) {
 		t.Fatal("resolved a relative PATH entry")
 	}
 }
+
+// Evidence reports timestamps and durations from the result, so every path
+// (success, failure to start, cancellation) must set both ends.
+func TestResultRecordsFinishTime(t *testing.T) {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, got := range map[string]Result{
+		"success":  Run(context.Background(), t.TempDir(), Command{Program: os.Args[0], Args: []string{helperArg, "write", "1", "1"}}),
+		"missing":  Run(context.Background(), t.TempDir(), Command{Program: "invaris-missing-program"}),
+		"canceled": Run(canceled, t.TempDir(), Command{Program: os.Args[0]}),
+	} {
+		if got.StartedAt.IsZero() || got.FinishedAt.IsZero() || got.FinishedAt.Before(got.StartedAt) {
+			t.Errorf("%s: started=%v finished=%v", name, got.StartedAt, got.FinishedAt)
+		}
+	}
+}

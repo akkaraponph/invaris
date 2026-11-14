@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/akkaraponph/invaris/internal/domain"
 )
 
-// Specification is a deliberately narrow, versioned execution contract.
+// Specification is the validated internal form of a v1alpha1 or v1alpha2 harness. It is a deliberately narrow, versioned execution contract.
 // Arguments are never interpreted by a shell.
 type Specification struct {
 	FailFast         *bool       `json:"failFast,omitempty"`
@@ -25,6 +27,15 @@ type Specification struct {
 	NetworkPolicy    string      `json:"networkPolicy,omitempty"`
 	WritablePaths    []string    `json:"writablePaths,omitempty"`
 	RequiredAdapters []string    `json:"requiredAdapters,omitempty"`
+
+	// Populated from v1alpha2 inputs; never decoded directly from JSON.
+	TrustMode            string          `json:"-"`
+	PolicyDecls          []domain.Policy `json:"-"`
+	Gate                 *domain.Gate    `json:"-"`
+	RedactEnv            []string        `json:"-"`
+	StoreSensitiveOutput bool            `json:"-"`
+	Adapters             []Adapter       `json:"-"`
+	ProviderGuards       []ProviderGuard `json:"-"`
 }
 type Command struct {
 	ID             string   `json:"id"`
@@ -52,7 +63,16 @@ type Result struct {
 	Inspection *Inspection `json:"inspection,omitempty"`
 	Baseline   *Result     `json:"baseline,omitempty"`
 	Challenged *Result     `json:"challenged,omitempty"`
+	// Observation details used to build evidence; not part of the legacy shape.
+	StartedAt  time.Time `json:"-"`
+	FinishedAt time.Time `json:"-"`
+	Stdout     string    `json:"-"`
+	Stderr     string    `json:"-"`
+	Truncated  bool      `json:"-"`
 }
+
+// Report is the engine's working result. The CLI emits evidence.Report
+// (invaris.evidence/v1alpha2) built from it by RunEvidence.
 type Report struct {
 	SchemaVersion string    `json:"schemaVersion"`
 	ConfigDigest  string    `json:"configDigest,omitempty"`
@@ -65,7 +85,7 @@ type Report struct {
 }
 
 func Run(ctx context.Context, spec Specification, root, action string) Report {
-	report := Report{SchemaVersion: "invaris.evidence/v1alpha1", ConfigDigest: spec.ConfigDigest, Harness: spec.Name, Action: action, Status: "PASS", StartedAt: time.Now().UTC(), Results: []Result{}}
+	report := Report{SchemaVersion: "invaris.engine/result", ConfigDigest: spec.ConfigDigest, Harness: spec.Name, Action: action, Status: "PASS", StartedAt: time.Now().UTC(), Results: []Result{}}
 	if err := spec.Validate(); err != nil {
 		report.Status = "REFUSE"
 		report.Results = append(report.Results, Result{ID: "config", Status: "REFUSE", Detail: err.Error()})
@@ -101,8 +121,8 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 
 func challenge(ctx context.Context, root string, guards []Command, c Challenge) (r Result) {
 	started := time.Now()
-	r = Result{ID: c.ID, Status: "INCONCLUSIVE"}
-	defer func() { r.DurationMs = time.Since(started).Milliseconds() }()
+	r = Result{ID: c.ID, Status: "INCONCLUSIVE", StartedAt: started.UTC()}
+	defer func() { r.DurationMs = time.Since(started).Milliseconds(); r.FinishedAt = time.Now().UTC() }()
 	var guard Command
 	for _, g := range guards {
 		if g.ID == c.Guard {

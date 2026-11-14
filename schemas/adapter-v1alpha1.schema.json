@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/adapter-v1alpha1.schema.json",
+  "title": "Invaris adapter protocol v1alpha1",
+  "description": "A request (engine to provider stdin) or a response (provider stdout). One JSON value each, UTF-8, no duplicate keys (the schema cannot express that; the Go client enforces it). Rules that need the request (requestId equality, finding paths inside the requested scope, requested policy IDs) and native exit semantics are enforced by the Go client; the schema encodes the shape and the exit/status pairing.",
+  "oneOf": [{"$ref": "#/$defs/request"}, {"$ref": "#/$defs/response"}],
+  "$defs": {
+    "version": {"const": "invaris.adapter/v1alpha1"},
+    "relativePath": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*[\\\\:\\u0000])(?:[^/]+/)*[^/]+$", "not": {"pattern": "(^|/)\\.{1,2}(/|$)"}},
+    "stringList": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "request": {
+      "type": "object", "additionalProperties": false, "required": ["version", "requestId", "operation", "policyIds", "scope"],
+      "properties": {
+        "version": {"$ref": "#/$defs/version"},
+        "requestId": {"type": "string", "minLength": 1},
+        "operation": {"enum": ["discover", "check", "mutate", "doctor"]},
+        "policyIds": {"$ref": "#/$defs/stringList"},
+        "scope": {"type": "array", "items": {"oneOf": [{"const": "."}, {"$ref": "#/$defs/relativePath"}]}},
+        "options": {"description": "Opaque, non-null provider options."}
+      },
+      "if": {"properties": {"operation": {"enum": ["check", "mutate"]}}},
+      "then": {"properties": {"policyIds": {"minItems": 1}, "scope": {"minItems": 1}}}
+    },
+    "nullableString": {"oneOf": [{"type": "null"}, {"type": "string"}]},
+    "identity": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version", "toolName", "toolVersion"],
+      "properties": {"name": {"type": "string", "pattern": "\\S"}, "version": {"type": "string", "pattern": "\\S"}, "toolName": {"$ref": "#/$defs/nullableString"}, "toolVersion": {"$ref": "#/$defs/nullableString"}}
+    },
+    "capabilities": {
+      "type": "object", "additionalProperties": false,
+      "required": ["languages", "policyIds", "operations", "proofTypes", "reportFormats", "available", "prerequisites"],
+      "properties": {
+        "languages": {"$ref": "#/$defs/stringList"}, "policyIds": {"$ref": "#/$defs/stringList"},
+        "operations": {"type": "array", "uniqueItems": true, "items": {"enum": ["discover", "check", "mutate", "doctor"]}},
+        "proofTypes": {"$ref": "#/$defs/stringList"}, "reportFormats": {"$ref": "#/$defs/stringList"},
+        "available": {"type": "boolean"}, "prerequisites": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "finding": {
+      "type": "object", "additionalProperties": false, "required": ["policyId", "ruleId", "path", "message"],
+      "properties": {"policyId": {"type": "string", "minLength": 1}, "ruleId": {"type": "string", "pattern": "\\S"}, "path": {"$ref": "#/$defs/relativePath"}, "message": {"type": "string"}}
+    },
+    "diagnostic": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string"}}},
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "policyId", "providerId", "status", "inspected", "findings", "diagnostics", "exitCode"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1}, "policyId": {"type": "string", "minLength": 1}, "providerId": {"type": "string", "minLength": 1},
+        "status": {"enum": ["PASS", "FAIL", "REFUSE"]},
+        "inspected": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+        "exitCode": {"oneOf": [{"type": "null"}, {"type": "integer"}]}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "PASS"}}}, "then": {"properties": {"inspected": {"type": "integer", "minimum": 1}, "exitCode": {"const": 0}, "findings": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"const": "FAIL"}}}, "then": {"properties": {"inspected": {"type": "integer", "minimum": 1}, "exitCode": {"const": 1}, "findings": {"minItems": 1}}}},
+        {"if": {"properties": {"status": {"const": "REFUSE"}}}, "then": {"properties": {"findings": {"maxItems": 0}, "diagnostics": {"minItems": 1}}}}
+      ]
+    },
+    "mutation": {
+      "type": "object", "additionalProperties": false, "required": ["faultId", "path", "beforeSha256", "afterSha256"],
+      "properties": {"faultId": {"type": "string", "minLength": 1}, "path": {"$ref": "#/$defs/relativePath"}, "beforeSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "afterSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+    },
+    "error": {
+      "type": "object", "additionalProperties": false, "required": ["code", "message"],
+      "properties": {
+        "code": {"enum": ["INVALID_REQUEST", "UNSUPPORTED_PROTOCOL", "UNSUPPORTED_CAPABILITY", "TOOL_UNAVAILABLE", "EVIDENCE_UNAVAILABLE", "EXECUTION_TIMEOUT", "MALFORMED_OUTPUT", "INTERNAL_PROVIDER_FAILURE"]},
+        "message": {"type": "string"}
+      }
+    },
+    "response": {
+      "type": "object", "additionalProperties": false, "required": ["version", "requestId", "provider"],
+      "properties": {
+        "version": {"$ref": "#/$defs/version"},
+        "requestId": {"type": "string"},
+        "provider": {"$ref": "#/$defs/identity"},
+        "capabilities": {"$ref": "#/$defs/capabilities"},
+        "check": {"$ref": "#/$defs/check"},
+        "mutation": {"$ref": "#/$defs/mutation"},
+        "error": {"$ref": "#/$defs/error"}
+      },
+      "oneOf": [{"required": ["capabilities"]}, {"required": ["check"]}, {"required": ["mutation"]}, {"required": ["error"]}]
+    }
+  }
+}

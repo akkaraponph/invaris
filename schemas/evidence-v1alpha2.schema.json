@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/evidence-v1alpha2.schema.json",
+  "title": "Invaris evidence v1alpha2",
+  "description": "Structure of an invaris.evidence/v1alpha2 report. The schema checks shape; the decision/result correlation and the completeness requirements for ACCEPT are enforced by evidence.Validate in Go, and the schema only encodes the subset that is expressible here (an ACCEPT carries a digest and a positive targetCount).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "action", "target", "harness", "configDigest", "gitRevision", "environment", "startedAt", "finishedAt", "durationMs", "compatibility", "policies", "gate", "lifecycle", "steps", "checks", "proofs", "observations", "targetCount", "decision", "diagnostics", "artifacts"],
+  "properties": {
+    "schemaVersion": {"const": "invaris.evidence/v1alpha2"},
+    "runId": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "action": {"enum": ["run", "check", "challenge"]},
+    "target": {"type": "string"},
+    "harness": {"type": "string"},
+    "configDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "gitRevision": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}]},
+    "environment": {"type": "object", "additionalProperties": false, "required": ["os", "arch"], "properties": {"os": {"type": "string"}, "arch": {"type": "string"}}},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "durationMs": {"type": "integer", "minimum": 0},
+    "compatibility": {
+      "type": "object", "additionalProperties": false, "required": ["status", "inputVersion", "warnings"],
+      "properties": {"status": {"enum": ["native", "legacy"]}, "inputVersion": {"type": "string"}, "warnings": {"type": "array", "items": {"type": "string"}}}
+    },
+    "policies": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["id", "allowEmpty"], "properties": {"id": {"type": "string"}, "allowEmpty": {"type": "boolean"}}}},
+    "gate": {
+      "type": "object", "additionalProperties": false, "required": ["requiredGuards", "requiredProofs", "precedence", "allowWeakEvidence"],
+      "properties": {
+        "requiredGuards": {"type": "array", "items": {"type": "string"}},
+        "requiredProofs": {"type": "array", "items": {"type": "string"}},
+        "precedence": {"enum": ["failure-first", "refusal-first"]},
+        "allowWeakEvidence": {"type": "boolean"}
+      }
+    },
+    "lifecycle": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "steps": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+    "proofs": {"type": "array", "items": {"$ref": "#/$defs/proof"}},
+    "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+    "targetCount": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]},
+    "decision": {"enum": ["ACCEPT", "REJECT", "REFUSE"]},
+    "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}}
+  },
+  "if": {"properties": {"decision": {"const": "ACCEPT"}}},
+  "then": {"properties": {"configDigest": {"$ref": "#/$defs/digest"}, "targetCount": {"type": "integer", "minimum": 1}, "artifacts": {"items": {"properties": {"bytes": {"minimum": 1}}}}}},
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "nullableInt": {"oneOf": [{"type": "null"}, {"type": "integer"}]},
+    "nullableString": {"oneOf": [{"type": "null"}, {"type": "string"}]},
+    "nullableTime": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+    "diagnostic": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string"}}},
+    "finding": {"type": "object", "additionalProperties": false, "required": ["policyId", "ruleId", "path", "message"], "properties": {"policyId": {"type": "string"}, "ruleId": {"type": "string"}, "path": {"type": "string"}, "message": {"type": "string"}}},
+    "check": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "policyId", "providerId", "status", "inspected", "findings", "diagnostics", "exitCode"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1}, "policyId": {"type": "string"}, "providerId": {"type": "string"},
+        "status": {"enum": ["PASS", "FAIL", "REFUSE", "NOT_RUN"]},
+        "inspected": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+        "exitCode": {"$ref": "#/$defs/nullableInt"}
+      }
+    },
+    "proof": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "policyId", "guardId", "target", "faultId", "evidenceStrength", "status", "baseline", "challenged"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1}, "policyId": {"type": "string"}, "guardId": {"type": "string"}, "target": {"type": "string"}, "faultId": {"type": "string"},
+        "evidenceStrength": {"enum": ["weak", "strong"]},
+        "status": {"enum": ["PROVEN", "UNPROVEN", "INCONCLUSIVE", "NOT_RUN"]},
+        "baseline": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/check"}]},
+        "challenged": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/check"}]}
+      }
+    },
+    "event": {
+      "type": "object", "additionalProperties": false, "required": ["id", "kind", "status", "startedAt", "finishedAt"],
+      "properties": {"id": {"type": "string"}, "kind": {"enum": ["step", "guard", "challenge", "engine"]}, "status": {"type": "string"}, "startedAt": {"$ref": "#/$defs/nullableTime"}, "finishedAt": {"$ref": "#/$defs/nullableTime"}}
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics"],
+      "properties": {
+        "id": {"type": "string"}, "kind": {"enum": ["step", "guard", "baseline", "challenged"]}, "program": {"type": "string"},
+        "args": {"type": "array", "items": {"type": "string"}},
+        "provider": {"type": "object", "additionalProperties": false, "required": ["name", "version", "toolName", "toolVersion"], "properties": {"name": {"type": "string"}, "version": {"$ref": "#/$defs/nullableString"}, "toolName": {"$ref": "#/$defs/nullableString"}, "toolVersion": {"$ref": "#/$defs/nullableString"}}},
+        "scope": {"type": "array", "items": {"type": "string"}},
+        "startedAt": {"$ref": "#/$defs/nullableTime"}, "finishedAt": {"$ref": "#/$defs/nullableTime"},
+        "exitCode": {"$ref": "#/$defs/nullableInt"},
+        "stdout": {"type": "string"}, "stderr": {"type": "string"}, "truncated": {"type": "boolean"},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}}
+      }
+    },
+    "artifact": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "bytes": {"type": "integer", "minimum": 0}}}
+  }
+}
