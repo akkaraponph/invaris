@@ -76,7 +76,16 @@ func TestV2ConfigContract(t *testing.T) {
 		"command with scope":       v2Head + `,"guards":[{"id":"g","program":"true","scope":["src"]}]`,
 		"null options":             v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"],"options":null}]`,
 		"duplicate options key":    v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"],"options":{"k":1,"k":2}}]`,
-		"provider guard declared":  v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"],"options":{"k":1}}]`,
+		"undeclared adapter":       v2Head + `,"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"]}]`,
+		"provider guard no scope":  v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p"}]`,
+		"provider scope escapes":   v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["../x"]}]`,
+		"provider guard no policy": v2Head + `,"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","scope":["src"]}]`,
+		"provider policy unlisted": v2Head + `,"policies":[{"id":"q"}],"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"]}]`,
+		"guard ID collides":        v2Head + `,"steps":[{"id":"g","program":"true"}],"adapters":[{"id":"a","program":"p","args":[]}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"]}]`,
+		"duplicate adapter":        v2Head + `,"adapters":[{"id":"a","program":"p"},{"id":"a","program":"q"}]`,
+		"adapter timeout 301":      v2Head + `,"adapters":[{"id":"a","program":"p","timeoutSeconds":301}],"guards":[{"id":"g","program":"true"}]`,
+		"gate names unknown guard": v2Head + `,"adapters":[{"id":"a","program":"p"}],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src"]}],"gate":{"requiredGuards":["h"]}`,
+		"v1 required adapters":     `"version":"invaris.dev/v1alpha1","name":"x","requiredAdapters":["a"],"guards":[{"id":"g","program":"true"}]`,
 		"required adapter":         good + `,"requiredAdapters":["a"]`,
 		"policy list of strings":   good + `,"policies":["a"]`,
 		"v1 policy object":         `"version":"invaris.dev/v1alpha1","name":"x","policies":[{"id":"a"}],"guards":[{"id":"g","program":"true"}]`,
@@ -86,16 +95,20 @@ func TestV2ConfigContract(t *testing.T) {
 			t.Errorf("%s: accepted", name)
 		}
 	}
-	// A refused provider guard never executes anything.
+	valid := v2Head + `,"policies":[{"id":"p"}],"adapters":[{"id":"a","program":"p","args":[]}],"requiredAdapters":["a"],"guards":[{"id":"g","adapterId":"a","policyId":"p","scope":["src","."],"options":{"k":[1]}}],"gate":{"requiredGuards":["g"]}`
+	if s := mustSpec(t, valid); len(s.ProviderGuards) != 1 || len(s.Guards) != 0 || string(s.ProviderGuards[0].Options) != `{"k":[1]}` {
+		t.Fatalf("provider guard not decoded: %+v", s)
+	}
+	// Invalid provider configuration never executes anything.
 	root := t.TempDir()
 	spec := Specification{Version: versionV2, Name: "p", TrustMode: "trusted-local", NetworkPolicy: "unrestricted",
 		Steps:          []Command{{ID: "s", Program: "touch", Args: []string{"sentinel"}}},
-		ProviderGuards: []ProviderGuard{{ID: "pg", AdapterID: "a", PolicyID: "p", Scope: []string{"src"}}}}
+		ProviderGuards: []ProviderGuard{{ID: "pg", AdapterID: "undeclared", PolicyID: "p", Scope: []string{"src"}}}}
 	if r := RunEvidence(context.Background(), spec, root, "run"); r.Decision != domain.RefuseDecision {
-		t.Fatalf("provider guard ran: %s", r.Decision)
+		t.Fatalf("invalid provider guard ran: %s", r.Decision)
 	}
 	if _, err := os.Stat(filepath.Join(root, "sentinel")); !os.IsNotExist(err) {
-		t.Fatal("step executed despite refused provider guard")
+		t.Fatal("step executed despite invalid provider guard")
 	}
 }
 

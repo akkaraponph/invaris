@@ -1,0 +1,26 @@
+{
+  "version": "invaris.dev/v1alpha2",
+  "name": "provider-example",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "policies": [{"id": "no-forbidden-marker"}],
+  "adapters": [{
+    "id": "command-bridge",
+    "program": "invaris-command-provider",
+    "args": [],
+    "envAllowlist": ["PATH"],
+    "timeoutSeconds": 30
+  }],
+  "requiredAdapters": ["command-bridge"],
+  "guards": [{
+    "id": "fixture-guard",
+    "adapterId": "command-bridge",
+    "policyId": "no-forbidden-marker",
+    "scope": ["source.txt"],
+    "options": {"program": "sh", "args": ["guard.sh"]}
+  }],
+  "gate": {
+    "requiredGuards": ["fixture-guard"],
+    "precedence": "failure-first"
+  }
+}

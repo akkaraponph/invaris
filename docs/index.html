@@ -50,7 +50,7 @@ cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for both input versions. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path.</p>
+      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for both input versions. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests and proof stages.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure or unproven challenge</li>
@@ -64,6 +64,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Planned providers, isolation, and CLI features</span></li>

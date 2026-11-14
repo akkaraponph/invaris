@@ -2,14 +2,12 @@ package engine
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
 // Specification is the validated internal form of a v1alpha1 or v1alpha2 harness. It is a deliberately narrow, versioned execution contract.
@@ -63,12 +61,17 @@ type Result struct {
 	Inspection *Inspection `json:"inspection,omitempty"`
 	Baseline   *Result     `json:"baseline,omitempty"`
 	Challenged *Result     `json:"challenged,omitempty"`
+	// Proof is set for challenges: the staged, cleanup-verified proof record.
+	Proof *domain.Proof `json:"-"`
 	// Observation details used to build evidence; not part of the legacy shape.
 	StartedAt  time.Time `json:"-"`
 	FinishedAt time.Time `json:"-"`
-	Stdout     string    `json:"-"`
-	Stderr     string    `json:"-"`
-	Truncated  bool      `json:"-"`
+	// Set for provider guards: the provider identity and its validated check.
+	Provider      *adapter.Identity `json:"-"`
+	ProviderCheck *domain.Check     `json:"-"`
+	Stdout        string            `json:"-"`
+	Stderr        string            `json:"-"`
+	Truncated     bool              `json:"-"`
 }
 
 // Report is the engine's working result. The CLI emits evidence.Report
@@ -82,6 +85,8 @@ type Report struct {
 	StartedAt     time.Time `json:"startedAt"`
 	FinishedAt    time.Time `json:"finishedAt"`
 	Results       []Result  `json:"results"`
+	// Discoveries records the one discovery per provider made before any step.
+	Discoveries []Discovery `json:"discoveries,omitempty"`
 }
 
 func Run(ctx context.Context, spec Specification, root, action string) Report {
@@ -100,8 +105,24 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 			report.Status = "REFUSE"
 			report.Results = append(report.Results, Result{ID: "challenges", Status: "REFUSE", Detail: "no challenges configured"})
 		}
+		var providers providerState
+		if len(spec.Challenges) > 0 {
+			// Discover only providers needed by proofs and explicitly required providers.
+			proofSpec := spec
+			proofSpec.ProviderGuards = nil
+			for _, g := range spec.ProviderGuards {
+				for _, c := range spec.Challenges {
+					if c.Guard == g.ID {
+						proofSpec.ProviderGuards = append(proofSpec.ProviderGuards, g)
+						break
+					}
+				}
+			}
+			providers = discover(ctx, proofSpec, root)
+			report.Discoveries = providers.discoveries
+		}
 		for _, c := range spec.Challenges {
-			r := challenge(ctx, root, spec.Guards, c)
+			r := challenge(ctx, root, spec, providers, c)
 			report.Results = append(report.Results, r)
 			if r.Status != "PROVEN" {
 				status := "INCONCLUSIVE"
@@ -119,148 +140,67 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	return report
 }
 
-func challenge(ctx context.Context, root string, guards []Command, c Challenge) (r Result) {
+func challenge(ctx context.Context, root string, spec Specification, providers providerState, c Challenge) (r Result) {
 	started := time.Now()
 	r = Result{ID: c.ID, Status: "INCONCLUSIVE", StartedAt: started.UTC()}
 	defer func() { r.DurationMs = time.Since(started).Milliseconds(); r.FinishedAt = time.Now().UTC() }()
-	var guard Command
-	for _, g := range guards {
-		if g.ID == c.Guard {
-			guard = g
-			break
-		}
-	}
-	if guard.ID == "" {
-		r.Detail = "guard not found"
-		return
-	}
 	if err := validatePath(c.File); err != nil {
 		r.Detail = err.Error()
 		return
 	}
-	if c.Before == "" || c.Before == c.After || (guard.PolicyID == "" && c.ExpectedOutput == "") {
-		r.Detail = "invalid mutation or expected output"
-		return
-	}
-	tmp, err := os.MkdirTemp("", "invaris-proof-*")
-	if err != nil {
-		r.Detail = err.Error()
-		return
-	}
-	defer func() {
-		if err := os.RemoveAll(tmp); err != nil {
-			r.Status = "INCONCLUSIVE"
-			r.Detail += "; cleanup failed: " + err.Error()
+	for _, id := range spec.RequiredAdapters {
+		if why := providers.unavailable(id); why != "" {
+			r.Detail = why
+			return
 		}
-	}()
-	canonical, err := filepath.EvalSymlinks(tmp)
-	if err != nil {
-		r.Detail = err.Error()
+	}
+	var runs []Result
+	var evaluate func(context.Context, string) domain.Check
+	var expect expectation
+	for _, g := range spec.ProviderGuards {
+		if g.ID != c.Guard {
+			continue
+		}
+		if why := providers.unsupported(g); why != "" {
+			r.Detail = why
+			return
+		}
+		expect = expectation{Policy: g.PolicyID, Rule: g.PolicyID}
+		evaluate = func(ctx context.Context, workRoot string) domain.Check {
+			res := runProviderGuard(ctx, workRoot, spec, providers, g)
+			runs = append(runs, res)
+			return *res.ProviderCheck
+		}
+	}
+	for _, g := range spec.Guards {
+		if g.ID != c.Guard {
+			continue
+		}
+		expect = expectation{Policy: g.PolicyID, Rule: g.PolicyID}
+		evaluate = func(ctx context.Context, workRoot string) domain.Check {
+			res := checkGuard(ctx, workRoot, g)
+			runs = append(runs, res)
+			return toCheck(res, g)
+		}
+		if g.PolicyID == "" {
+			expect.Marker = func(domain.Check) bool {
+				return len(runs) > 0 && strings.Contains(runs[len(runs)-1].Output, c.ExpectedOutput)
+			}
+		}
+	}
+	if evaluate == nil {
+		r.Detail = "guard not found"
 		return
 	}
-	counter := 0
-	if err = copyWorkspace(root, canonical, &counter); err != nil {
-		r.Detail = "copy workspace: " + err.Error()
-		return
+	proof := prove(ctx, root, c, expect, evaluate, workspace.Prepare, (*workspace.Workspace).Close)
+	r.Proof = &proof
+	r.Status, r.Detail = string(proof.Status), proof.Detail
+	if len(runs) > 0 {
+		r.Baseline = &runs[0]
 	}
-	baseline := checkGuard(ctx, canonical, guard)
-	r.Baseline = &baseline
-	if baseline.Status != "PASS" {
-		r.Detail = "baseline guard did not pass: " + baseline.Status
-		return
+	if len(runs) > 1 {
+		r.Challenged = &runs[1]
+		r.Output = runs[1].Output
 	}
-	target := filepath.Join(canonical, filepath.FromSlash(c.File))
-	// A baseline can change the copy. Reject redirected or non-regular targets.
-	resolved, err := filepath.EvalSymlinks(target)
-	if err != nil || resolved != target {
-		r.Detail = "mutation target unavailable or redirected"
-		return
-	}
-	info, err := os.Lstat(target)
-	if err != nil || !info.Mode().IsRegular() || info.Size() > 10<<20 {
-		r.Detail = "mutation target is not a bounded regular file"
-		return
-	}
-	data, err := os.ReadFile(target)
-	if err != nil {
-		r.Detail = err.Error()
-		return r
-	}
-	// Exactly one occurrence prevents ambiguous mutation placement.
-	if strings.Count(string(data), c.Before) != 1 {
-		r.Detail = "before marker must occur exactly once"
-		return r
-	}
-	modified := strings.Replace(string(data), c.Before, c.After, 1)
-	if err = os.WriteFile(target, []byte(modified), info.Mode().Perm()); err != nil {
-		r.Detail = err.Error()
-		return r
-	}
-	mutated := checkGuard(ctx, canonical, guard)
-	r.Challenged = &mutated
-	if guard.PolicyID != "" {
-		return classifyStructuredProof(r, guard.PolicyID, filepath.ToSlash(filepath.Clean(c.File)))
-	}
-	switch {
-	case mutated.Status == "FAIL" && strings.Contains(mutated.Output, c.ExpectedOutput):
-		r.Status = "PROVEN"
-		r.Detail = "weak evidence: baseline passed; injected violation triggered expected output marker"
-	case mutated.Status == "REFUSE":
-		r.Detail = "guard could not execute after injection: " + mutated.Detail
-	default:
-		r.Status = "UNPROVEN"
-		r.Detail = "injected violation did not produce the expected failing guard evidence"
-	}
-	r.Output = mutated.Output
-	r.DurationMs = time.Since(started).Milliseconds()
 	return r
-}
-
-// copyWorkspace does not follow symbolic links, deliberately refusing a challenge
-// that might otherwise escape its isolated working directory.
-func copyWorkspace(src, dst string, count *int) error {
-	if *count > 2000 {
-		return errors.New("workspace exceeds 2000 entries")
-	}
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.Name() == ".git" || entry.Name() == ".invaris" {
-			continue
-		}
-		*count++
-		if *count > 2000 {
-			return errors.New("workspace exceeds 2000 entries")
-		}
-		from, to := filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name())
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink not permitted: %s", from)
-		}
-		if entry.IsDir() {
-			if err = os.Mkdir(to, 0700); err != nil {
-				return err
-			}
-			if err = copyWorkspace(from, to, count); err != nil {
-				return err
-			}
-			continue
-		}
-		if !info.Mode().IsRegular() || info.Size() > 10<<20 {
-			return fmt.Errorf("unsupported or oversized file %s", from)
-		}
-		data, err := os.ReadFile(from)
-		if err != nil {
-			return err
-		}
-		if err = os.WriteFile(to, data, info.Mode().Perm()); err != nil {
-			return err
-		}
-	}
-	return nil
 }

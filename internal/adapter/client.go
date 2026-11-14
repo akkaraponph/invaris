@@ -33,6 +33,13 @@ func Call(ctx context.Context, root string, command runner.Command, request Requ
 	if request.Version == "" {
 		request.Version = Version
 	}
+	// Lists are always arrays on the wire, never null.
+	if request.PolicyIDs == nil {
+		request.PolicyIDs = []string{}
+	}
+	if request.Scope == nil {
+		request.Scope = []string{}
+	}
 	if request.RequestID == "" {
 		var b [16]byte
 		if _, err := rand.Read(b[:]); err != nil {

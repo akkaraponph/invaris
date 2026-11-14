@@ -78,17 +78,14 @@ func (s Specification) Validate() error {
 	if strings.TrimSpace(s.Name) == "" {
 		return errors.New("harness name is required")
 	}
-	if len(s.Steps)+len(s.Guards)+len(s.Challenges) > 128 {
+	if len(s.Steps)+len(s.Guards)+len(s.ProviderGuards)+len(s.Challenges) > 128 {
 		return errors.New("harness exceeds 128 tasks")
 	}
 	if s.NetworkPolicy != "" && s.NetworkPolicy != "unrestricted" {
 		return errors.New("unsupported network policy")
 	}
-	if len(s.RequiredAdapters) > 0 {
-		return errors.New("required adapters are unsupported")
-	}
-	if len(s.Adapters) > 0 || len(s.ProviderGuards) > 0 {
-		return errors.New("provider adapters and provider guards are declared but not yet executable; refusing rather than falling back to a local command")
+	if s.Version == versionV1 && (len(s.RequiredAdapters) > 0 || len(s.Adapters) > 0 || len(s.ProviderGuards) > 0) {
+		return errors.New("providers require invaris.dev/v1alpha2")
 	}
 	policies := map[string]bool{}
 	for _, id := range s.Policies {
@@ -126,13 +123,20 @@ func (s Specification) Validate() error {
 		}
 		ids[c.ID] = true
 	}
-	guards := map[string]Command{}
+	if err := s.validateProviders(ids, policies); err != nil {
+		return err
+	}
+	guards := map[string]string{}
 	for _, g := range s.Guards {
-		guards[g.ID] = g
+		guards[g.ID] = g.PolicyID
+	}
+	for _, g := range s.ProviderGuards {
+		guards[g.ID] = g.PolicyID
 	}
 	challenges := map[string]bool{}
 	for _, c := range s.Challenges {
-		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || ids[c.ID] || challenges[c.ID] || guards[c.Guard].ID == "" || c.Before == "" || c.After == "" || c.Before == c.After || (guards[c.Guard].PolicyID == "" && c.ExpectedOutput == "") {
+		policy, knownGuard := guards[c.Guard]
+		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || ids[c.ID] || challenges[c.ID] || !knownGuard || c.Before == "" || c.After == "" || c.Before == c.After || (policy == "" && c.ExpectedOutput == "") {
 			return fmt.Errorf("invalid challenge %q", c.ID)
 		}
 		if s.WritablePaths != nil && !writable[c.File] {

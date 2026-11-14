@@ -14,7 +14,7 @@ import (
 // recorded in configuration order: attempted work with its outcome, and
 // unattempted work as NOT_RUN with the reason it was not started.
 func runLifecycle(ctx context.Context, spec Specification, root, action string, report *Report) {
-	if len(spec.Guards) == 0 && (action == "check" || len(spec.Steps) == 0) {
+	if len(spec.Guards)+len(spec.ProviderGuards) == 0 && (action == "check" || len(spec.Steps) == 0) {
 		report.Status = "REFUSE"
 		report.Results = append(report.Results, Result{ID: "guards", Status: "REFUSE", Detail: "no executable work configured"})
 	}
@@ -24,6 +24,31 @@ func runLifecycle(ctx context.Context, spec Specification, root, action string, 
 	record := func(result Result) {
 		report.Results = append(report.Results, result)
 		report.Status = aggregate(report.Status, result.Status)
+	}
+	var neg negotiation
+	if len(spec.ProviderGuards)+len(spec.RequiredAdapters) > 0 {
+		// Negotiate before dispatching anything, so unmet required capabilities
+		// cannot leave side effects from steps that already ran.
+		neg = negotiate(ctx, spec, root, action)
+		report.Discoveries = neg.state.discoveries
+		if len(neg.refusals) > 0 {
+			for _, r := range neg.refusals {
+				record(r)
+			}
+			const reason = "required provider capability not met; nothing was executed"
+			if action == "run" {
+				for _, step := range spec.Steps {
+					record(notRun(step.ID, reason))
+				}
+			}
+			for _, guard := range spec.Guards {
+				record(notRun(guard.ID, reason))
+			}
+			for _, guard := range spec.ProviderGuards {
+				record(notRun(guard.ID, reason))
+			}
+			return
+		}
 	}
 	if action == "run" {
 		for _, step := range spec.Steps {
@@ -50,6 +75,18 @@ func runLifecycle(ctx context.Context, spec Specification, root, action string, 
 			record(notRun(guard.ID, fmt.Sprintf("alwaysRunGuards is false and step %q did not pass", failedStep)))
 		default:
 			record(checkGuard(ctx, root, guard))
+		}
+	}
+	for _, guard := range spec.ProviderGuards {
+		switch {
+		case ctx.Err() != nil:
+			record(notRun(guard.ID, "context ended before start: "+ctx.Err().Error()))
+		case failedStep != "" && !alwaysGuards:
+			record(notRun(guard.ID, fmt.Sprintf("alwaysRunGuards is false and step %q did not pass", failedStep)))
+		case neg.notRun[guard.ID] != "":
+			record(notRun(guard.ID, neg.notRun[guard.ID]))
+		default:
+			record(runProviderGuard(ctx, root, spec, neg.state, guard))
 		}
 	}
 }

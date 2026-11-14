@@ -48,20 +48,3 @@ func checkGuard(ctx context.Context, root string, guard Command) Result {
 	result.Inspection = &evidence
 	return result
 }
-
-func classifyStructuredProof(result Result, policy, target string) Result {
-	result.Status, result.Detail = "INCONCLUSIVE", "challenged guard did not produce usable evidence"
-	challenged := result.Challenged
-	if challenged.Status == "PASS" {
-		result.Status, result.Detail = "UNPROVEN", "guard passed after mutation"
-	}
-	if challenged.Status == "FAIL" && challenged.Inspection != nil {
-		findings := challenged.Inspection.Findings
-		if len(findings) == 1 && findings[0].PolicyID == policy && findings[0].Path == target {
-			result.Status, result.Detail = "PROVEN", "guard reported the expected policy at the mutated path"
-		} else {
-			result.Detail = "findings do not identify exactly one violation at the mutated path"
-		}
-	}
-	return result
-}

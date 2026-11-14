@@ -73,8 +73,18 @@ The kit needs no fixtures. It sends discover, then hostile requests (unsupported
 
 Without the variable, the kit runs the bundled Python example; it is skipped, with a logged reason, when `python3` is absent. The example implements the check-only policy `no-forbidden-marker` (a file under scope containing `FORBIDDEN_MARKER`), reports `mutate` as `UNSUPPORTED_CAPABILITY`, and refuses empty evidence with `EVIDENCE_UNAVAILABLE`.
 
+## The generic command provider
+
+`cmd/invaris-command-provider` is a separate executable that bridges any command speaking the [`invaris.inspection/v1alpha1`](inspection.md) JSON contract. Install it on `PATH` (`go build -o … ./cmd/invaris-command-provider`) or reference it by absolute path. Options for a check: `{"program": "...", "args": [...], "envAllowlist": [...], "timeoutSeconds": 0}`; unknown options are rejected. The command runs in the project root through the shared runner.
+
+- Discovery advertises **structured-command support only**: no languages, no proof types, no mutation (`mutate` is `UNSUPPORTED_CAPABILITY`). Because it is policy-agnostic it echoes the policy IDs it was asked about; the command's own evidence is verified against the requested policy at check time.
+- A check is PASS or FAIL only if the command prints exactly one valid inspection report for the requested policy with a positive `inspected` count and its native exit status agrees (0 with no findings, or 1 with at least one). The inspected count is the command's own; it is never invented.
+- Otherwise the check is `REFUSE` with a diagnostic, **keeping the native exit status** and a null `inspected`: no JSON (a command that only prints a marker), a nonzero exit with no findings, findings with exit 0, zero targets, a wrong policy or an oversized output. A missing program is `TOOL_UNAVAILABLE` and a timeout `EXECUTION_TIMEOUT`.
+- The scope is not passed to the command (the v1alpha1 inspection contract has no scope input); findings outside the scope are refused by the client.
+- The provider identity is `invaris-command-provider` with its version, and the configured program as `toolName`.
+
 ## Status
 
-The protocol and client are implemented and tested. The engine does not yet launch providers: provider adapters and provider guards in `invaris.dev/v1alpha2` harnesses are still refused until negotiated providers are wired in.
+The protocol, client, example provider and generic command provider are implemented and tested, and the engine uses them: see [Provider negotiation](harness-spec.md#provider-negotiation). The [Dependency-Cruiser provider](provider-support.md) uses one named native rule per guard and supports engine-managed proofs. Discovery includes check options when all participating guards for an adapter share the same options. Providers that need options during discovery can use one adapter declaration per option set. A refusal check can preserve a native process exit outside 0 and 1 and any verified inspected count.
 
 See [Contributing](../CONTRIBUTING.md) for the release checks and security disclosure process.

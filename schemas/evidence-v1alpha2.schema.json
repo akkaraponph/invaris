@@ -65,14 +65,24 @@
     },
     "proof": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "policyId", "guardId", "target", "faultId", "evidenceStrength", "status", "baseline", "challenged"],
+      "required": ["id", "policyId", "guardId", "target", "faultId", "evidenceStrength", "status", "detail", "mutation", "stages", "baseline", "challenged"],
       "properties": {
         "id": {"type": "string", "minLength": 1}, "policyId": {"type": "string"}, "guardId": {"type": "string"}, "target": {"type": "string"}, "faultId": {"type": "string"},
         "evidenceStrength": {"enum": ["weak", "strong"]},
         "status": {"enum": ["PROVEN", "UNPROVEN", "INCONCLUSIVE", "NOT_RUN"]},
+        "detail": {"type": "string"},
+        "mutation": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": false, "required": ["path", "beforeSha256", "afterSha256"],
+          "properties": {"path": {"type": "string", "minLength": 1}, "beforeSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "afterSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}]},
+        "stages": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "status", "durationMs", "detail"],
+          "properties": {"name": {"enum": ["prepare", "baseline", "mutate", "challenged", "cleanup"]}, "status": {"enum": ["OK", "FAILED"]}, "durationMs": {"type": "integer", "minimum": 0}, "detail": {"type": "string"}}}},
         "baseline": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/check"}]},
         "challenged": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/check"}]}
-      }
+      },
+      "if": {"properties": {"status": {"const": "PROVEN"}}},
+      "then": {"properties": {
+        "mutation": {"type": "object"},
+        "stages": {"contains": {"type": "object", "properties": {"name": {"const": "cleanup"}, "status": {"const": "OK"}}}}
+      }}
     },
     "event": {
       "type": "object", "additionalProperties": false, "required": ["id", "kind", "status", "startedAt", "finishedAt"],
@@ -82,7 +92,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics"],
       "properties": {
-        "id": {"type": "string"}, "kind": {"enum": ["step", "guard", "baseline", "challenged"]}, "program": {"type": "string"},
+        "id": {"type": "string"}, "kind": {"enum": ["step", "guard", "baseline", "challenged", "discover"]}, "program": {"type": "string"},
         "args": {"type": "array", "items": {"type": "string"}},
         "provider": {"type": "object", "additionalProperties": false, "required": ["name", "version", "toolName", "toolVersion"], "properties": {"name": {"type": "string"}, "version": {"$ref": "#/$defs/nullableString"}, "toolName": {"$ref": "#/$defs/nullableString"}, "toolVersion": {"$ref": "#/$defs/nullableString"}}},
         "scope": {"type": "array", "items": {"type": "string"}},

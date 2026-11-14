@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/evidence"
 	"github.com/akkaraponph/invaris/internal/runner"
@@ -57,6 +58,13 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 	r.Policies = policies(spec)
 
 	steps, guards, challenges := map[string]Command{}, map[string]Command{}, map[string]Challenge{}
+	providerGuards := map[string]ProviderGuard{}
+	for _, g := range spec.ProviderGuards {
+		providerGuards[g.ID] = g
+	}
+	for _, d := range legacy.Discoveries {
+		r.Observations = append(r.Observations, discoveryObservation(d))
+	}
 	for _, c := range spec.Steps {
 		steps[c.ID] = c
 	}
@@ -91,9 +99,15 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 		case hasChallenge(challenges, res.ID):
 			kind = "challenge"
 		}
+		if pg, ok := providerGuards[res.ID]; ok {
+			kind = "provider-guard"
+			cmd = Command{ID: pg.ID, PolicyID: pg.PolicyID}
+		}
 		event := evidence.Event{ID: res.ID, Kind: kind, Status: res.Status}
 		if kind == "" {
 			event.Kind = "engine"
+		} else if kind == "provider-guard" {
+			event.Kind = "guard" // provider guards are guards in the lifecycle
 		}
 		if !res.StartedAt.IsZero() {
 			s, f := res.StartedAt, res.FinishedAt
@@ -106,6 +120,12 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 			count(c)
 			r.Steps = append(r.Steps, c)
 			r.Observations = append(r.Observations, observation(res, "step", cmd, limit))
+		case "provider-guard":
+			pg := providerGuards[res.ID]
+			c := providerCheck(res, pg)
+			count(c)
+			r.Checks = append(r.Checks, c)
+			r.Observations = append(r.Observations, providerObservation(res, pg, spec, limit))
 		case "guard":
 			c := toCheck(res, cmd)
 			count(c)
@@ -114,6 +134,10 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 		case "challenge":
 			ch := challenges[res.ID]
 			g := guards[ch.Guard]
+			pg, external := providerGuards[ch.Guard]
+			if external {
+				g.PolicyID = pg.PolicyID
+			}
 			p := toProof(res, ch, g)
 			if p.Status == domain.Proven || p.Status == domain.Unproven {
 				units++
@@ -122,12 +146,20 @@ func buildEvidence(ctx context.Context, spec Specification, root, action string,
 			if p.Status != domain.Proven && res.Detail != "" {
 				r.Diagnostics = append(r.Diagnostics, domain.Diagnostic{Code: "PROOF_" + res.Status, Message: res.ID + ": " + res.Detail})
 			}
-			if res.Baseline != nil {
-				r.Observations = append(r.Observations, observation(*res.Baseline, "baseline", g, limit))
+			appendObservation := func(result *Result, kind string) {
+				if result == nil {
+					return
+				}
+				if external {
+					o := providerObservation(*result, pg, spec, limit)
+					o.ID, o.Kind = res.ID+":"+kind, kind
+					r.Observations = append(r.Observations, o)
+				} else {
+					r.Observations = append(r.Observations, observation(*result, kind, g, limit))
+				}
 			}
-			if res.Challenged != nil {
-				r.Observations = append(r.Observations, observation(*res.Challenged, "challenged", g, limit))
-			}
+			appendObservation(res.Baseline, "baseline")
+			appendObservation(res.Challenged, "challenged")
 		default:
 			// Results the harness did not declare (configuration, missing work,
 			// unknown action) are refusals; they must be visible to the gate.
@@ -180,6 +212,9 @@ func effectiveGate(spec Specification, action string) domain.Gate {
 		for _, c := range spec.Guards {
 			g.RequiredGuards = append(g.RequiredGuards, c.ID)
 		}
+		for _, c := range spec.ProviderGuards {
+			g.RequiredGuards = append(g.RequiredGuards, c.ID)
+		}
 	}
 	return g
 }
@@ -198,6 +233,12 @@ func policies(spec Specification) []domain.Policy {
 	}
 	for _, g := range spec.Guards {
 		if g.PolicyID != "" && !seen[g.PolicyID] {
+			seen[g.PolicyID] = true
+			out = append(out, domain.Policy{ID: g.PolicyID})
+		}
+	}
+	for _, g := range spec.ProviderGuards {
+		if !seen[g.PolicyID] {
 			seen[g.PolicyID] = true
 			out = append(out, domain.Policy{ID: g.PolicyID})
 		}
@@ -244,30 +285,27 @@ func toCheck(res Result, cmd Command) domain.Check {
 func toProof(res Result, ch Challenge, guard Command) domain.Proof {
 	sum := sha256.Sum256([]byte(strings.Join([]string{ch.ID, ch.File, ch.Before, ch.After}, "\x00")))
 	p := domain.Proof{ID: res.ID, PolicyID: guard.PolicyID, GuardID: ch.Guard, Target: ch.File,
-		FaultID: "fault-" + hex.EncodeToString(sum[:8]), EvidenceStrength: domain.StrengthWeak}
+		FaultID: "fault-" + hex.EncodeToString(sum[:8]), EvidenceStrength: domain.StrengthWeak, Stages: []domain.Stage{}}
 	if guard.PolicyID != "" {
 		p.EvidenceStrength = domain.StrengthStrong
 	}
+	if res.Proof != nil {
+		// The staged record is authoritative: it carries the mutation digests,
+		// the digest-derived fault ID and the cleanup outcome.
+		p = *res.Proof
+		p.ID = res.ID
+		if p.Stages == nil {
+			p.Stages = []domain.Stage{}
+		}
+		return p
+	}
 	switch res.Status {
-	case "PROVEN":
-		p.Status = domain.Proven
-	case "UNPROVEN":
-		p.Status = domain.Unproven
 	case "NOT_RUN":
 		p.Status = domain.ProofNotRun
 	default:
 		p.Status = domain.Inconclusive
 	}
-	if res.Baseline != nil {
-		c := toCheck(*res.Baseline, guard)
-		c.ID = res.ID + ":baseline"
-		p.Baseline = &c
-	}
-	if res.Challenged != nil {
-		c := toCheck(*res.Challenged, guard)
-		c.ID = res.ID + ":challenged"
-		p.Challenged = &c
-	}
+	p.Detail = res.Detail
 	return p
 }
 
@@ -328,4 +366,54 @@ func gitRevision(ctx context.Context, root string) *string {
 		return nil
 	}
 	return &rev
+}
+
+// providerCheck converts a provider guard result. A guard that never ran has no
+// provider check; it is reported as NOT_RUN against its adapter.
+func providerCheck(res Result, g ProviderGuard) domain.Check {
+	if res.ProviderCheck != nil {
+		c := *res.ProviderCheck
+		c.ID = res.ID
+		return c
+	}
+	return domain.Check{ID: res.ID, PolicyID: g.PolicyID, ProviderID: g.AdapterID, Status: checkStatus(res.Status), Diagnostics: diagnostics(res)}
+}
+
+func providerObservation(res Result, g ProviderGuard, spec Specification, limit int) evidence.Observation {
+	decl, _ := adapterByID(spec, g.AdapterID)
+	o := observation(res, "guard", Command{Program: decl.Program, Args: decl.Args}, limit)
+	o.Scope = append([]string{}, g.Scope...)
+	o.Provider = evidence.Provider{Name: g.AdapterID}
+	if id := res.Provider; id != nil {
+		o.Provider = identityProvider(*id)
+	}
+	if c := res.ProviderCheck; c != nil {
+		o.Diagnostics = append(o.Diagnostics[:0:0], c.Diagnostics...)
+		if o.Diagnostics == nil {
+			o.Diagnostics = []domain.Diagnostic{}
+		}
+	}
+	return o
+}
+
+func identityProvider(id adapter.Identity) evidence.Provider {
+	return evidence.Provider{Name: id.Name, Version: &id.Version, ToolName: id.ToolName, ToolVersion: id.ToolVersion}
+}
+
+// discoveryObservation records the single discovery made for a provider, with
+// its identity and availability, or why discovery failed.
+func discoveryObservation(d Discovery) evidence.Observation {
+	started, finished := d.StartedAt, d.FinishedAt
+	o := evidence.Observation{ID: "discover:" + d.AdapterID, Kind: "discover", Program: d.Program, Args: append([]string{}, d.Args...),
+		Provider: evidence.Provider{Name: d.AdapterID}, Scope: []string{}, StartedAt: &started, FinishedAt: &finished, Diagnostics: []domain.Diagnostic{}}
+	if d.Provider != nil {
+		o.Provider = identityProvider(*d.Provider)
+	}
+	switch {
+	case d.Error != "":
+		o.Diagnostics = append(o.Diagnostics, domain.Diagnostic{Code: "DISCOVERY_FAILED", Message: d.Error})
+	case d.Capabilities != nil && !d.Capabilities.Available:
+		o.Diagnostics = append(o.Diagnostics, domain.Diagnostic{Code: "PROVIDER_UNAVAILABLE", Message: "provider reports itself unavailable" + prerequisites(d.Capabilities)})
+	}
+	return o
 }

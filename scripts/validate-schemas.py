@@ -164,6 +164,27 @@ def main():
             for action in ("check", "challenge"):
                 emit(f"{name} {action}", d, action, "invaris.json", 0, "ACCEPT")
 
+        # The provider example, with the freshly built provider injected by absolute path.
+        provider_bin = tmp / "invaris-command-provider"
+        build = subprocess.run(["go", "build", "-o", str(provider_bin), "./cmd/invaris-command-provider"], cwd=ROOT, capture_output=True, text=True)
+        if build.returncode != 0:
+            print(build.stderr, file=sys.stderr)
+            return 2
+        project = tmp / "provider-project"
+        shutil.copytree(ex / "provider", project)
+        cfg = json.loads((project / "invaris.json").read_text())
+        check(valid(harness, cfg), "example provider harness violates schema")
+        cfg["adapters"][0]["program"] = str(provider_bin)
+        (project / "invaris.json").write_text(json.dumps(cfg))
+        emit("provider example check", project, "check", "invaris.json", 0, "ACCEPT")
+        kinds = [o["kind"] for o in reports.get("provider example check", {}).get("observations", [])]
+        check(kinds.count("discover") == 1, f"provider example: expected one discovery observation, saw {kinds}")
+        (project / "source.txt").write_text("FORBIDDEN")
+        emit("provider example violation", project, "check", "invaris.json", 1, "REJECT")
+        cfg["adapters"][0]["program"] = str(tmp / "missing-provider")
+        (project / "invaris.json").write_text(json.dumps(cfg))
+        emit("provider example missing provider", project, "check", "invaris.json", 2, "REFUSE")
+
         v2 = {"version": "invaris.dev/v1alpha2", "name": "negative", "trustMode": "trusted-local", "networkPolicy": "unrestricted"}
         fails = {"id": "fails", "program": "sh", "args": ["-c", "exit 1"]}
         refuses = {"id": "refuses", "program": "invaris-missing-executable-4242"}
@@ -232,6 +253,15 @@ def main():
                 "invalid proof strength": lambda d: d["proofs"][0].update(evidenceStrength="medium"),
                 "invalid check status": lambda d: d["proofs"][0]["baseline"].update(status="PROVEN"),
                 "proof missing baseline key": lambda d: d["proofs"][0].pop("baseline"),
+                "proof missing mutation key": lambda d: d["proofs"][0].pop("mutation"),
+                "proof missing stages key": lambda d: d["proofs"][0].pop("stages"),
+                "PROVEN without mutation": lambda d: d["proofs"][0].update(mutation=None),
+                "mutation bad hash": lambda d: d["proofs"][0]["mutation"].update(afterSha256="xyz"),
+                "mutation unknown field": lambda d: d["proofs"][0]["mutation"].update(extra=1),
+                "PROVEN with failed cleanup": lambda d: d["proofs"][0]["stages"][-1].update(status="FAILED"),
+                "PROVEN without cleanup stage": lambda d: d["proofs"][0].update(stages=[s for s in d["proofs"][0]["stages"] if s["name"] != "cleanup"]),
+                "unknown stage name": lambda d: d["proofs"][0]["stages"][0].update(name="setup"),
+                "negative stage duration": lambda d: d["proofs"][0]["stages"][0].update(durationMs=-1),
                 "artifact bad hash": lambda d: d.update(artifacts=[{"path": "a", "sha256": "xyz", "bytes": 1}]),
                 "ACCEPT artifact without bytes": lambda d: d.update(artifacts=[{"path": "a", "sha256": "0" * 64, "bytes": 0}]),
                 "invalid precedence": lambda d: d["gate"].update(precedence=""),

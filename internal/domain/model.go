@@ -82,7 +82,41 @@ type Check struct {
 	ExitCode    *int         `json:"exitCode"`
 }
 
-// Proof records that a guard was challenged with an injected fault.
+// Proof stage names, in execution order. Cleanup always runs once a workspace
+// exists, including after an earlier stage failed.
+const (
+	StagePrepare    = "prepare"
+	StageBaseline   = "baseline"
+	StageMutate     = "mutate"
+	StageChallenged = "challenged"
+	StageCleanup    = "cleanup"
+)
+
+// Proof stage statuses.
+const (
+	StageOK     = "OK"
+	StageFailed = "FAILED"
+)
+
+// Mutation records the engine-managed replacement made for a proof: the one
+// declared file and the SHA-256 of its bytes before and after.
+type Mutation struct {
+	Path         string `json:"path"`
+	BeforeSHA256 string `json:"beforeSha256"`
+	AfterSHA256  string `json:"afterSha256"`
+}
+
+// Stage is one attempted stage of a proof with its outcome and duration.
+// Stages that were never reached because of an earlier failure are absent.
+type Stage struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	DurationMs int64  `json:"durationMs"`
+	Detail     string `json:"detail"`
+}
+
+// Proof records that a guard was challenged with an injected fault. A PROVEN
+// proof has a recorded mutation and a successful cleanup stage.
 type Proof struct {
 	ID               string      `json:"id"`
 	PolicyID         string      `json:"policyId"`
@@ -91,6 +125,9 @@ type Proof struct {
 	FaultID          string      `json:"faultId"`
 	EvidenceStrength string      `json:"evidenceStrength"`
 	Status           ProofStatus `json:"status"`
+	Detail           string      `json:"detail"`
+	Mutation         *Mutation   `json:"mutation"`
+	Stages           []Stage     `json:"stages"`
 	Baseline         *Check      `json:"baseline"`
 	Challenged       *Check      `json:"challenged"`
 }

@@ -41,7 +41,7 @@ type Provider struct {
 // bounded, redacted and kept separate per stream.
 type Observation struct {
 	ID          string              `json:"id"`
-	Kind        string              `json:"kind"` // step, guard, baseline, challenged
+	Kind        string              `json:"kind"` // step, guard, baseline, challenged, discover
 	Program     string              `json:"program"`
 	Args        []string            `json:"args"`
 	Provider    Provider            `json:"provider"`
@@ -151,6 +151,7 @@ func Validate(r Report) error {
 				validateCheck(*c, bad)
 			}
 		}
+		validateProofRecord(p, bad)
 	}
 	for _, a := range r.Artifacts {
 		if a.Path == "" || !hashPattern.MatchString(a.SHA256) || a.Bytes < 0 {
@@ -177,6 +178,34 @@ func validateCheck(c domain.Check, bad func(string, ...any)) {
 	}
 	if c.Status == domain.Fail && len(c.Findings) == 0 && c.ExitCode == nil {
 		bad("check %q failed without findings or exit code", c.ID)
+	}
+}
+
+// validateProofRecord enforces what a PROVEN proof must carry whatever the
+// decision is: the recorded mutation of the declared target, a fault ID
+// consistent with it, and a successful cleanup stage, so that a proof whose
+// disposable copy could not be removed is never certified.
+func validateProofRecord(p domain.Proof, bad func(string, ...any)) {
+	for _, st := range p.Stages {
+		if st.Status != domain.StageOK && st.Status != domain.StageFailed {
+			bad("proof %q stage %q has invalid status %q", p.ID, st.Name, st.Status)
+		}
+	}
+	if p.Status != domain.Proven {
+		return
+	}
+	m := p.Mutation
+	if m == nil || m.Path != p.Target || !hashPattern.MatchString(m.BeforeSHA256) || !hashPattern.MatchString(m.AfterSHA256) || m.BeforeSHA256 == m.AfterSHA256 {
+		bad("proven %q requires a recorded mutation of its target with distinct before and after hashes", p.ID)
+	}
+	cleaned := false
+	for _, st := range p.Stages {
+		if st.Name == domain.StageCleanup {
+			cleaned = st.Status == domain.StageOK
+		}
+	}
+	if !cleaned {
+		bad("proven %q requires a successful cleanup stage", p.ID)
 	}
 }
 
@@ -282,6 +311,9 @@ func normalize(r Report) Report {
 		if p.Challenged != nil {
 			c := normalizeCheck(*p.Challenged)
 			p.Challenged = &c
+		}
+		if p.Stages == nil {
+			p.Stages = []domain.Stage{}
 		}
 		proofs[i] = p
 	}

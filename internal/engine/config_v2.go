@@ -159,6 +159,9 @@ func (s Specification) validateV2() error {
 		for _, c := range s.Guards {
 			guards[c.ID] = true
 		}
+		for _, c := range s.ProviderGuards {
+			guards[c.ID] = true
+		}
 		for _, c := range s.Challenges {
 			proofs[c.ID] = true
 		}
@@ -171,6 +174,61 @@ func (s Specification) validateV2() error {
 			if !proofs[id] {
 				return fmt.Errorf("gate requires unknown challenge %q", id)
 			}
+		}
+	}
+	return nil
+}
+
+// validateProviders checks adapter declarations and provider guards. Adapter
+// IDs have their own namespace; provider guard IDs share the executable
+// namespace (ids) with steps and command guards.
+func (s Specification) validateProviders(ids, policies map[string]bool) error {
+	adapters := map[string]bool{}
+	for _, a := range s.Adapters {
+		if a.ID == "" || strings.TrimSpace(a.ID) != a.ID || adapters[a.ID] || strings.TrimSpace(a.Program) == "" || strings.ContainsRune(a.Program, 0) || a.TimeoutSeconds < 0 || a.TimeoutSeconds > 300 {
+			return fmt.Errorf("invalid or duplicate adapter %q", a.ID)
+		}
+		for _, arg := range a.Args {
+			if strings.ContainsRune(arg, 0) {
+				return fmt.Errorf("invalid argument for adapter %q", a.ID)
+			}
+		}
+		keys := map[string]bool{}
+		for _, key := range a.EnvAllowlist {
+			if key == "" || strings.ContainsAny(key, "=\x00") || key == "PWD" || keys[key] {
+				return fmt.Errorf("invalid environment key for adapter %q", a.ID)
+			}
+			keys[key] = true
+		}
+		adapters[a.ID] = true
+	}
+	required := map[string]bool{}
+	for _, id := range s.RequiredAdapters {
+		if !adapters[id] || required[id] {
+			return fmt.Errorf("required adapter %q is not declared or is repeated", id)
+		}
+		required[id] = true
+	}
+	for _, g := range s.ProviderGuards {
+		if g.ID == "" || strings.TrimSpace(g.ID) != g.ID || ids[g.ID] {
+			return fmt.Errorf("invalid or duplicate guard %q", g.ID)
+		}
+		ids[g.ID] = true
+		if !adapters[g.AdapterID] {
+			return fmt.Errorf("guard %q names undeclared adapter %q", g.ID, g.AdapterID)
+		}
+		if g.PolicyID == "" || strings.TrimSpace(g.PolicyID) != g.PolicyID || (s.Policies != nil && !policies[g.PolicyID]) {
+			return fmt.Errorf("invalid policy ID for guard %q", g.ID)
+		}
+		if len(g.Scope) == 0 {
+			return fmt.Errorf("guard %q requires a scope", g.ID)
+		}
+		seen := map[string]bool{}
+		for _, entry := range g.Scope {
+			if (entry != "." && validatePath(entry) != nil) || seen[entry] {
+				return fmt.Errorf("guard %q has an invalid or duplicate scope entry %q", g.ID, entry)
+			}
+			seen[entry] = true
 		}
 	}
 	return nil
