@@ -1,13 +1,9 @@
 package engine
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,112 +62,6 @@ type Report struct {
 	StartedAt     time.Time `json:"startedAt"`
 	FinishedAt    time.Time `json:"finishedAt"`
 	Results       []Result  `json:"results"`
-}
-
-func Load(path string) (Specification, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return Specification{}, err
-	}
-	defer f.Close()
-	const maxConfigBytes = 1 << 20
-	raw, err := io.ReadAll(io.LimitReader(f, maxConfigBytes+1))
-	if err != nil {
-		return Specification{}, err
-	}
-	if len(raw) > maxConfigBytes {
-		return Specification{}, errors.New("harness exceeds 1 MiB")
-	}
-	if err := checkConfigJSON(raw); err != nil {
-		return Specification{}, fmt.Errorf("parse harness: %w", err)
-	}
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	var s Specification
-	if err = d.Decode(&s); err != nil {
-		return s, fmt.Errorf("parse harness: %w", err)
-	}
-	var extra any
-	if err = d.Decode(&extra); err != io.EOF {
-		return s, errors.New("harness must contain exactly one JSON object")
-	}
-	if err := s.Validate(); err != nil {
-		return s, err
-	}
-	s.ConfigDigest = fmt.Sprintf("sha256:%x", sha256.Sum256(raw))
-	return s, nil
-}
-
-func (s Specification) Validate() error {
-	if s.Version != "invaris.dev/v1alpha1" {
-		return fmt.Errorf("unsupported harness version %q", s.Version)
-	}
-	if strings.TrimSpace(s.Name) == "" {
-		return errors.New("harness name is required")
-	}
-	if len(s.Steps)+len(s.Guards)+len(s.Challenges) > 128 {
-		return errors.New("harness exceeds 128 tasks")
-	}
-	if s.NetworkPolicy != "" && s.NetworkPolicy != "unrestricted" {
-		return errors.New("unsupported network policy")
-	}
-	if len(s.RequiredAdapters) > 0 {
-		return errors.New("required adapters are unsupported")
-	}
-	policies := map[string]bool{}
-	for _, id := range s.Policies {
-		if id == "" || strings.TrimSpace(id) != id || policies[id] {
-			return errors.New("invalid or duplicate policy")
-		}
-		policies[id] = true
-	}
-	writable := map[string]bool{}
-	for _, path := range s.WritablePaths {
-		if err := validatePath(path); err != nil || writable[path] {
-			return fmt.Errorf("invalid writable path %q", path)
-		}
-		writable[path] = true
-	}
-	ids := map[string]bool{}
-	for _, c := range append(append([]Command{}, s.Steps...), s.Guards...) {
-		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || strings.TrimSpace(c.Program) == "" || strings.ContainsRune(c.Program, 0) || ids[c.ID] || c.TimeoutSeconds < 0 || c.TimeoutSeconds > 300 {
-			return fmt.Errorf("invalid or duplicate command %q", c.ID)
-		}
-		if c.PolicyID != "" && (strings.TrimSpace(c.PolicyID) != c.PolicyID || (s.Policies != nil && !policies[c.PolicyID])) {
-			return fmt.Errorf("invalid policy ID for command %q", c.ID)
-		}
-		for _, arg := range c.Args {
-			if strings.ContainsRune(arg, 0) {
-				return fmt.Errorf("invalid argument for command %q", c.ID)
-			}
-		}
-		envKeys := map[string]bool{}
-		for _, key := range c.EnvAllowlist {
-			if key == "" || strings.ContainsAny(key, "=\x00") || key == "PWD" || envKeys[key] {
-				return fmt.Errorf("invalid environment key for command %q", c.ID)
-			}
-			envKeys[key] = true
-		}
-		ids[c.ID] = true
-	}
-	guards := map[string]Command{}
-	for _, g := range s.Guards {
-		guards[g.ID] = g
-	}
-	challenges := map[string]bool{}
-	for _, c := range s.Challenges {
-		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || ids[c.ID] || challenges[c.ID] || guards[c.Guard].ID == "" || c.Before == "" || c.After == "" || c.Before == c.After || (guards[c.Guard].PolicyID == "" && c.ExpectedOutput == "") {
-			return fmt.Errorf("invalid challenge %q", c.ID)
-		}
-		if s.WritablePaths != nil && !writable[c.File] {
-			return fmt.Errorf("challenge %s: target is not writable", c.ID)
-		}
-		if err := validatePath(c.File); err != nil {
-			return fmt.Errorf("challenge %s: %w", c.ID, err)
-		}
-		challenges[c.ID] = true
-	}
-	return nil
 }
 
 func Run(ctx context.Context, spec Specification, root, action string) Report {
@@ -420,18 +310,6 @@ func challenge(ctx context.Context, root string, guards []Command, c Challenge) 
 	r.Output = mutated.Output
 	r.DurationMs = time.Since(started).Milliseconds()
 	return r
-}
-
-func validatePath(name string) error {
-	if name == "" || strings.ContainsAny(name, "\\\x00:") || strings.HasPrefix(name, "/") {
-		return fmt.Errorf("unsafe relative path %q", name)
-	}
-	for _, part := range strings.Split(name, "/") {
-		if part == "" || part == "." || part == ".." {
-			return fmt.Errorf("unsafe relative path %q", name)
-		}
-	}
-	return nil
 }
 
 // copyWorkspace does not follow symbolic links, deliberately refusing a challenge
