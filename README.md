@@ -47,6 +47,10 @@ go run ./cmd/invaris run examples/invaris.json
 
 These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1alpha2 harnesses. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
 
+## Go project example
+
+[`examples/go-project`](examples/go-project/README.md) shows ordinary Go tests detecting (or missing) a behavioral mutation and a structured guard catching a forbidden import, with the evidence fields that answer what changed and what was proved.
+
 ## Single-mutant example
 
 Build the CLI and run the three offline POSIX fixtures:
