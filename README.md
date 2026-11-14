@@ -27,6 +27,37 @@ tar -xzf invaris_0.1.0_darwin_arm64.tar.gz
 
 `./invaris` prints usage and exits with status 2 when invoked without an action. Choose the archive matching your system and put both executables on your `PATH` to invoke them by name. The command provider is needed for harnesses that use it. The archive does not include example harnesses, so clone the repository to try the commands below.
 
+### Use `invaris` from Bash
+
+From the extracted `invaris-cli` directory, add both executables to your current Bash session:
+
+```bash
+export PATH="$PWD:$PATH"
+invaris
+```
+
+To make that directory available in future interactive Bash sessions, while still in the extracted directory, run:
+
+```bash
+printf 'export PATH=%q:"$PATH"\n' "$PWD" >> ~/.bashrc
+source ~/.bashrc
+```
+
+On macOS, a login Bash reads `~/.bash_profile`. If it does not already load `~/.bashrc`, add `source ~/.bashrc` to `~/.bash_profile`. Keep the extracted directory in place because its location is now on your `PATH`.
+
+To try the installed CLI with the bundled fixtures, clone the repository and run these commands from its root. A POSIX shell and Git are required for these examples.
+
+```bash
+cd ..
+git clone https://github.com/akkaraponph/invaris.git
+cd invaris
+invaris check examples/structured/invaris.json
+invaris challenge examples/structured/invaris.json
+invaris mutate examples/mutation/killed.json
+```
+
+These commands produce JSON reports. The structured challenge returns `PROVEN`, and the mutation example returns `KILLED`.
+
 For your own project, put a trusted `invaris.json` in the project directory and run `invaris check`, `invaris run`, or `invaris challenge`. Pass a harness path as the last argument to select another file. Run `invaris --report report.json check invaris.json` to save the JSON report to a new file. See the [harness specification](docs/harness-spec.md) for configuration and the [mutation contract](docs/harness-spec.md#single-mutant-harness) for `mutate`.
 
 ## Quick start
