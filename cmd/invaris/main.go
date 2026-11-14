@@ -36,11 +36,11 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if len(args) < 1 || len(args) > 2 {
-		fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|check|challenge> [harness.json]")
+		fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|check|challenge|mutate> [harness.json]")
 		return 2
 	}
 	action := args[0]
-	if action != "run" && action != "check" && action != "challenge" {
+	if action != "run" && action != "check" && action != "challenge" && action != "mutate" {
 		fmt.Fprintln(stderr, "unsupported action:", action)
 		return 2
 	}
@@ -56,6 +56,10 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	spec, err := engine.Load(absolute)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	if !spec.SupportsAction(action) {
+		fmt.Fprintln(stderr, "unsupported action for harness version:", action, spec.Version)
 		return 2
 	}
 	if reportPath != "" {

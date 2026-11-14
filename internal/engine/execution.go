@@ -102,7 +102,7 @@ func notRun(id, reason string) Result {
 func execute(ctx context.Context, root string, c Command) Result {
 	out := runner.Run(ctx, root, runner.Command{Program: c.Program, Args: c.Args, EnvAllowlist: c.EnvAllowlist, Timeout: time.Duration(c.TimeoutSeconds) * time.Second})
 	r := Result{ID: c.ID, Status: "REFUSE", ExitCode: out.ExitCode, DurationMs: out.FinishedAt.Sub(out.StartedAt).Milliseconds(),
-		StartedAt: out.StartedAt, FinishedAt: out.FinishedAt, Stdout: out.Stdout, Stderr: out.Stderr, Truncated: out.Truncated}
+		StartedAt: out.StartedAt, FinishedAt: out.FinishedAt, Stdout: out.Stdout, Stderr: out.Stderr, Truncated: out.Truncated, commandErr: out.Err}
 	// Structured guards parse stdout only. Legacy output keeps both streams,
 	// stdout first; each stream is bounded separately.
 	r.Output = out.Stdout

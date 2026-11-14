@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/evidence-v1alpha3.schema.json",
+  "title": "Invaris mutation evidence v1alpha3",
+  "description": "Structure of a mutation report. Go validation additionally correlates verdict, test IDs, stages, digests, and observation exit codes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "action",
+    "target",
+    "harness",
+    "configDigest",
+    "gitRevision",
+    "environment",
+    "startedAt",
+    "finishedAt",
+    "durationMs",
+    "compatibility",
+    "policies",
+    "gate",
+    "lifecycle",
+    "steps",
+    "checks",
+    "proofs",
+    "observations",
+    "targetCount",
+    "decision",
+    "diagnostics",
+    "artifacts",
+    "experiment"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "invaris.evidence/v1alpha3"},
+    "runId": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "action": {"const": "mutate"},
+    "target": {"type": "string"},
+    "harness": {"type": "string"},
+    "configDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "gitRevision": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}]},
+    "environment": {"type": "object", "additionalProperties": false, "required": ["os", "arch"], "properties": {"os": {"type": "string"}, "arch": {"type": "string"}}},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "durationMs": {"type": "integer", "minimum": 0},
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "inputVersion", "warnings"],
+      "properties": {"status": {"const": "native"}, "inputVersion": {"const": "invaris.dev/v1alpha3"}, "warnings": {"type": "array", "items": {"type": "string"}}}
+    },
+    "policies": {"type": "array", "maxItems": 0},
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredGuards", "requiredProofs", "precedence", "allowWeakEvidence"],
+      "properties": {
+        "requiredGuards": {"type": "array", "maxItems": 0},
+        "requiredProofs": {"type": "array", "maxItems": 0},
+        "precedence": {"enum": ["failure-first", "refusal-first"]},
+        "allowWeakEvidence": {"const": false}
+      }
+    },
+    "lifecycle": {"type": "array", "maxItems": 0},
+    "steps": {"type": "array", "maxItems": 0},
+    "checks": {"type": "array", "maxItems": 0},
+    "proofs": {"type": "array", "maxItems": 0},
+    "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}, "maxItems": 3},
+    "targetCount": {"type": "null"},
+    "decision": {"enum": ["ACCEPT", "REJECT", "REFUSE"]},
+    "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}},
+    "experiment": {"$ref": "#/$defs/experiment"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"experiment": {"properties": {"verdict": {"const": "KILLED"}}}}},
+      "then": {
+        "properties": {
+          "decision": {"const": "ACCEPT"},
+          "configDigest": {"$ref": "#/$defs/digest"},
+          "observations": {"minItems": 3, "maxItems": 3},
+          "experiment": {
+            "properties": {
+              "reason": {"const": "assertion_failed"},
+              "mutation": {"type": "object"},
+              "baseline": {"type": "object", "properties": {"tests": {"type": "array", "items": {"properties": {"status": {"const": "PASS"}}}}}},
+              "validation": {"type": "object", "properties": {"validity": {"const": "VALID"}}},
+              "tests": {"type": "object"},
+              "stages": {
+                "minItems": 6,
+                "maxItems": 6,
+                "prefixItems": [
+                  {"properties": {"name": {"const": "prepare"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "baseline"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "mutate"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "validation"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "tests"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "cleanup"}, "status": {"const": "OK"}}}
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"experiment": {"properties": {"verdict": {"const": "SURVIVED"}}}}},
+      "then": {
+        "properties": {
+          "decision": {"const": "REJECT"},
+          "configDigest": {"$ref": "#/$defs/digest"},
+          "observations": {"minItems": 3, "maxItems": 3},
+          "experiment": {
+            "properties": {
+              "reason": {"const": "all_tests_passed"},
+              "mutation": {"type": "object"},
+              "baseline": {"type": "object", "properties": {"tests": {"type": "array", "items": {"properties": {"status": {"const": "PASS"}}}}}},
+              "validation": {"type": "object", "properties": {"validity": {"const": "VALID"}}},
+              "tests": {"type": "object"},
+              "stages": {
+                "minItems": 6,
+                "maxItems": 6,
+                "prefixItems": [
+                  {"properties": {"name": {"const": "prepare"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "baseline"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "mutate"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "validation"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "tests"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "cleanup"}, "status": {"const": "OK"}}}
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"experiment": {"properties": {"verdict": {"const": "INVALID"}}}}},
+      "then": {
+        "properties": {
+          "decision": {"const": "REFUSE"},
+          "configDigest": {"$ref": "#/$defs/digest"},
+          "observations": {"minItems": 2, "maxItems": 2},
+          "experiment": {
+            "properties": {
+              "reason": {"const": "mutant_invalid"},
+              "mutation": {"type": "object"},
+              "baseline": {"type": "object", "properties": {"tests": {"type": "array", "items": {"properties": {"status": {"const": "PASS"}}}}}},
+              "validation": {"type": "object", "properties": {"validity": {"const": "INVALID"}}},
+              "tests": {"type": "null"},
+              "stages": {
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                  {"properties": {"name": {"const": "prepare"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "baseline"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "mutate"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "validation"}, "status": {"const": "OK"}}},
+                  {"properties": {"name": {"const": "cleanup"}, "status": {"const": "OK"}}}
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {"if": {"properties": {"experiment": {"properties": {"verdict": {"const": "INCONCLUSIVE"}}}}}, "then": {"properties": {"decision": {"const": "REFUSE"}}}}
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "nullableInt": {"oneOf": [{"type": "null"}, {"type": "integer"}]},
+    "nullableString": {"oneOf": [{"type": "null"}, {"type": "string"}]},
+    "nullableTime": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {"code": {"type": "string", "minLength": 1}, "message": {"type": "string"}}
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics"],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {"enum": ["baseline", "validation", "tests"]},
+        "program": {"type": "string"},
+        "args": {"type": "array", "items": {"type": "string"}},
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version", "toolName", "toolVersion"],
+          "properties": {
+            "name": {"type": "string"},
+            "version": {"$ref": "#/$defs/nullableString"},
+            "toolName": {"$ref": "#/$defs/nullableString"},
+            "toolVersion": {"$ref": "#/$defs/nullableString"}
+          }
+        },
+        "scope": {"type": "array", "items": {"type": "string"}},
+        "startedAt": {"$ref": "#/$defs/nullableTime"},
+        "finishedAt": {"$ref": "#/$defs/nullableTime"},
+        "exitCode": {"$ref": "#/$defs/nullableInt"},
+        "stdout": {"type": "string"},
+        "stderr": {"type": "string"},
+        "truncated": {"type": "boolean"},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "bytes": {"type": "integer", "minimum": 0}}
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "beforeSha256", "afterSha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "beforeSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "afterSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "caseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status"],
+      "properties": {"id": {"type": "string", "minLength": 1}, "status": {"enum": ["PASS", "ASSERTION_FAILED"]}}
+    },
+    "commandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observationId", "tests", "validity"],
+      "properties": {
+        "observationId": {"type": "string", "minLength": 1},
+        "tests": {"oneOf": [{"type": "null"}, {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/caseResult"}}]},
+        "validity": {"enum": ["", "VALID", "INVALID"]}
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "durationMs", "detail"],
+      "properties": {
+        "name": {"enum": ["prepare", "baseline", "mutate", "validation", "tests", "cleanup"]},
+        "status": {"enum": ["OK", "FAILED"]},
+        "durationMs": {"type": "integer", "minimum": 0},
+        "detail": {"type": "string"}
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "mutationId",
+        "engineVersion",
+        "operator",
+        "target",
+        "testCommandId",
+        "validationCommandId",
+        "testIds",
+        "verdict",
+        "reason",
+        "mutation",
+        "stages",
+        "baseline",
+        "validation",
+        "tests"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "mutationId": {"type": "string", "minLength": 1},
+        "engineVersion": {"$ref": "#/$defs/nullableString"},
+        "operator": {"const": "replace"},
+        "target": {"type": "string", "minLength": 1},
+        "testCommandId": {"type": "string", "minLength": 1},
+        "validationCommandId": {"type": "string", "minLength": 1},
+        "testIds": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "verdict": {"enum": ["KILLED", "SURVIVED", "INVALID", "INCONCLUSIVE"]},
+        "reason": {
+          "enum": [
+            "assertion_failed",
+            "all_tests_passed",
+            "mutant_invalid",
+            "workspace_prepare_failed",
+            "unhealthy_baseline",
+            "mutation_rejected",
+            "workspace_changed",
+            "malformed_evidence",
+            "missing_executable",
+            "timeout",
+            "canceled",
+            "output_limit",
+            "execution_failed",
+            "cleanup_failed"
+          ]
+        },
+        "mutation": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/mutation"}]},
+        "stages": {"type": "array", "maxItems": 6, "items": {"$ref": "#/$defs/stage"}},
+        "baseline": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commandResult"}]},
+        "validation": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commandResult"}]},
+        "tests": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commandResult"}]}
+      }
+    }
+  }
+}

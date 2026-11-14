@@ -38,6 +38,27 @@ for action in run check; do
     accept "$action" "$root/examples/provider/invaris.json"
 done
 
+for action in check challenge; do
+    accept "$action" "$root/examples/forbidden-dependency/invaris.json"
+done
+
+mutation() {
+    cfg="$root/examples/mutation/$1.json"
+    status=0
+    "$tmp/invaris" --report "$tmp/report.json" mutate "$cfg" >"$tmp/stdout.json" || status=$?
+    test "$status" -eq "$2"
+    cmp "$tmp/report.json" "$tmp/stdout.json"
+    grep -q '"schemaVersion": "invaris.evidence/v1alpha3"' "$tmp/stdout.json"
+    grep -q "\"verdict\": \"$3\"" "$tmp/stdout.json"
+    rm "$tmp/report.json"
+    count=$((count + 1))
+    printf 'PASS mutate %s (%s)\n' "$cfg" "$3"
+}
+
+mutation killed 0 KILLED
+mutation survived 1 SURVIVED
+mutation invalid 2 INVALID
+
 if "$real_provider"; then
     export PATH="$root/adapters/dependency-cruiser:$PATH"
     for action in run check challenge; do

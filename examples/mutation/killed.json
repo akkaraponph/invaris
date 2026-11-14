@@ -1,0 +1,36 @@
+{
+  "version": "invaris.dev/v1alpha3",
+  "name": "mutation-fixture",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": [
+    "behavior.sh"
+  ],
+  "experiment": {
+    "id": "mutation-killed",
+    "mutation": {
+      "id": "replace-killed",
+      "operator": "replace",
+      "path": "behavior.sh",
+      "before": "'covered-original'",
+      "after": "'covered-mutant'"
+    },
+    "validation": {
+      "id": "syntax",
+      "program": "sh",
+      "args": [
+        "validate.sh"
+      ]
+    },
+    "test": {
+      "id": "assert-covered",
+      "program": "sh",
+      "args": [
+        "test.sh"
+      ]
+    },
+    "testIds": [
+      "covered"
+    ]
+  }
+}

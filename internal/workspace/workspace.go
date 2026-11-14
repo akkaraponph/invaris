@@ -215,7 +215,9 @@ func Replace(root, path, before, after string) (Mutation, error) {
 	if err != nil {
 		return m, err
 	}
-	if bytes.Count(data, []byte(before)) != 1 {
+	marker := []byte(before)
+	first := bytes.Index(data, marker)
+	if first < 0 || bytes.Contains(data[first+1:], marker) {
 		return m, errors.New("before marker must occur exactly once")
 	}
 	manifestBefore, err := Snapshot(root)
@@ -226,7 +228,7 @@ func Replace(root, path, before, after string) (Mutation, error) {
 	if len(modified) > MaxFileBytes {
 		return m, errors.New("mutated file would exceed the size limit")
 	}
-	if err := os.WriteFile(target, modified, info.Mode().Perm()); err != nil {
+	if err := writeReplacement(target, modified, info.Mode().Perm()); err != nil {
 		return m, err
 	}
 	afterWrite(root)
@@ -242,6 +244,21 @@ func Replace(root, path, before, after string) (Mutation, error) {
 		return Mutation{}, errors.New("recorded hashes disagree with the workspace manifest")
 	}
 	return m, nil
+}
+
+// Rename installs a new inode so a hard link made by a trusted command
+// cannot turn the engine's replacement into a write to the source.
+func writeReplacement(target string, data []byte, mode os.FileMode) error {
+	tmp, err := os.CreateTemp(filepath.Dir(target), ".invaris-replace-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	_, writeErr := tmp.Write(data)
+	if err := errors.Join(writeErr, tmp.Chmod(mode), tmp.Close()); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), target)
 }
 
 // afterWrite is a test seam run between the write and the second snapshot, so

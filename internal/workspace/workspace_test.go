@@ -177,7 +177,7 @@ func TestReplacePreservesMode(t *testing.T) {
 }
 
 func TestReplaceRefusals(t *testing.T) {
-	w := prepared(t, map[string]string{"once": "A B", "twice": "A A", "none": "C", "dir/x": "A"})
+	w := prepared(t, map[string]string{"once": "A B", "twice": "A A", "overlap": "aaa", "none": "C", "dir/x": "A"})
 	write(t, w.Root, "ro", "A", 0o444)
 	external := filepath.Join(t.TempDir(), "sentinel")
 	if err := os.WriteFile(external, []byte("A"), 0o644); err != nil {
@@ -190,6 +190,7 @@ func TestReplaceRefusals(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := map[string]struct{ path, before, after string }{
+		"overlapping marker":     {"overlap", "aa", "bb"},
 		"ambiguous marker":       {"twice", "A", "Z"},
 		"absent marker":          {"none", "A", "Z"},
 		"empty marker":           {"once", "", "Z"},
@@ -332,5 +333,20 @@ func TestReplaceRejectsRewriteOfTargetDuringMutation(t *testing.T) {
 	defer func() { afterWrite = func(string) {} }()
 	if _, err := Replace(w.Root, "t", "SAFE", "BAD"); err == nil || !strings.Contains(err.Error(), "disagree") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestReplaceDoesNotWriteThroughHardLink(t *testing.T) {
+	w := prepared(t, map[string]string{"file": "old"})
+	source := filepath.Join(filepath.Dir(w.Root), filepath.Base(w.Root)+"-hardlink")
+	if err := os.Link(filepath.Join(w.Root, "file"), source); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Remove(source) })
+	if _, err := Replace(w.Root, "file", "old", "new"); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := os.ReadFile(source); err != nil || string(content) != "old" {
+		t.Fatalf("linked file changed: %q %v", content, err)
 	}
 }

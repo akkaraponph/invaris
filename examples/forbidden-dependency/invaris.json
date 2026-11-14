@@ -1,0 +1,62 @@
+{
+  "version": "invaris.dev/v1alpha2",
+  "name": "forbidden-dependency",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "policies": [
+    {
+      "id": "no-forbidden-dependency"
+    }
+  ],
+  "adapters": [
+    {
+      "id": "command-bridge",
+      "program": "invaris-command-provider",
+      "args": [],
+      "envAllowlist": [
+        "PATH"
+      ],
+      "timeoutSeconds": 30
+    }
+  ],
+  "requiredAdapters": [
+    "command-bridge"
+  ],
+  "guards": [
+    {
+      "id": "fixture-guard",
+      "adapterId": "command-bridge",
+      "policyId": "no-forbidden-dependency",
+      "scope": [
+        "dependencies.txt"
+      ],
+      "options": {
+        "program": "sh",
+        "args": [
+          "guard.sh"
+        ]
+      }
+    }
+  ],
+  "gate": {
+    "requiredGuards": [
+      "fixture-guard"
+    ],
+    "precedence": "failure-first",
+    "requiredProofs": [
+      "introduce-dependency"
+    ]
+  },
+  "writablePaths": [
+    "dependencies.txt"
+  ],
+  "challenges": [
+    {
+      "id": "introduce-dependency",
+      "guard": "fixture-guard",
+      "file": "dependencies.txt",
+      "before": "allowed-lib",
+      "after": "forbidden-lib"
+    }
+  ]
+}

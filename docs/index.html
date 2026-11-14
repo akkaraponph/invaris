@@ -22,7 +22,7 @@
     <section class="hero" aria-labelledby="title">
       <div>
         <h1 id="title"><span>Invaris</span>The Guardian of System Invariants</h1>
-        <p>Run a local workflow, verify the conditions that must hold, and test whether a guard catches a deliberate violation.</p>
+        <p>Run a local workflow, verify the conditions that must hold, test whether a guard catches a deliberate violation, and measure whether selected tests detect a code change.</p>
         <a class="button" href="#quick-start">Run the example</a>
       </div>
       <img class="hero-cover" src="assets/docs-cover-1600x700.svg" width="1600" height="700"
@@ -44,6 +44,10 @@
           <dt><code>challenge</code></dt>
           <dd>Establish a passing baseline in a disposable copy, inject a configured file mutation, and check that the selected guard reports the expected evidence.</dd>
         </div>
+        <div>
+          <dt><code>mutate</code></dt>
+          <dd>Run selected tests against a clean baseline and one explicitly validated replacement in a disposable copy.</dd>
+        </div>
       </dl>
     </section>
 
@@ -55,11 +59,13 @@ cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for both input versions. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests and proof stages.</p>
+      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for <code>run</code>, <code>check</code>, and <code>challenge</code>. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests and proof stages.</p>
+      <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
+      <p>The mutation example returns <code>KILLED</code> and writes a v1alpha3 report with the baseline, validity, and selected test outcomes.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
-        <li><code>1</code> Failure or unproven challenge</li>
-        <li><code>2</code> Inconclusive result, refusal, or CLI error</li>
+        <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
+        <li><code>2</code> Invalid mutant, inconclusive result, refusal, or CLI error</li>
       </ul>
     </section>
 
@@ -71,6 +77,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Provider support</a> <span>Install and try the Dependency-Cruiser example</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>

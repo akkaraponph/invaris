@@ -34,9 +34,12 @@ func decodeSpecification(raw []byte) (Specification, error) {
 	}
 	var s Specification
 	var err error
-	if peekVersion(raw) == versionV2 {
+	switch peekVersion(raw) {
+	case versionV3:
+		s, err = decodeMutation(raw)
+	case versionV2:
 		s, err = decodeV2(raw)
-	} else {
+	default:
 		s, err = decodeV1(raw)
 	}
 	if err != nil {
@@ -67,6 +70,12 @@ func decodeV1(raw []byte) (Specification, error) {
 }
 
 func (s Specification) Validate() error {
+	if s.Version == versionV3 {
+		return s.validateMutation()
+	}
+	if s.Experiment != nil {
+		return errors.New("experiments require invaris.dev/v1alpha3")
+	}
 	if s.Version != versionV1 && s.Version != versionV2 {
 		return fmt.Errorf("unsupported harness version %q", s.Version)
 	}
