@@ -53,7 +53,7 @@
 
     <section aria-labelledby="quick-start">
       <h2 id="quick-start">Quick start</h2>
-      <p>Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.1.0">v0.1.0 release</a> and see the <a href="https://github.com/akkaraponph/invaris/blob/main/README.md#install-the-cli">installation instructions</a> and <a href="https://github.com/akkaraponph/invaris/blob/main/README.md#use-invaris-from-bash">Bash setup</a>. To run the examples from source, use Go 1.27.4 or later and a POSIX shell. The bundled example guards against a forbidden marker in a text file.</p>
+      <p>Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.1.0">v0.1.0 release</a> and follow the <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation and terminal guide</a> to choose an install folder, configure Bash or Zsh, and copy example files into a project folder. Windows CMD and PowerShell users can run the Linux CLI through WSL; this release has no native Windows archive. To run the examples from source, use Go 1.27.4 or later and a POSIX shell. The bundled example guards against a forbidden marker in a text file.</p>
       <pre><code>git clone https://github.com/akkaraponph/invaris.git
 cd invaris
 go run ./cmd/invaris check examples/invaris.json
@@ -72,6 +72,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
     <section aria-labelledby="reference">
       <h2 id="reference">Reference</h2>
       <ul class="reference">
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>

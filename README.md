@@ -12,51 +12,25 @@ Version [0.1.0](CHANGELOG.md#010).
 
 ## Install the CLI
 
-Download the archive for your system from the [v0.1.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.1.0). Archives are available for Linux and macOS on `amd64` and `arm64`. Each contains `invaris`, `invaris-command-provider`, the license, and a README.
+Download the archive for your system from the [v0.1.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.1.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
-For example, use a new directory and the [GitHub CLI](https://cli.github.com/) on macOS arm64:
+See the [installation and terminal guide](docs/installation.md) for commands to:
 
-```sh
-mkdir invaris-cli
-cd invaris-cli
-gh release download v0.1.0 --repo akkaraponph/invaris --pattern 'invaris_0.1.0_darwin_arm64.tar.gz' --pattern SHA256SUMS
-shasum -a 256 -c --ignore-missing SHA256SUMS
-tar -xzf invaris_0.1.0_darwin_arm64.tar.gz
-./invaris
-```
-
-`./invaris` prints usage and exits with status 2 when invoked without an action. Choose the archive matching your system and put both executables on your `PATH` to invoke them by name. The command provider is needed for harnesses that use it. The archive does not include example harnesses, so clone the repository to try the commands below.
+- Download and extract the CLI into a folder you choose.
+- Add it to Bash or Zsh so you can run `invaris` by name.
+- Copy a runnable example into a chosen project folder and save a JSON report.
+- Run from Windows CMD or PowerShell through WSL. This release has no native Windows archive.
 
 ### Use `invaris` from Bash
 
-From the extracted `invaris-cli` directory, add both executables to your current Bash session:
+After following the [installation guide](docs/installation.md#install-into-a-specific-folder), add the installation folder to the current session:
 
 ```bash
-export PATH="$PWD:$PATH"
+export PATH="$HOME/.local/share/invaris:$PATH"
 invaris
 ```
 
-To make that directory available in future interactive Bash sessions, while still in the extracted directory, run:
-
-```bash
-printf 'export PATH=%q:"$PATH"\n' "$PWD" >> ~/.bashrc
-source ~/.bashrc
-```
-
-On macOS, a login Bash reads `~/.bash_profile`. If it does not already load `~/.bashrc`, add `source ~/.bashrc` to `~/.bash_profile`. Keep the extracted directory in place because its location is now on your `PATH`.
-
-To try the installed CLI with the bundled fixtures, clone the repository and run these commands from its root. A POSIX shell and Git are required for these examples.
-
-```bash
-cd ..
-git clone https://github.com/akkaraponph/invaris.git
-cd invaris
-invaris check examples/structured/invaris.json
-invaris challenge examples/structured/invaris.json
-invaris mutate examples/mutation/killed.json
-```
-
-These commands produce JSON reports. The structured challenge returns `PROVEN`, and the mutation example returns `KILLED`.
+Replace the path if you installed elsewhere. `invaris` without an action prints usage and exits with status 2. See the guide for [persistent Bash and Zsh setup](docs/installation.md#run-from-bash-or-zsh) and [project examples](docs/installation.md#put-example-files-in-a-specific-project-folder).
 
 For your own project, put a trusted `invaris.json` in the project directory and run `invaris check`, `invaris run`, or `invaris challenge`. Pass a harness path as the last argument to select another file. Run `invaris --report report.json check invaris.json` to save the JSON report to a new file. See the [harness specification](docs/harness-spec.md) for configuration and the [mutation contract](docs/harness-spec.md#single-mutant-harness) for `mutate`.
 
