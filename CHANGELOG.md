@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
+
+Invaris runs trusted local workflows and turns guard challenges and single-mutant experiments into versioned JSON evidence. Build with Go 1.27.4 or later. The offline examples use a POSIX shell.
+
+### Highlights
+
+- Run a single explicit replacement with `invaris mutate`. The v1alpha3 harness declares the writable target, validity command, test command, and selected test IDs. The v1alpha3 report records test and validity evidence, before and after digests, and cleanup.
+- Mutation exits are `KILLED` (0), `SURVIVED` (1), and `INVALID` or `INCONCLUSIVE` (2). A kill requires a passing baseline and a structured assertion failure on the valid mutant.
+- Reject overlapping replacement matches and install replacement bytes without writing through hard links. The scoped forbidden-dependency fixture checks the expected policy, rule, and target.
+- See the [single-mutant harness](docs/harness-spec.md#single-mutant-harness), [mutation evidence](docs/evidence-schema.md#mutation-experiments), and [execution limits](docs/threat-model.md).
+
+### Execution, adapters, and compatibility
 
 - Validate harnesses before direct execution as well as on load; reject ambiguous JSON and unsafe paths.
 - Preserve v1alpha1 harness compatibility, including the shipped command and structured examples. Invalid direct calls that previously reached execution now return `REFUSE`.
@@ -16,4 +27,5 @@
 - Proof stages and cleanup are authoritative: new `internal/workspace` (restrictive copier, `Replace` with before/after digests and a before/after manifest check that exactly the declared file changed, verified `Close`) and `prove` in the engine. Baseline and challenged checks use one evaluator in one copy; the target is revalidated after the baseline; `PROVEN` needs exactly one finding with the exact policy, rule and path and a verified cleanup. Evidence proofs gain `detail`, `mutation` and `stages` (schema and validator updated: a `PROVEN` proof without a recorded mutation or an `OK` cleanup stage is invalid). Adds `docs/threat-model.md`.
 - `adapter.Call` now always sends `policyIds` and `scope` as arrays, never `null`.
 - Verify Dependency-Cruiser 18.7.2 (MIT) end to end, including an ineffective-rule control, using the adapter lockfile.
-- Add subprocess exit-contract tests and offline smoke checks. The release workflow targets Go 1.23 and current stable on Linux and macOS and runs pinned Dependency-Cruiser separately.
+- Add subprocess exit-contract tests and offline smoke checks. The release workflow targets Go 1.27.4 on Linux and macOS and runs pinned Dependency-Cruiser separately.
+- Add a related-projects catalog of public open-source repositories.

@@ -10,7 +10,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
-// Specification is the validated internal form of a v1alpha1 or v1alpha2 harness. It is a deliberately narrow, versioned execution contract.
+// Specification is the validated internal form of a versioned harness. It is a deliberately narrow, versioned execution contract.
 // Arguments are never interpreted by a shell.
 type Specification struct {
 	FailFast         *bool       `json:"failFast,omitempty"`
@@ -26,14 +26,15 @@ type Specification struct {
 	WritablePaths    []string    `json:"writablePaths,omitempty"`
 	RequiredAdapters []string    `json:"requiredAdapters,omitempty"`
 
-	// Populated from v1alpha2 inputs; never decoded directly from JSON.
-	TrustMode            string          `json:"-"`
-	PolicyDecls          []domain.Policy `json:"-"`
-	Gate                 *domain.Gate    `json:"-"`
-	RedactEnv            []string        `json:"-"`
-	StoreSensitiveOutput bool            `json:"-"`
-	Adapters             []Adapter       `json:"-"`
-	ProviderGuards       []ProviderGuard `json:"-"`
+	// Populated by versioned decoders.
+	Experiment           *MutationExperiment `json:"-"`
+	TrustMode            string              `json:"-"`
+	PolicyDecls          []domain.Policy     `json:"-"`
+	Gate                 *domain.Gate        `json:"-"`
+	RedactEnv            []string            `json:"-"`
+	StoreSensitiveOutput bool                `json:"-"`
+	Adapters             []Adapter           `json:"-"`
+	ProviderGuards       []ProviderGuard     `json:"-"`
 }
 type Command struct {
 	ID             string   `json:"id"`
@@ -72,6 +73,7 @@ type Result struct {
 	Stdout        string            `json:"-"`
 	Stderr        string            `json:"-"`
 	Truncated     bool              `json:"-"`
+	commandErr    error
 }
 
 // Report is the engine's working result. The CLI emits evidence.Report
@@ -94,6 +96,12 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	if err := spec.Validate(); err != nil {
 		report.Status = "REFUSE"
 		report.Results = append(report.Results, Result{ID: "config", Status: "REFUSE", Detail: err.Error()})
+		report.FinishedAt = time.Now().UTC()
+		return report
+	}
+	if spec.Version == versionV3 {
+		report.Status = "REFUSE"
+		report.Results = append(report.Results, Result{ID: action, Status: "REFUSE", Detail: "unsupported action for harness version"})
 		report.FinishedAt = time.Now().UTC()
 		return report
 	}

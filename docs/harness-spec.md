@@ -1,6 +1,6 @@
 # Harness contract: v1alpha1 and v1alpha2
 
-This page specifies `invaris.dev/v1alpha1` first and then the additions of `invaris.dev/v1alpha2` (see [v1alpha2 additions](#v1alpha2-additions)). Both versions emit `invaris.evidence/v1alpha2`; see [evidence-schema.md](evidence-schema.md).
+This page specifies `invaris.dev/v1alpha1` first and then the additions of `invaris.dev/v1alpha2` (see [v1alpha2 additions](#v1alpha2-additions)). Both emit `invaris.evidence/v1alpha2`. The [single-mutant harness](#single-mutant-harness) uses v1alpha3 input and output. See the [evidence schema](evidence-schema.md).
 
 A harness is one UTF-8 JSON object, at most 1 MiB, with `version` set to `invaris.dev/v1alpha1` and a nonblank `name`. Field names are case-sensitive. Duplicate, unknown and null fields, null array elements, and trailing JSON values are rejected. The same semantic validation applies to `Load` and direct calls to `Run`, before commands execute.
 
@@ -47,3 +47,13 @@ An unmet requirement is never downgraded. Provider and protocol failures during 
 The gate is applied per action to the results that action can produce: `run` and `check` evaluate `requiredGuards`, `challenge` evaluates `requiredProofs`. Entries the action cannot produce are not applied to it, and the report records the gate actually applied. An action whose applied gate requires nothing and which has no steps is refused as empty work. Without a configured gate every declared guard (or challenge) is required. The decision is ACCEPT only when every step passed, every required result is present and satisfying, and no failing or refusing result exists. v1alpha1 inputs get a derived gate that permits weak (marker-based) proofs for compatibility; v1alpha2 rejects a weak PROVEN proof unless `allowWeakEvidence` is true.
 
 The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both harness versions. Run `sh scripts/smoke.sh` to verify the bundled offline configurations.
+
+## Single-mutant harness
+
+`invaris.dev/v1alpha3` is the input version for `mutate`. It requires a name, `trustMode: "trusted-local"`, `networkPolicy: "unrestricted"`, a nonempty `writablePaths` list, and one `experiment`. See the [v1alpha3 schema](../schemas/harness-v1alpha3.schema.json).
+
+The experiment declares an `id`, a `mutation` with `id`, `operator: "replace"`, `path`, `before`, and `after`, two commands named `validation` and `test`, and 1 to 128 unique, case-sensitive `testIds`. IDs are nonblank and have no surrounding whitespace. The path must appear exactly in `writablePaths`. Replacement strings must be nonempty and distinct. The engine requires exactly one occurrence of the literal preimage, including overlapping matches, and changes only the declared target.
+
+Commands use `id`, `program`, optional `args`, `envAllowlist`, and `timeoutSeconds`. Their IDs must be distinct. Omitted timeouts and zero use 30 seconds. An omitted or empty environment allowlist uses the default PATH and inherits no ambient variables. `redactEnv` and `storeSensitiveOutput` are optional. Required fields cannot be omitted, and null, unknown, and duplicate fields are rejected.
+
+The same test command and case IDs apply to the baseline and mutant. Its stdout must contain one object, for example `{"version":"invaris.test-result/v1alpha1","tests":[{"id":"covered","status":"PASS"}]}`. Each selected case appears exactly once, in any order. Exit 0 requires all `PASS` and exit 1 requires at least one `ASSERTION_FAILED`. Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"}` with exit 0 or `INVALID` with exit 1. Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.

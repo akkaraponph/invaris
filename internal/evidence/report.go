@@ -96,6 +96,7 @@ type Report struct {
 	Decision      domain.Decision     `json:"decision"`
 	Diagnostics   []domain.Diagnostic `json:"diagnostics"`
 	Artifacts     []Artifact          `json:"artifacts"`
+	Experiment    *MutationExperiment `json:"experiment,omitempty"`
 }
 
 var (
@@ -112,14 +113,18 @@ var (
 func Validate(r Report) error {
 	var problems []error
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Errorf(format, args...)) }
-	if r.SchemaVersion != SchemaVersion {
+	if r.Action == "mutate" {
+		if r.SchemaVersion != MutationSchemaVersion {
+			bad("mutate requires schemaVersion %q", MutationSchemaVersion)
+		}
+	} else if r.SchemaVersion != SchemaVersion || r.Experiment != nil {
 		bad("schemaVersion must be %q", SchemaVersion)
 	}
 	if !runIDPattern.MatchString(r.RunID) {
 		bad("runId must be 128-bit lowercase hex")
 	}
 	switch r.Action {
-	case "run", "check", "challenge":
+	case "run", "check", "challenge", "mutate":
 	default:
 		bad("unknown action %q", r.Action)
 	}
@@ -157,6 +162,10 @@ func Validate(r Report) error {
 		if a.Path == "" || !hashPattern.MatchString(a.SHA256) || a.Bytes < 0 {
 			bad("artifact %q is malformed", a.Path)
 		}
+	}
+	if r.Action == "mutate" {
+		validateMutationReport(r, bad)
+		return errors.Join(problems...)
 	}
 	if want := domain.Decide(r.Gate, r.Steps, r.Checks, r.Proofs); r.Decision != want {
 		bad("decision %s does not match the %s supported by the results", r.Decision, want)

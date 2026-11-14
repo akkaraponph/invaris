@@ -59,3 +59,17 @@ Values of the environment variables named in `redactEnv` are replaced with `[RED
 | `schemaVersion`, `configDigest`, `harness`, `action`, `startedAt`, `finishedAt` | unchanged names |
 
 Exit codes are unchanged. Consumers must read `decision` instead of `status`. Results the harness does not declare (configuration or no-work refusals) appear as refused checks. Aggregate status is now computed from the typed results and gate, not carried over.
+
+
+## Mutation experiments
+
+`mutate` emits [`invaris.evidence/v1alpha3`](../schemas/evidence-v1alpha3.schema.json) through the same stdout and optional `--report` path. Its `experiment` records the experiment and mutation IDs, engine version when known, replacement operator and target, test and validation command IDs, selected test IDs, before and after SHA-256 digests, ordered stage outcomes, and the final verdict and reason. Unattempted commands and an unapplied mutation appear as null. Each attempted command links to a bounded, redacted observation with its exit code and timestamps. Parsed evidence is retained when available, including when workspace integrity or cleanup later fails.
+
+| Verdict | Required evidence | Typical reason | Exit |
+| --- | --- | --- | --- |
+| `KILLED` | Healthy baseline, valid mutant, a selected assertion failure, and verified cleanup | `assertion_failed` | 0 |
+| `SURVIVED` | Healthy baseline, valid mutant, all selected tests pass, and verified cleanup | `all_tests_passed` | 1 |
+| `INVALID` | Healthy baseline, captured mutation, validity evaluator reports an invalid mutant, and verified cleanup | `mutant_invalid` | 2 |
+| `INCONCLUSIVE` | Insufficient evidence or a failed execution precondition | For example `unhealthy_baseline`, `timeout`, `canceled`, `malformed_evidence`, or `cleanup_failed` | 2 |
+
+The offline verification suite targets Linux and macOS with a POSIX shell and Go 1.27.4 or later. The [fixture harnesses](../examples/mutation) require no external analyzer. See the [threat model](threat-model.md) for command trust and stage-boundary integrity.

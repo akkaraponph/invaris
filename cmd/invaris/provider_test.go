@@ -6,6 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/evidence"
 )
 
 func buildProvider(t *testing.T) string {
@@ -138,5 +141,40 @@ func TestProviderPreflightRefusalCLI(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "sentinel")); err != nil {
 		t.Fatalf("control step did not run: %v", err)
+	}
+}
+
+func TestForbiddenDependencyFixture(t *testing.T) {
+	bin := buildProvider(t)
+	t.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	dir := filepath.Join("..", "..", "examples", "forbidden-dependency")
+	for _, action := range []string{"check", "challenge"} {
+		code, stdout, stderr := invoke(t, ".", action, filepath.Join(dir, "invaris.json"))
+		var report evidence.Report
+		if err := json.Unmarshal(stdout, &report); err != nil || code != 0 {
+			t.Fatalf("%s: %d %v %s %s", action, code, err, stderr, stdout)
+		}
+		if action == "check" {
+			if len(report.Checks) != 1 || report.Checks[0].Status != domain.Pass {
+				t.Fatalf("unexpected checks: %+v", report.Checks)
+			}
+			continue
+		}
+		if len(report.Proofs) != 1 {
+			t.Fatalf("unexpected proofs: %+v", report.Proofs)
+		}
+		p := report.Proofs[0]
+		if p.Status != domain.Proven || p.Baseline == nil || p.Baseline.Inspected == nil ||
+			*p.Baseline.Inspected != 1 || len(p.Baseline.Findings) != 0 ||
+			p.Challenged == nil || len(p.Challenged.Findings) != 1 {
+			t.Fatalf("unexpected proof: %+v", p)
+		}
+		f := p.Challenged.Findings[0]
+		if f.PolicyID != "no-forbidden-dependency" || f.RuleID != f.PolicyID || f.Path != "dependencies.txt" {
+			t.Fatalf("unexpected finding: %+v", f)
+		}
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "dependencies.txt")); err != nil || string(b) != "allowed-lib\n" {
+		t.Fatalf("source changed: %q %v", b, err)
 	}
 }
