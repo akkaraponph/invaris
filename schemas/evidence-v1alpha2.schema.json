@@ -5,7 +5,7 @@
   "description": "Structure of an invaris.evidence/v1alpha2 report. The schema checks shape; the decision/result correlation and the completeness requirements for ACCEPT are enforced by evidence.Validate in Go, and the schema only encodes the subset that is expressible here (an ACCEPT carries a digest and a positive targetCount).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "runId", "action", "target", "harness", "configDigest", "gitRevision", "environment", "startedAt", "finishedAt", "durationMs", "compatibility", "policies", "gate", "lifecycle", "steps", "checks", "proofs", "observations", "targetCount", "decision", "diagnostics", "artifacts"],
+  "required": ["schemaVersion", "runId", "action", "target", "harness", "configDigest", "gitRevision", "gitDirty", "environment", "startedAt", "finishedAt", "durationMs", "compatibility", "policies", "gate", "lifecycle", "steps", "checks", "proofs", "observations", "targetCount", "decision", "diagnostics", "artifacts"],
   "properties": {
     "schemaVersion": {"const": "invaris.evidence/v1alpha2"},
     "runId": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
@@ -14,6 +14,7 @@
     "harness": {"type": "string"},
     "configDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
     "gitRevision": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}]},
+    "gitDirty": {"oneOf": [{"type": "null"}, {"type": "boolean"}]},
     "environment": {"type": "object", "additionalProperties": false, "required": ["os", "arch"], "properties": {"os": {"type": "string"}, "arch": {"type": "string"}}},
     "startedAt": {"type": "string", "format": "date-time"},
     "finishedAt": {"type": "string", "format": "date-time"},
@@ -65,12 +66,14 @@
     },
     "proof": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "policyId", "guardId", "target", "faultId", "evidenceStrength", "status", "detail", "mutation", "stages", "baseline", "challenged"],
+      "required": ["id", "policyId", "guardId", "target", "faultId", "evidenceStrength", "status", "reason", "reasonCategory", "detail", "sourceSnapshot", "mutation", "stages", "baseline", "challenged"],
       "properties": {
         "id": {"type": "string", "minLength": 1}, "policyId": {"type": "string"}, "guardId": {"type": "string"}, "target": {"type": "string"}, "faultId": {"type": "string"},
         "evidenceStrength": {"enum": ["weak", "strong"]},
         "status": {"enum": ["PROVEN", "UNPROVEN", "INCONCLUSIVE", "NOT_RUN"]},
+        "reason": {"$ref": "#/$defs/reason"}, "reasonCategory": {"$ref": "#/$defs/reasonCategory"},
         "detail": {"type": "string"},
+        "sourceSnapshot": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sourceSnapshot"}]},
         "mutation": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": false, "required": ["path", "beforeSha256", "afterSha256"],
           "properties": {"path": {"type": "string", "minLength": 1}, "beforeSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "afterSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}]},
         "stages": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["name", "status", "durationMs", "detail"],
@@ -90,7 +93,7 @@
     },
     "observation": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics"],
+      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics", "executable", "timeoutSeconds", "envAllowlist"],
       "properties": {
         "id": {"type": "string"}, "kind": {"enum": ["step", "guard", "baseline", "challenged", "discover"]}, "program": {"type": "string"},
         "args": {"type": "array", "items": {"type": "string"}},
@@ -99,9 +102,16 @@
         "startedAt": {"$ref": "#/$defs/nullableTime"}, "finishedAt": {"$ref": "#/$defs/nullableTime"},
         "exitCode": {"$ref": "#/$defs/nullableInt"},
         "stdout": {"type": "string"}, "stderr": {"type": "string"}, "truncated": {"type": "boolean"},
-        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}}
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+        "executable": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+          "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]}}}]},
+        "timeoutSeconds": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1}]},
+        "envAllowlist": {"type": "array", "items": {"type": "string"}}
       }
     },
+    "reason": {"enum": ["", "guard_detected", "marker_matched", "guard_passed", "marker_not_found", "assertion_failed", "all_tests_passed", "mutant_invalid", "invalid_target", "guard_not_found", "provider_unavailable", "unhealthy_baseline", "mutation_rejected", "no_targets_inspected", "finding_mismatch", "workspace_prepare_failed", "timeout", "canceled", "missing_executable", "output_limit", "execution_failed", "cleanup_failed", "malformed_evidence", "workspace_changed"]},
+    "reasonCategory": {"enum": ["", "result", "setup", "infrastructure", "evidence"]},
+    "sourceSnapshot": {"type": "object", "additionalProperties": false, "required": ["sha256", "files"], "properties": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "files": {"type": "integer", "minimum": 0}}},
     "artifact": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "bytes": {"type": "integer", "minimum": 0}}}
   }
 }

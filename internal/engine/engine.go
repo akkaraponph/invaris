@@ -75,10 +75,18 @@ type Result struct {
 	// Set for provider guards: the provider identity and its validated check.
 	Provider      *adapter.Identity `json:"-"`
 	ProviderCheck *domain.Check     `json:"-"`
-	Stdout        string            `json:"-"`
-	Stderr        string            `json:"-"`
-	Truncated     bool              `json:"-"`
-	commandErr    error
+	// Execution provenance of the command that ran: the resolved program, its
+	// file hash (empty when unreadable), and the settings that applied.
+	ExecPath, ExecSHA256 string
+	TimeoutSeconds       int
+	EnvNames             []string
+	// reason is the machine-readable reason for a challenge that produced no
+	// staged proof (configuration or negotiation failures).
+	reason     string
+	Stdout     string `json:"-"`
+	Stderr     string `json:"-"`
+	Truncated  bool   `json:"-"`
+	commandErr error
 }
 
 // Report is the engine's working result. The CLI emits evidence.Report
@@ -158,12 +166,12 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 	r = Result{ID: c.ID, Status: "INCONCLUSIVE", StartedAt: started.UTC()}
 	defer func() { r.DurationMs = time.Since(started).Milliseconds(); r.FinishedAt = time.Now().UTC() }()
 	if err := validatePath(c.File); err != nil {
-		r.Detail = err.Error()
+		r.Detail, r.reason = err.Error(), domain.ReasonInvalidTarget
 		return
 	}
 	for _, id := range spec.RequiredAdapters {
 		if why := providers.unavailable(id); why != "" {
-			r.Detail = why
+			r.Detail, r.reason = why, domain.ReasonProviderUnavailable
 			return
 		}
 	}
@@ -175,7 +183,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 			continue
 		}
 		if why := providers.unsupported(g); why != "" {
-			r.Detail = why
+			r.Detail, r.reason = why, domain.ReasonProviderUnavailable
 			return
 		}
 		expect = expectation{Policy: g.PolicyID, Rule: g.PolicyID}
@@ -202,7 +210,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 		}
 	}
 	if evaluate == nil {
-		r.Detail = "guard not found"
+		r.Detail, r.reason = "guard not found", domain.ReasonGuardNotFound
 		return
 	}
 	proof := prove(ctx, root, c, expect, evaluate, workspace.Prepare, (*workspace.Workspace).Close)

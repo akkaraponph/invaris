@@ -13,6 +13,7 @@
     "harness",
     "configDigest",
     "gitRevision",
+    "gitDirty",
     "environment",
     "startedAt",
     "finishedAt",
@@ -39,6 +40,7 @@
     "harness": {"type": "string"},
     "configDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
     "gitRevision": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{40,64}$"}]},
+    "gitDirty": {"oneOf": [{"type": "null"}, {"type": "boolean"}]},
     "environment": {"type": "object", "additionalProperties": false, "required": ["os", "arch"], "properties": {"os": {"type": "string"}, "arch": {"type": "string"}}},
     "startedAt": {"type": "string", "format": "date-time"},
     "finishedAt": {"type": "string", "format": "date-time"},
@@ -181,7 +183,7 @@
     "observation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics"],
+      "required": ["id", "kind", "program", "args", "provider", "scope", "startedAt", "finishedAt", "exitCode", "stdout", "stderr", "truncated", "diagnostics", "executable", "timeoutSeconds", "envAllowlist"],
       "properties": {
         "id": {"type": "string"},
         "kind": {"enum": ["baseline", "validation", "tests"]},
@@ -205,9 +207,15 @@
         "stdout": {"type": "string"},
         "stderr": {"type": "string"},
         "truncated": {"type": "boolean"},
-        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}}
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+        "executable": {"oneOf": [{"type": "null"}, {"type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+          "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^[0-9a-f]{64}$"}]}}}]},
+        "timeoutSeconds": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1}]},
+        "envAllowlist": {"type": "array", "items": {"type": "string"}}
       }
     },
+    "sourceSnapshot": {"type": "object", "additionalProperties": false, "required": ["sha256", "files"], "properties": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "files": {"type": "integer", "minimum": 0}}},
+    "reasonCategory": {"enum": ["", "result", "setup", "infrastructure", "evidence"]},
     "artifact": {
       "type": "object",
       "additionalProperties": false,
@@ -265,6 +273,8 @@
         "testIds",
         "verdict",
         "reason",
+        "reasonCategory",
+        "sourceSnapshot",
         "mutation",
         "stages",
         "baseline",
@@ -281,6 +291,8 @@
         "validationCommandId": {"type": "string", "minLength": 1},
         "testIds": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "verdict": {"enum": ["KILLED", "SURVIVED", "INVALID", "INCONCLUSIVE"]},
+        "reasonCategory": {"$ref": "#/$defs/reasonCategory"},
+        "sourceSnapshot": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sourceSnapshot"}]},
         "reason": {
           "enum": [
             "assertion_failed",

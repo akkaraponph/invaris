@@ -135,6 +135,12 @@ func TestMutationLifecycleFailures(t *testing.T) {
 			if tc.stage != "cleanup" {
 				lastStage--
 			}
+			if e.ReasonCategory != domain.ReasonCategory(tc.reason) || e.ReasonCategory == "" {
+				t.Fatalf("reason %q has category %q", e.Reason, e.ReasonCategory)
+			}
+			if tc.stage != "prepare" && (e.SourceSnapshot == nil || len(e.SourceSnapshot.SHA256) != 64) {
+				t.Fatalf("source snapshot missing: %+v", e.SourceSnapshot)
+			}
 			if e.Verdict != domain.MutationInconclusive || e.Reason != tc.reason || lastStage < 0 ||
 				e.Stages[lastStage].Name != tc.stage || e.Stages[lastStage].Status != domain.StageFailed {
 				t.Fatalf("unexpected result: %+v", e)

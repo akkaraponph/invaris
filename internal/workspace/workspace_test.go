@@ -384,3 +384,23 @@ func FuzzValidPath(f *testing.F) {
 		}
 	})
 }
+
+func TestManifestDigest(t *testing.T) {
+	a := prepared(t, map[string]string{"x": "1", "d/y": "2"})
+	b := prepared(t, map[string]string{"d/y": "2", "x": "1"})
+	sa, _ := Snapshot(a.Root)
+	sb, _ := Snapshot(b.Root)
+	if ManifestDigest(sa) != ManifestDigest(sb) || len(ManifestDigest(sa)) != 64 {
+		t.Fatal("equal trees must share a digest")
+	}
+	write(t, b.Root, "x", "changed", 0o644)
+	sb, _ = Snapshot(b.Root)
+	if ManifestDigest(sa) == ManifestDigest(sb) {
+		t.Fatal("content change not reflected")
+	}
+	write(t, b.Root, "x", "1", 0o600)
+	sb, _ = Snapshot(b.Root)
+	if ManifestDigest(sa) == ManifestDigest(sb) {
+		t.Fatal("mode change not reflected")
+	}
+}

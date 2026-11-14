@@ -356,3 +356,20 @@ func hashBytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
 }
+
+// ManifestDigest returns a deterministic SHA-256 over a manifest: every path in
+// sorted order with its kind, mode, content hash and link target. Equal digests
+// mean equal manifests; the digest identifies content and is not attestation.
+func ManifestDigest(m map[string]Entry) string {
+	paths := make([]string, 0, len(m))
+	for p := range m {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	h := sha256.New()
+	for _, p := range paths {
+		e := m[p]
+		fmt.Fprintf(h, "%d:%s\x00%s\x00%o\x00%s\x00%s\x00", len(p), p, e.Kind, e.Mode, e.SHA256, e.Link)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}

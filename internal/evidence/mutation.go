@@ -21,6 +21,8 @@ type MutationExperiment struct {
 	TestIDs             []string               `json:"testIds"`
 	Verdict             domain.MutationVerdict `json:"verdict"`
 	Reason              string                 `json:"reason"`
+	ReasonCategory      string                 `json:"reasonCategory"`
+	SourceSnapshot      *domain.SourceSnapshot `json:"sourceSnapshot"`
 	Mutation            *domain.Mutation       `json:"mutation"`
 	Stages              []domain.Stage         `json:"stages"`
 	Baseline            *MutationCommandResult `json:"baseline"`
@@ -66,6 +68,12 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 		seenIDs[id] = true
 	}
 
+	if domain.ReasonCategory(e.Reason) == "" || e.ReasonCategory != domain.ReasonCategory(e.Reason) {
+		bad("unknown mutation reason %q or mismatched category %q", e.Reason, e.ReasonCategory)
+	}
+	if s := e.SourceSnapshot; s != nil && (!hashPattern.MatchString(s.SHA256) || s.Files < 0) {
+		bad("invalid source snapshot")
+	}
 	order := []string{"prepare", "baseline", "mutate", "validation", "tests"}
 	stages := make(map[string]string, len(e.Stages))
 	for i, s := range e.Stages {

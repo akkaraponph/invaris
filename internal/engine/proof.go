@@ -60,10 +60,12 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 	}
 	if !stage(domain.StagePrepare, start, err) {
 		fail("prepare workspace: %v", err)
+		p.Reason = domain.ReasonPrepareFailed
+		p.ReasonCategory = domain.ReasonCategory(p.Reason)
 		return p
 	}
 
-	p.Status, p.Detail = proofStages(ctx, ws, c, expect, evaluate, &p, stage)
+	p.Status, p.Detail, p.Reason = proofStages(ctx, ws, c, expect, evaluate, &p, stage)
 
 	start = time.Now()
 	cerr := closeWorkspace(ws, cleanup)
@@ -77,8 +79,9 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 		if p.Detail != "" {
 			note = p.Detail + "; " + note
 		}
-		p.Status, p.Detail = domain.Inconclusive, note
+		p.Status, p.Detail, p.Reason = domain.Inconclusive, note, domain.ReasonCleanupFailed
 	}
+	p.ReasonCategory = domain.ReasonCategory(p.Reason)
 	return p
 }
 
@@ -96,77 +99,124 @@ func closeWorkspace(ws *workspace.Workspace, cleanup func(*workspace.Workspace) 
 }
 
 // proofStages runs baseline, mutation and challenged check in ws and returns
-// the provisional status. It never removes the workspace.
+// the provisional status, detail and machine-readable reason. It never removes
+// the workspace. It gives proofs the same integrity guarantee as mutation
+// experiments: the workspace root and manifest must be unchanged by the
+// baseline, and after the challenged check only the declared file may differ.
 func proofStages(ctx context.Context, ws *workspace.Workspace, c Challenge, expect expectation,
 	evaluate func(context.Context, string) domain.Check, p *domain.Proof,
-	stage func(string, time.Time, error) bool) (domain.ProofStatus, string) {
+	stage func(string, time.Time, error) bool) (domain.ProofStatus, string, string) {
 
 	if err := ctx.Err(); err != nil {
-		return domain.Inconclusive, "context ended before the baseline: " + err.Error()
+		return domain.Inconclusive, "context ended before the baseline: " + err.Error(), commandFailure(err)
 	}
+	guard, gerr := newIntegrity(ws.Root)
+	var before map[string]workspace.Entry
+	if gerr == nil {
+		before, gerr = guard.snapshot()
+	}
+	if gerr != nil {
+		stage(domain.StageBaseline, time.Now(), gerr)
+		return domain.Inconclusive, "snapshot workspace: " + gerr.Error(), domain.ReasonWorkspaceChanged
+	}
+	p.SourceSnapshot = &domain.SourceSnapshot{SHA256: workspace.ManifestDigest(before), Files: len(before)}
+
 	start := time.Now()
 	base := evaluate(ctx, ws.Root)
 	base.ID = p.ID + ":baseline"
 	p.Baseline = &base
 	var err error
+	reason := ""
 	switch {
 	case base.Status != domain.Pass:
 		err = fmt.Errorf("baseline guard did not pass: %s", base.Status)
+		reason = checkFailureReason(ctx, base, domain.ReasonUnhealthyBaseline)
 	case expect.Policy != "" && (base.Inspected == nil || *base.Inspected <= 0):
 		err = errors.New("baseline inspected no targets")
+		reason = domain.ReasonNoTargetsInspected
+	default:
+		if ierr := guard.verify(before); ierr != nil {
+			err, reason = fmt.Errorf("baseline changed the workspace: %w", ierr), domain.ReasonWorkspaceChanged
+		}
 	}
 	if !stage(domain.StageBaseline, start, err) {
-		return domain.Inconclusive, err.Error()
+		return domain.Inconclusive, err.Error(), reason
 	}
 
 	// The target is revalidated inside Replace, after the baseline ran.
 	start = time.Now()
 	m, err := workspace.Replace(ws.Root, c.File, c.Before, c.After)
 	if !stage(domain.StageMutate, start, err) {
-		return domain.Inconclusive, err.Error()
+		return domain.Inconclusive, err.Error(), domain.ReasonMutationRejected
 	}
 	p.Mutation = &domain.Mutation{Path: m.Path, BeforeSHA256: m.BeforeSHA256, AfterSHA256: m.AfterSHA256}
 	p.FaultID = faultID(expect.Policy, m)
 
 	if err := ctx.Err(); err != nil {
-		return domain.Inconclusive, "context ended before the challenged check: " + err.Error()
+		return domain.Inconclusive, "context ended before the challenged check: " + err.Error(), commandFailure(err)
 	}
 	start = time.Now()
 	got := evaluate(ctx, ws.Root)
 	got.ID = p.ID + ":challenged"
 	p.Challenged = &got
-	status, detail := classify(expect, c.File, got)
-	stage(domain.StageChallenged, start, nil)
-	return status, detail
+	status, detail, reason := classify(expect, c.File, got)
+	var cerr error
+	if ierr := guard.verify(afterReplacement(before, m)); ierr != nil {
+		// A guard that changed the workspace invalidates whatever it reported.
+		cerr = fmt.Errorf("challenged check changed the workspace: %w", ierr)
+		status, detail, reason = domain.Inconclusive, cerr.Error(), domain.ReasonWorkspaceChanged
+	}
+	stage(domain.StageChallenged, start, cerr)
+	return status, detail, reason
+}
+
+// checkFailureReason maps a check that did not pass to a reason. A guard that
+// completed and found a violation (FAIL) gets fallback; one that could not
+// execute or produced unusable evidence keeps the reason recorded with it.
+func checkFailureReason(ctx context.Context, c domain.Check, fallback string) string {
+	if c.Status == domain.Fail {
+		return fallback
+	}
+	if c.Reason != "" {
+		return c.Reason
+	}
+	if err := ctx.Err(); err != nil {
+		return commandFailure(err)
+	}
+	return domain.ReasonExecutionFailed
 }
 
 // classify decides the proof from the challenged check alone; the baseline has
 // already passed.
-func classify(expect expectation, target string, got domain.Check) (domain.ProofStatus, string) {
+func classify(expect expectation, target string, got domain.Check) (domain.ProofStatus, string, string) {
 	if got.Status != domain.Pass && got.Status != domain.Fail {
-		return domain.Inconclusive, "guard could not execute after injection: " + string(got.Status)
+		reason := got.Reason
+		if reason == "" {
+			reason = domain.ReasonExecutionFailed
+		}
+		return domain.Inconclusive, "guard could not execute after injection: " + string(got.Status), reason
 	}
 	if expect.Policy == "" {
 		switch {
 		case got.Status == domain.Fail && expect.Marker != nil && expect.Marker(got):
-			return domain.Proven, "weak evidence: baseline passed; injected violation triggered expected output marker"
+			return domain.Proven, "weak evidence: baseline passed; injected violation triggered expected output marker", domain.ReasonMarkerMatched
 		default:
-			return domain.Unproven, "injected violation did not produce the expected failing guard evidence"
+			return domain.Unproven, "injected violation did not produce the expected failing guard evidence", domain.ReasonMarkerMissing
 		}
 	}
 	if got.Status == domain.Pass {
 		if got.Inspected == nil || *got.Inspected <= 0 {
-			return domain.Inconclusive, "challenged guard inspected no targets"
+			return domain.Inconclusive, "challenged guard inspected no targets", domain.ReasonNoTargetsInspected
 		}
-		return domain.Unproven, "guard passed after mutation"
+		return domain.Unproven, "guard passed after mutation", domain.ReasonGuardPassed
 	}
 	if len(got.Findings) != 1 {
-		return domain.Inconclusive, fmt.Sprintf("expected exactly one finding at the mutated path, got %d", len(got.Findings))
+		return domain.Inconclusive, fmt.Sprintf("expected exactly one finding at the mutated path, got %d", len(got.Findings)), domain.ReasonFindingMismatch
 	}
 	if f := got.Findings[0]; f.PolicyID != expect.Policy || f.RuleID != expect.Rule || f.Path != target {
-		return domain.Inconclusive, "finding does not match the expected policy, rule and mutated path"
+		return domain.Inconclusive, "finding does not match the expected policy, rule and mutated path", domain.ReasonFindingMismatch
 	}
-	return domain.Proven, "guard reported the expected policy and rule at the mutated path"
+	return domain.Proven, "guard reported the expected policy and rule at the mutated path", domain.ReasonGuardDetected
 }
 
 // faultID is derived from the policy, the target and the recorded digests, so

@@ -261,6 +261,9 @@ func runProviderGuard(ctx context.Context, root string, spec Specification, st p
 		identity = discovered
 	}
 	r.Provider = &identity
+	if r.Status == "REFUSE" {
+		check.Reason = providerReason(ctx, check)
+	}
 	switch {
 	case r.Status == "FAIL":
 		r.Detail = fmt.Sprintf("policy violation: %d finding(s)", len(check.Findings))
@@ -268,6 +271,20 @@ func runProviderGuard(ctx context.Context, root string, spec Specification, st p
 		r.Detail = check.Diagnostics[0].Code + ": " + check.Diagnostics[0].Message
 	}
 	return r
+}
+
+// providerReason classifies a refused provider check: a transport failure or
+// an ended context is infrastructure; anything else is unusable evidence.
+func providerReason(ctx context.Context, c domain.Check) string {
+	if err := ctx.Err(); err != nil {
+		return commandFailure(err)
+	}
+	for _, d := range c.Diagnostics {
+		if d.Code == "PROVIDER_TRANSPORT" {
+			return domain.ReasonExecutionFailed
+		}
+	}
+	return domain.ReasonMalformedEvidence
 }
 
 func matchesDiscovery(actual, discovered adapter.Identity) bool {
