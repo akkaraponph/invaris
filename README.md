@@ -45,7 +45,7 @@ See [`docs/architecture.md`](docs/architecture.md) for runtime, adapter contract
 
 ## Contributing
 
-Develop changes on a topic branch and open a pull request targeting `main`. Keep the pull request up to date with `main`, resolve review conversations, and wait for the Linux, macOS, and Dependency-Cruiser checks to pass before merging. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) for merge requirements.
+Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Both branches require the Linux, macOS, and Dependency-Cruiser checks. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) for merge requirements.
 
 ## License
 

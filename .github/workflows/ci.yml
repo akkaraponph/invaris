@@ -1,7 +1,7 @@
 name: Release checks
 on:
   pull_request:
-    branches: [main]
+    branches: [staging, main]
 
 permissions:
   contents: read
