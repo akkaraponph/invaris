@@ -8,6 +8,8 @@ Invaris is an experimental, standalone harness execution, guardrail verification
 
 > **Status: experimental local CLI.** Invaris runs trusted commands and provider guards and verifies controlled file-mutation proofs and single-mutant test experiments. See the [provider support matrix](docs/provider-support.md) for the tested integrations.
 
+Version [0.1.0](CHANGELOG.md#010).
+
 ## Quick start
 
 Requires Go 1.27.4 or later and a POSIX shell for the bundled demonstration.
