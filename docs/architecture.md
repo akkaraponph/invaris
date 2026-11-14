@@ -30,7 +30,7 @@ Challenges and mutation experiments share the runner, workspace copier, replacem
 
 ## Campaigns
 
-The `campaign` action (unreleased) reads an `invaris.campaign/v1alpha1` file that references existing harnesses. The coordinator copies the campaign directory into a frozen snapshot and runs each selected attempt in declaration order through the existing mutation or challenge lifecycle, with the snapshot as its source. It checks the snapshot before every attempt and before removal. The campaign emits `invaris.evidence/v1alpha4`.
+The `campaign` action reads an `invaris.campaign/v1alpha1` file that references existing harnesses. The coordinator copies the campaign directory into a frozen snapshot and runs each selected attempt in declaration order through the existing mutation or challenge lifecycle, with the harness's directory in the snapshot as its source. `--parallel N` runs up to N attempts at once from a bounded worker pool; report order stays declaration order. It checks the snapshot before every attempt and before removal. The campaign emits `invaris.evidence/v1alpha4`.
 
 A campaign keeps four decisions apart:
 

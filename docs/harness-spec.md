@@ -1,6 +1,6 @@
 # Harness configuration
 
-A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action (unreleased). See the [evidence schema](evidence-schema.md).
+A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md).
 
 ## Common fields and validation
 
@@ -120,7 +120,7 @@ Evaluators reserve these statuses for completed assessments. Infrastructure fail
 
 ## Campaign file
 
-> Unreleased. Available on the `dev` branch; see [Campaigns](campaigns.md) for behavior and examples.
+See [Campaigns](campaigns.md) for behavior and examples.
 
 `invaris campaign` reads an `invaris.campaign/v1alpha1` file. The published schema is [`schemas/campaign-v1alpha1.schema.json`](../schemas/campaign-v1alpha1.schema.json). The file is one UTF-8 JSON object of at most 1 MiB; unknown, duplicate and `null` fields and trailing values are rejected, as for harnesses.
 
@@ -131,6 +131,7 @@ Evaluators reserve these statuses for completed assessments. Infrastructure fail
 | `trustMode`, `networkPolicy` | Only `trusted-local` and `unrestricted`. Neither adds isolation. |
 | `experiments` | 1 to 64 entries, run in this order |
 | `acceptance` | The acceptance policy below |
+| `tools` | Optional; at most 16 version commands, `{id, program, args, envAllowlist, timeoutSeconds}`, run once in the snapshot. IDs follow the experiment ID rules. See [tool versions](campaigns.md#tool-versions). |
 
 Each experiment entry:
 
@@ -138,7 +139,7 @@ Each experiment entry:
 | --- | --- |
 | `id` | Unique; 1 to 128 characters from `A-Z a-z 0-9 . _ -`, starting with a letter or digit. Used by `--only`. |
 | `kind` | `mutation` or `guardrail` |
-| `harness` | A file name in the campaign file's directory: no `/`, `\`, `:`, `.` or `..`. It must be a regular file, not a symbolic link, and not the campaign file itself. |
+| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` or `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's directory. |
 | `experimentId` | For `mutation` only: the `experiment.id` of a v1alpha3 harness |
 | `challengeId` | For `guardrail` only: a challenge ID in a v1alpha2 harness whose guard declares a `policyId` (structured command guard or provider guard) |
 | `repeat` | Integer from 1 to 5 |

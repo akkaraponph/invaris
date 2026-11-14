@@ -1,21 +1,33 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
-- Add the `campaign` action and the [`invaris.campaign/v1alpha1`](schemas/campaign-v1alpha1.schema.json) contract. A campaign references existing v1alpha3 mutation experiments and v1alpha2 structured challenges in its directory, runs them in sequence from one frozen source snapshot, repeats each up to five times from fresh copies, and emits [`invaris.evidence/v1alpha4`](schemas/evidence-v1alpha4.schema.json). See [Campaigns](docs/campaigns.md).
-- Campaign reports keep every attempt, classify repeats as `CONSISTENT`, `MIXED` or `INCOMPLETE` without voting, compute a mutation score over consistent killed and surviving mutants (`null` when none), count guardrail results separately, and evaluate a typed acceptance policy. Incomplete evidence gives `REFUSE` before any `REJECT`.
-- Add `--only ID` and `--format text` for `campaign`. Exit codes stay `0` ACCEPT, `1` REJECT, `2` REFUSE or error.
-- Add Go example campaigns with six outcomes and a deterministic mixed-result fixture, plus campaigns for the shell mutation and forbidden-dependency examples. `scripts/smoke.sh` and `scripts/validate-schemas.py` cover them.
-- `run`, `check`, `challenge` and `mutate`, and the v1alpha2 and v1alpha3 reports, are unchanged.
+Invaris 0.2.0 adds campaigns: several mutation and guardrail experiments run together from one frozen copy of the source, with repeats, separate mutation and guardrail scores, and an explicit acceptance decision. Build with Go 1.27.4 or later. The offline examples use a POSIX shell.
 
-- Add `reason` and `reasonCategory` to every proof and `reasonCategory` to mutation experiments, with one shared vocabulary (`result`, `setup`, `infrastructure`, `evidence`).
-- Record input and execution details: `gitDirty`, a `sourceSnapshot` digest per proof and experiment, and per-observation `executable` (path and SHA-256), `timeoutSeconds` and `envAllowlist`. Unknown values are `null`.
-- `challenge` now verifies workspace integrity across the baseline and challenged check, as `mutate` does. A guard that writes into the workspace now yields `INCONCLUSIVE` (`workspace_changed`) instead of a proof.
-- The new report keys are required in the existing `invaris.evidence/v1alpha2` and `v1alpha3` schemas, which were published with 0.1.0. Consumers that validate strictly against the old schemas must update.
+### Highlights
 
-- Add [`examples/go-project`](examples/go-project/README.md): ordinary Go tests killing or missing a mutant, and a structured import guard proving a forbidden-dependency challenge.
-- Add optional `preimageSha256` to the v1alpha3 mutation: a stale target is rejected before any write.
-- Add optional `minInspected` to structured command guards: reports below the declared floor are refused.
+- Run `invaris campaign` with an [`invaris.campaign/v1alpha1`](schemas/campaign-v1alpha1.schema.json) file. A campaign references existing v1alpha3 mutation experiments and v1alpha2 structured challenges anywhere under its directory, copies that directory once into a frozen snapshot, and runs each selected experiment up to five times from fresh copies. Reports use [`invaris.evidence/v1alpha4`](schemas/evidence-v1alpha4.schema.json). See [Campaigns](docs/campaigns.md).
+- Every attempt and its full child evidence is kept. Repeats are `CONSISTENT`, `MIXED` or `INCOMPLETE`; there is no voting.
+- The mutation score (`killed / (killed + survived)`) and the guardrail proof rate (`proven / (proven + unproven)`) count consistent experiments once each and are `null` when nothing is eligible. They are never combined.
+- A typed acceptance policy (`requireNoSurvivors`, `requireAllGuardrailsProven`, `requireNoInconclusive`, `requireNoMixed`, optional `requireNoInvalid` and `minMutationScore`) decides `ACCEPT`, `REJECT` or `REFUSE`. Incomplete or contradictory evidence refuses before any reject.
+- CLI options: `--only ID` runs a recorded subset, `--format text` prints a summary, and `--parallel N` (1 to 8, default 1) runs attempts concurrently. Exit codes stay `0` ACCEPT, `1` REJECT, `2` REFUSE or error.
+- Source identity: the snapshot manifest digest, one digest per evaluated directory, Git revision and dirty state. Optional campaign `tools` record tool versions such as `go version`.
+- Cancellation stops further attempts, records canceled and unstarted work, removes the snapshot, and still writes a valid partial report.
+
+### Evidence and compatibility
+
+- `run`, `check`, `challenge` and `mutate` keep their inputs, exit codes and report versions.
+- Proofs gain `reason` and `reasonCategory`, and mutation experiments gain `reasonCategory`, with one shared vocabulary (`result`, `setup`, `infrastructure`, `evidence`).
+- Reports record `gitDirty`, a `sourceSnapshot` digest per proof and experiment, and per-observation `executable` (path and SHA-256), `timeoutSeconds` and `envAllowlist`. Unknown values are `null`.
+- **Schema update:** these keys are required in the `invaris.evidence/v1alpha2` and `v1alpha3` schemas published with 0.1.0. Consumers that validate strictly against the 0.1.0 schemas must update.
+- **Behaviour change in `challenge`:** a guard that writes into the workspace now yields `INCONCLUSIVE` (`workspace_changed`) instead of a proof. A structured guard that exits 0 or 1 with rejected output now gives reason `malformed_evidence` instead of `execution_failed`; the verdict stays `INCONCLUSIVE`.
+- Add optional `preimageSha256` to the v1alpha3 mutation (a stale target is rejected before any write) and optional `minInspected` to structured command guards.
+
+### Examples and verification
+
+- Add [`examples/go-project`](examples/go-project/README.md): Go tests killing or missing a mutant, an import guard proving a challenge, and campaigns with six outcomes and a deterministic mixed-result fixture.
+- Add campaigns for the shell mutation and forbidden-dependency examples. `scripts/smoke.sh` and `scripts/validate-schemas.py` cover every campaign file and report.
+- Add a [design note](docs/decisions/0001-campaign-engine.md) for the campaign decisions, including why execution is not sandboxed and baselines are not reused.
 
 ## 0.1.0
 

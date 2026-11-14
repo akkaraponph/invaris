@@ -4,13 +4,13 @@
 
 Invaris is an experimental Go CLI that runs project checks and tests whether those checks detect a deliberate file change. A JSON harness defines the commands, guards, and changes to test. Each run produces a JSON report.
 
-Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The unreleased `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
+Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
-Version [0.1.0](CHANGELOG.md#010).
+Version [0.2.0](CHANGELOG.md#020).
 
 ## Install the CLI
 
-Download the archive for your system from the [v0.1.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.1.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
+Download the archive for your system from the [v0.2.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
 See the [installation and terminal guide](docs/installation.md) for commands to:
 
@@ -49,7 +49,7 @@ These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1al
 
 The [Go project example](examples/go-project/README.md) shows tests detecting and missing a code change, plus a guard catching a forbidden import. Its guide explains how to read each result.
 
-## Campaign example (unreleased)
+## Campaign example
 
 A [campaign](docs/campaigns.md) runs existing mutation and challenge harnesses in sequence from one frozen copy of the source and decides on the whole set:
 
@@ -83,7 +83,7 @@ The JSON harness describes ordered `steps`, policy checks called `guards`, and d
 - `check`: execute guards without steps.
 - `challenge`: create a separate temporary workspace, run a clean baseline guard there, replace one expected marker, and require the selected guard to produce the expected finding for that policy, native rule, and file. Legacy marker-only guards can produce weak proofs.
 - `mutate`: run selected tests on the original code, apply one replacement, validate the changed code, then run the same tests again.
-- `campaign` (unreleased): run several `mutate` and `challenge` experiments from one frozen source snapshot, repeat them, and evaluate an acceptance policy.
+- `campaign`: run several `mutate` and `challenge` experiments from one frozen source snapshot, repeat them, and evaluate an acceptance policy.
 
 A challenge is `PROVEN` under the legacy weak output-marker contract only when the baseline passed and the mutated guard failed with the expected evidence. This does not establish a structured rule identity. A missing executable, timeout, workspace error, or ambiguous replacement is `INCONCLUSIVE`. A challenge that does not detect the injected violation is `UNPROVEN`.
 

@@ -1,6 +1,6 @@
 # Install Invaris and run it from a terminal
 
-The [v0.1.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.1.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
+The [v0.2.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
 
 ## Install into a specific folder
 
@@ -8,18 +8,18 @@ These commands work in Bash or Zsh. Choose an absolute installation path and the
 
 | System | Archive |
 | --- | --- |
-| macOS, Apple Silicon | `invaris_0.1.0_darwin_arm64.tar.gz` |
-| macOS, Intel | `invaris_0.1.0_darwin_amd64.tar.gz` |
-| Linux or WSL, x86-64 | `invaris_0.1.0_linux_amd64.tar.gz` |
-| Linux or WSL, ARM64 | `invaris_0.1.0_linux_arm64.tar.gz` |
+| macOS, Apple Silicon | `invaris_0.2.0_darwin_arm64.tar.gz` |
+| macOS, Intel | `invaris_0.2.0_darwin_amd64.tar.gz` |
+| Linux or WSL, x86-64 | `invaris_0.2.0_linux_amd64.tar.gz` |
+| Linux or WSL, ARM64 | `invaris_0.2.0_linux_arm64.tar.gz` |
 
 For example, install on macOS Apple Silicon into `$HOME/.local/share/invaris`. Change the first two values for another folder or system. Use a new folder for the first installation; extraction replaces files with matching names.
 
 ```sh
 INVARIS_HOME="$HOME/.local/share/invaris"
-INVARIS_ARCHIVE="invaris_0.1.0_darwin_arm64.tar.gz"
+INVARIS_ARCHIVE="invaris_0.2.0_darwin_arm64.tar.gz"
 mkdir -p "$INVARIS_HOME"
-gh release download v0.1.0 --repo akkaraponph/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
+gh release download v0.2.0 --repo akkaraponph/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
 cd "$INVARIS_HOME"
 ```
 
@@ -72,7 +72,7 @@ This copies the structured example into a new demo folder you choose. Run in Bas
 ```sh
 INVARIS_SOURCE="$HOME/invaris-source"
 INVARIS_PROJECT="$HOME/projects/invaris-demo"
-git clone --branch v0.1.0 --depth 1 https://github.com/akkaraponph/invaris.git "$INVARIS_SOURCE"
+git clone --branch v0.2.0 --depth 1 https://github.com/akkaraponph/invaris.git "$INVARIS_SOURCE"
 mkdir -p "$INVARIS_PROJECT"
 cp "$INVARIS_SOURCE/examples/structured/invaris.json" "$INVARIS_SOURCE/examples/structured/guard.sh" "$INVARIS_SOURCE/examples/structured/source.txt" "$INVARIS_PROJECT/"
 cd "$INVARIS_PROJECT"
@@ -95,19 +95,16 @@ The harness's containing folder is the workspace root. A relative `--report` des
 
 Custom tools and providers installed outside `/usr/bin:/bin` need `"envAllowlist": ["PATH"]` on the relevant command or adapter, or an absolute executable path. Allowlist `PATH` separately for child commands that need your terminal's search path. Provider dependencies may need their own allowlists; see the [adapter protocol](adapter-protocol.md#the-generic-command-provider).
 
-## Run a campaign (unreleased)
+## Run a campaign
 
-The `campaign` action is not in the 0.1.0 archives. Build the CLI from the `dev` branch to try it:
+The Go example campaign runs the Go toolchain, so it also needs the Go version in the example's `go.mod` (1.22 or later). Using the source checkout from the previous section:
 
 ```sh
-git clone --branch dev https://github.com/akkaraponph/invaris.git "$HOME/invaris-dev"
-cd "$HOME/invaris-dev"
-go build -o "$HOME/.local/share/invaris/invaris" ./cmd/invaris
-cd examples/go-project
+cd "$INVARIS_SOURCE/examples/go-project"
 invaris campaign --format text campaign-accept.json
 ```
 
-This requires the Go version in `go.mod`. The last command prints a summary that ends with `Acceptance: ACCEPT` and exits 0. See [Campaigns](campaigns.md).
+The command prints a summary that ends with `Acceptance: ACCEPT` and exits 0. See [Campaigns](campaigns.md) for the other example campaigns and their exit codes.
 
 ## Windows CMD and PowerShell through WSL
 

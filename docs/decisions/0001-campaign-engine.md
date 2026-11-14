@@ -1,6 +1,6 @@
 # 0001: Sequential campaign engine
 
-Status: accepted for the next release (unreleased). Scope: the `campaign` action, `invaris.campaign/v1alpha1` and `invaris.evidence/v1alpha4`. User documentation: [Campaigns](../campaigns.md).
+Status: accepted; released in 0.2.0. Scope: the `campaign` action, `invaris.campaign/v1alpha1` and `invaris.evidence/v1alpha4`. User documentation: [Campaigns](../campaigns.md).
 
 ## 1. A separate campaign contract
 
@@ -22,15 +22,15 @@ Status: accepted for the next release (unreleased). Scope: the `campaign` action
 
 **Consequences.** One source of truth for experiment semantics. A campaign cannot express an experiment that a harness cannot. Each guardrail attempt runs the full `challenge` path, including its Git lookups, which costs some time.
 
-## 3. Sequential execution
+## 3. Sequential by default, opt-in parallel attempts
 
-**Context.** Experiments can share caches, ports and external state, and cancellation must stay simple to reason about.
+**Context.** Experiments can share caches, ports and external state, and cancellation must stay simple to reason about. Large campaigns are slow when run one attempt at a time.
 
-**Decision.** Run experiments and attempts one at a time, in declaration order.
+**Decision.** Run attempts one at a time by default. `--parallel N` (1 to 8) starts a bounded pool of N workers that take attempts in declaration order. Each attempt writes only its own slot in the report, so report order does not depend on timing. A detected snapshot change refuses every attempt that starts later; cancellation stops starting new attempts and cancels every running one.
 
-**Alternatives.** A worker pool.
+**Alternatives.** Sequential only; unbounded parallelism; parallelism declared in the campaign file.
 
-**Consequences.** Predictable resource use, deterministic report order and a single active process group to cancel. Campaigns take longer; parallelism is future work.
+**Consequences.** The default keeps predictable resource use and one active process group. With `--parallel`, attempts still use separate workspaces, but commands that share external state can interfere; this is the user's choice per run and is recorded in `parallelism`.
 
 ## 4. A fresh workspace per attempt
 
@@ -46,11 +46,11 @@ Status: accepted for the next release (unreleased). Scope: the `campaign` action
 
 **Context.** Reusing a passing baseline would save one command per attempt.
 
-**Decision.** Every attempt runs its own baseline.
+**Decision.** Every attempt runs its own baseline. Reconsidered after the first implementation and kept.
 
-**Alternatives.** Cache the baseline per harness when inputs look equal.
+**Alternatives.** Reuse the first passing baseline for later repeats of the same experiment, when the root digest, harness digest and selected tests are equal.
 
-**Consequences.** Slower campaigns. Baseline reuse needs proof that source bytes, evaluator configuration, selected tests and execution context are equivalent; that proof is not implemented.
+**Consequences.** Slower campaigns. Each attempt's child record stays a complete v1alpha3 or v1alpha2 record that can be validated on its own, and a baseline that passes once and fails later is reported instead of hidden. Equal inputs do not establish an equal execution context (caches, environment, time), which is the reason repeats exist.
 
 ## 6. Mixed results
 
@@ -66,11 +66,11 @@ Status: accepted for the next release (unreleased). Scope: the `campaign` action
 
 **Context.** A mutation score is only meaningful over mutants with a trustworthy verdict.
 
-**Decision.** `score = killed / (killed + survived)` over `CONSISTENT` mutation experiments, counted once each. Invalid, mixed, incomplete, not executed and filtered experiments are excluded and reported. An empty denominator gives `null`. Guardrail results have counts only.
+**Decision.** `score = killed / (killed + survived)` over `CONSISTENT` mutation experiments, counted once each. Invalid, mixed, incomplete, not executed and filtered experiments are excluded and reported. The guardrail `proofRate = proven / (proven + unproven)` follows the same rules over `CONSISTENT` guardrail experiments. Campaigns accept only strong proofs, so weak marker proofs cannot enter it. An empty denominator gives `null`. The two numbers are never combined.
 
-**Alternatives.** Count attempts; count invalid mutants as killed; report 0% for an empty campaign.
+**Alternatives.** Count attempts; count invalid mutants as killed; report 0% for an empty campaign; one combined quality score.
 
-**Consequences.** Repeats cannot inflate the score, and a run with nothing to score does not look like a perfect or failing result.
+**Consequences.** Repeats cannot inflate either number, and a run with nothing to measure does not look like a perfect or failing result.
 
 ## 8. Acceptance is separate from verdicts
 
@@ -86,18 +86,18 @@ Status: accepted for the next release (unreleased). Scope: the `campaign` action
 
 **Context.** A Git revision does not identify uncommitted or untracked files, and Invaris copies those.
 
-**Decision.** Record the snapshot's manifest digest (paths, entry kinds, modes and file SHA-256 values in sorted order, excluding `.git` and `.invaris`) as the campaign's source identity. Record the Git revision and dirty state separately, as `null` when they cannot be determined. The campaign and harness bytes inside the snapshot must match what was loaded.
+**Decision.** Record the snapshot's manifest digest (paths, entry kinds, modes and file SHA-256 values in sorted order, excluding `.git` and `.invaris`) as the campaign's source identity, plus the digest of each directory an experiment evaluates. A harness may sit in a subdirectory; its experiment evaluates that directory, as the single-experiment actions do, and its attempts must match that directory's digest. Record the Git revision and dirty state separately, as `null` when they cannot be determined. The campaign and harness bytes inside the snapshot must match what was loaded. Optional `tools` commands record tool versions once per campaign as provenance; they do not affect the decision.
 
-**Alternatives.** Use the Git revision alone.
+**Alternatives.** Use the Git revision alone; allow only harnesses next to the campaign file; ask each harness to declare a version command.
 
-**Consequences.** The report identifies what was evaluated even in a dirty tree. The digest is an integrity identifier, not an attestation.
+**Consequences.** The report identifies what was evaluated even in a dirty tree and for each subdirectory. The digest is an integrity identifier, not an attestation, and a tool version is what the tool printed, not a verified identity.
 
 ## 10. Trusted-local is not a sandbox
 
 **Context.** Campaigns run more commands and can make execution look more controlled than it is.
 
-**Decision.** Keep `trustMode: "trusted-local"` and `networkPolicy: "unrestricted"` as the only accepted values. The snapshot and workspace checks detect persistent changes at stage boundaries; they do not confine commands.
+**Decision.** Keep `trustMode: "trusted-local"` and `networkPolicy: "unrestricted"` as the only accepted values. The snapshot and workspace checks detect persistent changes at stage boundaries; they do not confine commands. Reconsidered after the first implementation and kept: real isolation needs a separate mechanism per operating system that can be tested on each, and a restricted policy must never be claimed without that.
 
-**Alternatives.** Declare a restricted network policy without enforcement.
+**Alternatives.** Declare a restricted network policy without enforcement; enforce it with `sandbox-exec` on macOS and namespaces or bubblewrap on Linux.
 
 **Consequences.** Documentation states what is verified by the engine and what is trusted to the tools. Isolation remains future work.

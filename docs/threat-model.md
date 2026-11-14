@@ -32,7 +32,7 @@ Provider findings must fall within the harness's declared scope. Inspection coun
 
 ## Campaigns
 
-A [campaign](campaigns.md) (unreleased) adds a frozen snapshot of the campaign directory. Each attempt copies the snapshot again, so attempts never share a workspace.
+A [campaign](campaigns.md) adds a frozen snapshot of the campaign directory. Each attempt copies the snapshot again, so attempts never share a workspace.
 
 | Verified by the engine | Declared by the harness or trusted to tools |
 | --- | --- |
@@ -41,6 +41,8 @@ A [campaign](campaigns.md) (unreleased) adds a frozen snapshot of the campaign d
 | Every attempt evaluated a copy whose manifest digest equals the recorded source identity | That commands did not read other files through absolute paths |
 | Each child verdict passes the single-experiment evidence rules | That evaluators and guards reported truthfully |
 | The snapshot and every attempt workspace were removed | That detached processes did not keep running |
+
+Version commands in `tools` run in the snapshot too; a change they leave is caught before the first attempt. With `--parallel`, several attempts run at once in separate copies and can still interfere through shared external state such as ports, caches or files outside the workspace.
 
 A command that writes into the snapshot through its absolute path is detected before the next attempt; that attempt and every later one are `REFUSED` and the campaign is refused. Detection is not containment: the write has already happened. Cancellation stops the active process group on Linux and macOS, starts no further attempts and still publishes a valid partial report; detached descendants can escape. Redaction covers the configured `redactEnv` values of every referenced harness. Diagnostics can contain paths and the `PATH` search list from runner errors.
 

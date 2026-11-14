@@ -50,14 +50,14 @@
         </div>
         <div>
           <dt><code>campaign</code></dt>
-          <dd>Unreleased. Run several challenges and mutations from one frozen copy, repeat them, and decide on the whole set with an acceptance policy.</dd>
+          <dd>Run several challenges and mutations from one frozen copy, repeat them, and decide on the whole set with an acceptance policy.</dd>
         </div>
       </dl>
     </section>
 
     <section aria-labelledby="quick-start">
       <h2 id="quick-start">Quick start</h2>
-      <p>Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.1.0">v0.1.0 release</a>. The <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
+      <p>Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.2.0">v0.2.0 release</a>. The <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
       <p>To run from source, use Go 1.27.4 or later and a POSIX shell. This example checks for a forbidden marker in a text file:</p>
       <pre><code>git clone https://github.com/akkaraponph/invaris.git
 cd invaris
@@ -69,7 +69,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
       <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
-      <p>The unreleased <code>campaign</code> action, available on the <code>dev</code> branch, runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a>.</p>
+      <p>The <code>campaign</code> action runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a>.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
@@ -82,7 +82,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <ul class="reference">
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Unreleased: sequential experiments, repeats, scores, and acceptance</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness, campaign, adapter, and evidence contracts</span></li>
@@ -94,7 +94,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#010">Changelog</a> <span>Version 0.1.0</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#020">Changelog</a> <span>Version 0.2.0</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Report verification, isolation, and future tooling</span></li>
       </ul>
