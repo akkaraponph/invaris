@@ -34,6 +34,10 @@ func checkGuard(ctx context.Context, root string, guard Command) Result {
 		result.Status, result.Detail = "REFUSE", "invalid or incomplete inspection evidence"
 		return result
 	}
+	if evidence.Inspected < guard.MinInspected {
+		result.Status, result.Detail = "REFUSE", "guard inspected fewer targets than the declared minInspected"
+		return result
+	}
 	for _, finding := range evidence.Findings {
 		if finding.PolicyID != guard.PolicyID || validatePath(finding.Path) != nil {
 			result.Status, result.Detail = "REFUSE", "finding has an unexpected policy or path"

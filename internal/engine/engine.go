@@ -43,6 +43,11 @@ type Command struct {
 	EnvAllowlist   []string `json:"envAllowlist,omitempty"`
 	TimeoutSeconds int      `json:"timeoutSeconds,omitempty"`
 	PolicyID       string   `json:"policyId,omitempty"`
+	// MinInspected is a floor declared in the harness for structured guards.
+	// It is checked against the guard's self-reported count, so a guard that
+	// silently narrows its scope below what the author expects is refused.
+	// It does not make the reported count truthful.
+	MinInspected int `json:"minInspected,omitempty"`
 }
 type Challenge struct {
 	ID             string `json:"id"`
