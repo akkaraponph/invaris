@@ -59,6 +59,27 @@ mutation killed 0 KILLED
 mutation survived 1 SURVIVED
 mutation invalid 2 INVALID
 
+# The Go example runs the real Go toolchain and needs a warm or writable cache.
+gp="$root/examples/go-project"
+(cd "$gp" && go test -count=1 ./... >/dev/null)
+printf 'PASS go test %s\n' "$gp"
+count=$((count + 1))
+for action in check challenge; do
+    accept "$action" "$gp/guardrail.json"
+done
+go_mutation() {
+    cfg="$gp/mutation-$1.json"
+    status=0
+    "$tmp/invaris" mutate "$cfg" >"$tmp/stdout.json" || status=$?
+    test "$status" -eq "$2"
+    grep -q "\"verdict\": \"$3\"" "$tmp/stdout.json"
+    count=$((count + 1))
+    printf 'PASS mutate %s (%s)\n' "$cfg" "$3"
+}
+go_mutation killed 0 KILLED
+go_mutation survived 1 SURVIVED
+go_mutation invalid 2 INVALID
+
 if "$real_provider"; then
     export PATH="$root/adapters/dependency-cruiser:$PATH"
     for action in run check challenge; do
