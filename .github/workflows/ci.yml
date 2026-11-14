@@ -1,0 +1,22 @@
+name: Go checks
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go build ./cmd/invaris
+      - run: |
+          ./invaris run examples/invaris.json
+          ./invaris check examples/invaris.json
+          ./invaris challenge examples/invaris.json
+          ./invaris challenge examples/structured/invaris.json

@@ -1,0 +1,11 @@
+# Current state and first milestone
+
+The repository contains an uncommitted Go prototype with `run`, `check` and `challenge`, strict JSON decoding, local command execution, output limits and disposable copied workspaces. Baseline `go test ./...` passed before changes. The prototype has no provider protocol, structured rule IDs, durable evidence store, sandbox, CI workflow or real analyzer integrations.
+
+The initial audit found that failed steps skipped guards, later results overwrote failures, challenge baseline commands ran in the source checkout, and deferred timing was lost on some early returns. This increment addresses those defects. Failure takes precedence over refusal or inconclusive results, while each individual result remains visible. Steps still stop on the first failure; guards always run. Challenge baseline and mutation now run in the same disposable copy. Cleanup errors are reported as inconclusive. Marker-based proof is explicitly weak evidence, not rule-specific proof.
+
+The copy rejects symlinks, files over 10 MiB, and workspaces over 2,000 entries. It is not process isolation: commands can read or write outside the copy and access the network and inherited environment. Execution is for trusted configurations only. Child process trees are not reliably terminated. Output is not redacted. A command exit code does not establish inspected target counts or rule identity. These are unresolved risks, not supported guarantees.
+
+First milestone: P0 lifecycle and aggregation corrections with regression tests. P0 remains partial until cancellation/process-tree behavior, cleanup and output failure adversarial tests, environment restrictions, and report persistence semantics are completed. P1 and later milestones remain unimplemented.
+
+Follow-up: the engine now bounds configuration size and task count, restricts inherited environment, signals command process groups on Linux and macOS on cancellation, and includes configuration digests and command exit codes in reports. Structured command guards now support exact policy and path correlation using the offline fixture. Durable evidence, full adapter negotiation, real analyzers, and hosted CI execution remain pending.

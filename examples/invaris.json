@@ -1,0 +1,22 @@
+{
+  "version": "invaris.dev/v1alpha1",
+  "name": "example-guardrail-proof",
+  "steps": [],
+  "guards": [
+    {
+      "id": "no-forbidden-import",
+      "program": "sh",
+      "args": ["-c", "if grep -q FORBIDDEN_IMPORT source.txt; then echo FORBIDDEN_IMPORT; exit 1; fi"]
+    }
+  ],
+  "challenges": [
+    {
+      "id": "detect-forbidden-import",
+      "guard": "no-forbidden-import",
+      "file": "source.txt",
+      "before": "SAFE_IMPORT",
+      "after": "FORBIDDEN_IMPORT",
+      "expectedOutput": "FORBIDDEN_IMPORT"
+    }
+  ]
+}
