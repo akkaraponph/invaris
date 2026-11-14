@@ -1,6 +1,6 @@
 # Evidence schema: `invaris.evidence/v1alpha2`
 
-Every `run`, `check` and `challenge` that loads a valid harness prints one JSON report on stdout (and to `--report`, byte for byte). Diagnostics go to stderr. A harness that fails to load produces no report: the CLI exits 2 with a diagnostic on stderr.
+Every `run`, `check` and `challenge` that loads a valid harness prints one JSON report on stdout (and to `--report`, byte for byte). CLI errors such as a failed harness load or report publication go to stderr and exit 2 without emitting a verdict. Check, proof, and gate diagnostics are fields in the JSON report.
 
 Schema: [`schemas/evidence-v1alpha2.schema.json`](../schemas/evidence-v1alpha2.schema.json) (JSON Schema Draft 2020-12). The schema checks shape. The correlation between `decision` and the results, and the completeness requirements below, are enforced by `evidence.Validate` in Go; a report that fails it is never printed with a passing decision. Run `python3 scripts/validate-schemas.py` (with `pip install -r scripts/requirements-schema.txt`, pinned to `jsonschema==4.23.0`, which requires Python 3.8 or newer) to validate real CLI output and deliberate counterexamples.
 
@@ -39,7 +39,7 @@ Values of the environment variables named in `redactEnv` are replaced with `[RED
 
 `evidence.PersistArtifact`/`PersistRedacted` write with exclusive creation (existing files are never overwritten), return the SHA-256 and size of exactly the persisted (redacted) bytes, and never hash the report into itself. The engine does not yet produce artifacts, so CLI reports currently have `"artifacts": []`.
 
-## Migrating from `invaris.evidence/v1alpha1`
+## Output migration
 
 | v1alpha1 | v1alpha2 |
 | --- | --- |

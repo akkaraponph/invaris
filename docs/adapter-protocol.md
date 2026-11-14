@@ -76,3 +76,5 @@ Without the variable, the kit runs the bundled Python example; it is skipped, wi
 ## Status
 
 The protocol and client are implemented and tested. The engine does not yet launch providers: provider adapters and provider guards in `invaris.dev/v1alpha2` harnesses are still refused until negotiated providers are wired in.
+
+See [Contributing](../CONTRIBUTING.md) for the release checks and security disclosure process.

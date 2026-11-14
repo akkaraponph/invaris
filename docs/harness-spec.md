@@ -10,7 +10,7 @@ A `challenge` names a guard and a relative `file`, and supplies distinct nonempt
 
 Optional `policies` declares permitted policy IDs. Optional `networkPolicy` currently accepts only `unrestricted`; it does not provide network isolation. Optional `writablePaths` restricts challenge targets to the listed exact paths: omission retains legacy behavior, whereas an explicit empty list permits no mutation. These declarations do not confine trusted commands. Nonempty `requiredAdapters` is refused because adapter negotiation is not implemented.
 
-The existing v1alpha1 examples remain valid. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#migrating-from-invarisevidencev1alpha1)).
+The existing v1alpha1 examples remain valid. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#output-migration)).
 
 For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to true. When `failFast` is false, later steps are attempted after a failed step. When `alwaysRunGuards` is false, guards are skipped after a step failure. Skipped steps and guards appear as `NOT_RUN` with a reason; a skipped guard cannot produce a passing action. Cancellation also records unstarted work as `NOT_RUN`.
 
@@ -34,3 +34,5 @@ A guard is a strict union: the command form (`program`, optional `args`, `policy
 ### Gate semantics
 
 The gate is applied per action to the results that action can produce: `run` and `check` evaluate `requiredGuards`, `challenge` evaluates `requiredProofs`. Entries the action cannot produce are not applied to it, and the report records the gate actually applied. An action whose applied gate requires nothing and which has no steps is refused as empty work. Without a configured gate every declared guard (or challenge) is required. The decision is ACCEPT only when every step passed, every required result is present and satisfying, and no failing or refusing result exists. v1alpha1 inputs get a derived gate that permits weak (marker-based) proofs for compatibility; v1alpha2 rejects a weak PROVEN proof unless `allowWeakEvidence` is true.
+
+The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both harness versions. Run `sh scripts/smoke.sh` to verify the bundled offline configurations.

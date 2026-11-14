@@ -1,22 +1,55 @@
-name: Go checks
+name: Release checks
 on: [push, pull_request]
+
+permissions:
+  contents: read
+
 jobs:
-  test:
+  go:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
+        go: ['1.23.x', stable]
+    env:
+      GOTOOLCHAIN: local
+      GOPROXY: 'off'
+      GOSUMDB: 'off'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: ${{ matrix.go }}
+          cache: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: go test ./...
       - run: go test -race ./...
       - run: go vet ./...
-      - run: go build ./cmd/invaris
-      - run: |
-          ./invaris run examples/invaris.json
-          ./invaris check examples/invaris.json
-          ./invaris challenge examples/invaris.json
-          ./invaris challenge examples/structured/invaris.json
+      - run: go build -o "${RUNNER_TEMP}/invaris" ./cmd/invaris
+      - run: sh scripts/smoke.sh
+      - run: python -m pip install -r scripts/requirements-schema.txt
+      - run: python scripts/validate-schemas.py
+
+  dependency-cruiser:
+    runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: local
+      GOPROXY: 'off'
+      GOSUMDB: 'off'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+      - run: npm install --global npm@11.19.1
+      - run: npm ci --prefix adapters/dependency-cruiser
+      - run: node --test adapters/dependency-cruiser/provider.test.mjs
+      - run: go test -tags=integration ./internal/engine -run '^TestDependencyCruiserProof$' -count=1 -v
+      - run: sh scripts/smoke.sh --with-dependency-cruiser
