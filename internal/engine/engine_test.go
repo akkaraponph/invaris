@@ -81,7 +81,7 @@ func TestProofRefusesAmbiguousMutation(t *testing.T) {
 func TestRunAlwaysChecksGuardsAndPreservesFailure(t *testing.T) {
 	spec := Specification{Version: "invaris.dev/v1alpha1", Name: "order", Steps: []Command{{ID: "step", Program: "sh", Args: []string{"-c", "exit 1"}}, {ID: "skipped", Program: "true"}}, Guards: []Command{{ID: "missing", Program: "missing-invaris-test-executable-0101"}, {ID: "guard", Program: "true"}}}
 	got := Run(context.Background(), spec, t.TempDir(), "run")
-	if got.Status != "FAIL" || len(got.Results) != 3 || got.Results[0].Status != "FAIL" || got.Results[1].Status != "REFUSE" || got.Results[2].ID != "guard" {
+	if got.Status != "FAIL" || len(got.Results) != 4 || got.Results[0].Status != "FAIL" || got.Results[1].Status != "NOT_RUN" || got.Results[2].Status != "REFUSE" || got.Results[3].ID != "guard" {
 		t.Fatalf("lost failure or guard: %+v", got)
 	}
 }

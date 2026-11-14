@@ -15,6 +15,9 @@ func validateJSONValue(d *json.Decoder, typ reflect.Type, depth int) error {
 	if depth > 64 {
 		return fmt.Errorf("JSON nesting exceeds limit")
 	}
+	for typ.Kind() == reflect.Pointer {
+		typ = typ.Elem()
+	}
 	token, err := d.Token()
 	if err != nil {
 		return err

@@ -5,16 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 )
 
 // Specification is a deliberately narrow, versioned execution contract.
 // Arguments are never interpreted by a shell.
 type Specification struct {
+	FailFast         *bool       `json:"failFast,omitempty"`
+	AlwaysRunGuards  *bool       `json:"alwaysRunGuards,omitempty"`
 	ConfigDigest     string      `json:"-"`
 	Version          string      `json:"version"`
 	Name             string      `json:"name"`
@@ -74,27 +74,7 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	}
 	switch action {
 	case "run", "check":
-		if len(spec.Guards) == 0 && (action == "check" || len(spec.Steps) == 0) {
-			report.Status = "REFUSE"
-			report.Results = append(report.Results, Result{ID: "guards", Status: "REFUSE", Detail: "no executable work configured"})
-		}
-		if action == "run" {
-			for _, s := range spec.Steps {
-				r := execute(ctx, root, s)
-				report.Results = append(report.Results, r)
-				if r.Status != "PASS" {
-					report.Status = aggregate(report.Status, r.Status)
-					break
-				}
-			}
-		}
-		for _, g := range spec.Guards {
-			r := checkGuard(ctx, root, g)
-			report.Results = append(report.Results, r)
-			if r.Status != "PASS" {
-				report.Status = aggregate(report.Status, r.Status)
-			}
-		}
+		runLifecycle(ctx, spec, root, action, &report)
 	case "challenge":
 		if len(spec.Challenges) == 0 {
 			report.Status = "REFUSE"
@@ -118,102 +98,6 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	report.FinishedAt = time.Now().UTC()
 	return report
 }
-
-// Actual failures take precedence over inability to evaluate; individual results retain both.
-func aggregate(current, next string) string {
-	if current == "FAIL" || next == "FAIL" {
-		return "FAIL"
-	}
-	if current == "REFUSE" || next == "REFUSE" {
-		return "REFUSE"
-	}
-	if current == "INCONCLUSIVE" || next == "INCONCLUSIVE" {
-		return "INCONCLUSIVE"
-	}
-	return "PASS"
-}
-
-func execute(ctx context.Context, root string, c Command) Result {
-	started := time.Now()
-	r := Result{ID: c.ID, Status: "REFUSE"}
-	timeout := c.TimeoutSeconds
-	if timeout == 0 {
-		timeout = 30
-	}
-	runctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-	defer cancel()
-	command := exec.CommandContext(runctx, c.Program, c.Args...)
-	command.Dir = root
-	configureProcess(command)
-	command.WaitDelay = 250 * time.Millisecond
-	command.Env = []string{"PATH=/usr/bin:/bin"}
-	for _, key := range c.EnvAllowlist {
-		if value, ok := os.LookupEnv(key); ok {
-			command.Env = append(command.Env, key+"="+value)
-		}
-	}
-	// Output is capped to prevent unbounded evidence and memory growth.
-	output := &limitedWriter{max: 64 * 1024}
-	command.Stdout = output
-	diagnostics := output
-	if c.PolicyID != "" {
-		diagnostics = &limitedWriter{max: 64 * 1024}
-	}
-	command.Stderr = diagnostics
-	err := command.Run()
-	if command.ProcessState != nil {
-		code := command.ProcessState.ExitCode()
-		r.ExitCode = &code
-	}
-	r.Output = output.String()
-	r.DurationMs = time.Since(started).Milliseconds()
-	if runctx.Err() != nil {
-		r.Detail = runctx.Err().Error()
-		return r
-	}
-	if output.Exceeded() || diagnostics.Exceeded() {
-		r.Detail = "output limit exceeded"
-		return r
-	}
-	if err == nil {
-		r.Status = "PASS"
-		return r
-	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) && exit.ExitCode() >= 0 {
-		r.Status = "FAIL"
-		r.Detail = fmt.Sprintf("exit status %d", exit.ExitCode())
-		return r
-	}
-	r.Detail = err.Error()
-	return r
-}
-
-type limitedWriter struct {
-	mu       sync.Mutex
-	b        strings.Builder
-	max      int
-	exceeded bool
-}
-
-func (w *limitedWriter) Write(p []byte) (int, error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	n := len(p)
-	left := w.max - w.b.Len()
-	if left > 0 {
-		if left > n {
-			left = n
-		}
-		w.b.Write(p[:left])
-	}
-	if n > left {
-		w.exceeded = true
-	}
-	return n, nil
-}
-func (w *limitedWriter) String() string { w.mu.Lock(); defer w.mu.Unlock(); return w.b.String() }
-func (w *limitedWriter) Exceeded() bool { w.mu.Lock(); defer w.mu.Unlock(); return w.exceeded }
 
 func challenge(ctx context.Context, root string, guards []Command, c Challenge) (r Result) {
 	started := time.Now()
