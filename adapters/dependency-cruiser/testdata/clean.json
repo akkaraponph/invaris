@@ -1,0 +1,71 @@
+{
+  "modules": [
+    {
+      "source": "src/allowed.js",
+      "dependencies": [],
+      "dependents": [
+        "src/main.js"
+      ],
+      "orphan": false,
+      "valid": true
+    },
+    {
+      "source": "src/forbidden.js",
+      "dependencies": [],
+      "dependents": [],
+      "orphan": true,
+      "valid": true
+    },
+    {
+      "source": "src/main.js",
+      "dependencies": [
+        {
+          "module": "./allowed.js",
+          "moduleSystem": "es6",
+          "dynamic": false,
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "resolved": "src/allowed.js",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "valid": true
+        }
+      ],
+      "dependents": [],
+      "orphan": false,
+      "valid": true
+    }
+  ],
+  "summary": {
+    "violations": [],
+    "error": 0,
+    "warn": 0,
+    "info": 0,
+    "ignore": 0,
+    "advisedExitCode": 0,
+    "totalCruised": 3,
+    "totalDependenciesCruised": 1,
+    "ruleSetUsed": {
+      "forbidden": [
+        {
+          "name": "no-forbidden-import",
+          "severity": "error",
+          "comment": "src/main.js must not depend on src/forbidden.js",
+          "from": {
+            "path": "^src/main\\.js$"
+          },
+          "to": {
+            "path": "^src/forbidden\\.js$"
+          },
+          "scope": "module"
+        }
+      ]
+    }
+  }
+}

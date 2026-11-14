@@ -1,0 +1,92 @@
+{
+  "modules": [
+    {
+      "source": "src/allowed.js",
+      "dependencies": [],
+      "dependents": [],
+      "orphan": true,
+      "valid": true
+    },
+    {
+      "source": "src/forbidden.js",
+      "dependencies": [],
+      "dependents": [
+        "src/main.js"
+      ],
+      "orphan": false,
+      "valid": true
+    },
+    {
+      "source": "src/main.js",
+      "dependencies": [
+        {
+          "module": "./forbidden.js",
+          "moduleSystem": "es6",
+          "dynamic": false,
+          "exoticallyRequired": false,
+          "dependencyTypes": [
+            "local",
+            "import"
+          ],
+          "resolved": "src/forbidden.js",
+          "coreModule": false,
+          "followable": true,
+          "couldNotResolve": false,
+          "matchesDoNotFollow": false,
+          "circular": false,
+          "valid": false,
+          "rules": [
+            {
+              "severity": "error",
+              "name": "no-forbidden-import"
+            }
+          ]
+        }
+      ],
+      "dependents": [],
+      "orphan": false,
+      "valid": true
+    }
+  ],
+  "summary": {
+    "violations": [
+      {
+        "type": "dependency",
+        "from": "src/main.js",
+        "to": "src/forbidden.js",
+        "unresolvedTo": "./forbidden.js",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ],
+        "rule": {
+          "severity": "error",
+          "name": "no-forbidden-import"
+        }
+      }
+    ],
+    "error": 1,
+    "warn": 0,
+    "info": 0,
+    "ignore": 0,
+    "advisedExitCode": 1,
+    "totalCruised": 3,
+    "totalDependenciesCruised": 1,
+    "ruleSetUsed": {
+      "forbidden": [
+        {
+          "name": "no-forbidden-import",
+          "severity": "error",
+          "comment": "src/main.js must not depend on src/forbidden.js",
+          "from": {
+            "path": "^src/main\\.js$"
+          },
+          "to": {
+            "path": "^src/forbidden\\.js$"
+          },
+          "scope": "module"
+        }
+      ]
+    }
+  }
+}

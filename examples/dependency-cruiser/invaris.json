@@ -1,0 +1,29 @@
+{
+  "version": "invaris.dev/v1alpha2",
+  "name": "dependency-cruiser-example",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "policies": [{"id": "no-forbidden-import"}],
+  "writablePaths": ["src/main.js"],
+  "adapters": [{
+    "id": "dependency-cruiser",
+    "program": "provider.mjs",
+    "envAllowlist": ["PATH"],
+    "timeoutSeconds": 30
+  }],
+  "requiredAdapters": ["dependency-cruiser"],
+  "guards": [{
+    "id": "imports",
+    "adapterId": "dependency-cruiser",
+    "policyId": "no-forbidden-import",
+    "scope": ["src"],
+    "options": {"configPath": ".dependency-cruiser.cjs"}
+  }],
+  "challenges": [{
+    "id": "detect-forbidden-import",
+    "guard": "imports",
+    "file": "src/main.js",
+    "before": "./allowed.js",
+    "after": "./forbidden.js"
+  }]
+}
