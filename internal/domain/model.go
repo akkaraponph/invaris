@@ -80,6 +80,9 @@ type Check struct {
 	Findings    []Finding    `json:"findings"`
 	Diagnostics []Diagnostic `json:"diagnostics"`
 	ExitCode    *int         `json:"exitCode"`
+	// Reason is the machine-readable failure reason for a REFUSE result. It is
+	// consumed when a proof is classified and is not serialized on checks.
+	Reason string `json:"-"`
 }
 
 // Proof stage names, in execution order. Cleanup always runs once a workspace
@@ -106,6 +109,15 @@ type Mutation struct {
 	AfterSHA256  string `json:"afterSha256"`
 }
 
+// SourceSnapshot is a digest of the workspace manifest (paths, modes, file
+// SHA-256 values) taken right after the copy. It identifies the inputs that
+// were copied, including dirty and untracked files that a Git revision does
+// not. It does not identify the tools, the environment or the machine.
+type SourceSnapshot struct {
+	SHA256 string `json:"sha256"`
+	Files  int    `json:"files"`
+}
+
 // Stage is one attempted stage of a proof with its outcome and duration.
 // Stages that were never reached because of an earlier failure are absent.
 type Stage struct {
@@ -125,9 +137,14 @@ type Proof struct {
 	FaultID          string      `json:"faultId"`
 	EvidenceStrength string      `json:"evidenceStrength"`
 	Status           ProofStatus `json:"status"`
+	Reason           string      `json:"reason"`
+	ReasonCategory   string      `json:"reasonCategory"`
 	Detail           string      `json:"detail"`
-	Mutation         *Mutation   `json:"mutation"`
-	Stages           []Stage     `json:"stages"`
-	Baseline         *Check      `json:"baseline"`
-	Challenged       *Check      `json:"challenged"`
+	// SourceSnapshot identifies the files copied into the disposable workspace
+	// before the baseline ran; null when no workspace was prepared.
+	SourceSnapshot *SourceSnapshot `json:"sourceSnapshot"`
+	Mutation       *Mutation       `json:"mutation"`
+	Stages         []Stage         `json:"stages"`
+	Baseline       *Check          `json:"baseline"`
+	Challenged     *Check          `json:"challenged"`
 }

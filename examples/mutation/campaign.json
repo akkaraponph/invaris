@@ -1,0 +1,35 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "mutation-fixture-campaign",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {
+      "id": "killed",
+      "kind": "mutation",
+      "harness": "killed.json",
+      "experimentId": "mutation-killed",
+      "repeat": 1
+    },
+    {
+      "id": "survived",
+      "kind": "mutation",
+      "harness": "survived.json",
+      "experimentId": "mutation-survived",
+      "repeat": 1
+    },
+    {
+      "id": "invalid",
+      "kind": "mutation",
+      "harness": "invalid.json",
+      "experimentId": "mutation-invalid",
+      "repeat": 1
+    }
+  ],
+  "acceptance": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": false,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

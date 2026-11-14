@@ -41,7 +41,7 @@ func TestMutationLifecycleFailures(t *testing.T) {
 		name, reason                      string
 		test, validation                  string
 		missing, cancel, cleanup, timeout bool
-		ambiguous                         bool
+		ambiguous, stale                  bool
 		stage                             string
 	}{
 		{name: "unhealthy baseline", reason: "unhealthy_baseline", test: failTests, stage: "baseline"},
@@ -56,6 +56,7 @@ func TestMutationLifecycleFailures(t *testing.T) {
 		{name: "validation changes manifest", reason: "workspace_changed", validation: "printf x > src; " + emit(cleanValidity), stage: "validation"},
 		{name: "mutant tests change manifest", reason: "workspace_changed", test: "if [ \"$(cat src)\" = new ]; then touch side-effect; fi; " + emit(cleanTests), stage: "tests"},
 		{name: "ambiguous match", reason: "mutation_rejected", ambiguous: true, stage: "mutate"},
+		{name: "stale preimage digest", reason: "mutation_rejected", stale: true, stage: "mutate"},
 		{name: "cleanup failure", reason: "cleanup_failed", cleanup: true, stage: "cleanup"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -66,6 +67,9 @@ func TestMutationLifecycleFailures(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(root, "src"), []byte(original), 0o640); err != nil {
 					t.Fatal(err)
 				}
+			}
+			if tc.stale {
+				spec.Experiment.Mutation.PreimageSHA256 = strings.Repeat("0", 64)
 			}
 			if tc.test != "" {
 				spec.Experiment.Test.Args[1] = tc.test
@@ -130,6 +134,12 @@ func TestMutationLifecycleFailures(t *testing.T) {
 			lastStage := len(e.Stages) - 1
 			if tc.stage != "cleanup" {
 				lastStage--
+			}
+			if e.ReasonCategory != domain.ReasonCategory(tc.reason) || e.ReasonCategory == "" {
+				t.Fatalf("reason %q has category %q", e.Reason, e.ReasonCategory)
+			}
+			if tc.stage != "prepare" && (e.SourceSnapshot == nil || len(e.SourceSnapshot.SHA256) != 64) {
+				t.Fatalf("source snapshot missing: %+v", e.SourceSnapshot)
 			}
 			if e.Verdict != domain.MutationInconclusive || e.Reason != tc.reason || lastStage < 0 ||
 				e.Stages[lastStage].Name != tc.stage || e.Stages[lastStage].Status != domain.StageFailed {

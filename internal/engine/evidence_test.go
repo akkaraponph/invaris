@@ -294,3 +294,28 @@ func jsonString(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
 }
+
+// Observations of real commands record the resolved executable and its file
+// hash, the effective timeout and the allowlisted variable names; values are
+// never recorded. Unknown values are explicit nulls.
+func TestObservationProvenance(t *testing.T) {
+	spec := Specification{Version: "invaris.dev/v1alpha1", Name: "prov", Steps: []Command{
+		{ID: "ok", Program: "sh", Args: []string{"-c", "exit 0"}, EnvAllowlist: []string{"HOME"}, TimeoutSeconds: 7},
+		{ID: "gone", Program: "no-such-program-invaris"}}}
+	r := RunEvidence(context.Background(), spec, t.TempDir(), "run")
+	byID := map[string]evidence.Observation{}
+	for _, o := range r.Observations {
+		byID[o.ID] = o
+	}
+	ok, gone := byID["ok"], byID["gone"]
+	if ok.Executable == nil || ok.Executable.Path == "" || ok.Executable.SHA256 == nil || len(*ok.Executable.SHA256) != 64 ||
+		ok.TimeoutSeconds == nil || *ok.TimeoutSeconds != 7 || len(ok.EnvAllowlist) != 1 || ok.EnvAllowlist[0] != "HOME" {
+		t.Fatalf("provenance missing: %+v", ok)
+	}
+	if gone.Executable != nil || gone.EnvAllowlist == nil || gone.Provider.ToolVersion != nil {
+		t.Fatalf("an unresolved program must have a null executable and unknown version: %+v", gone)
+	}
+	if b, err := json.Marshal(r.Observations); err != nil || strings.Contains(string(b), os.Getenv("HOME")+"\"") && os.Getenv("HOME") != "" && strings.Contains(string(b), "HOME="+os.Getenv("HOME")) {
+		t.Fatalf("environment value leaked: %v", err)
+	}
+}

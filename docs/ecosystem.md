@@ -1,8 +1,8 @@
 # Open-source ecosystem
 
-Invaris is a local harness that runs checks and verifies that a selected guard detects an expected violation after a controlled file change. The catalog links to public GitHub repositories for independent open-source projects. For tested integrations, tool versions, and platforms, see [Invaris provider support](provider-support.md).
+Invaris is a local harness that runs checks and verifies that a selected guard detects an expected violation after a controlled file change. This catalog groups independent open-source projects by the work they help with. For a tested adapter, tool version, and platform, see [Dependency-Cruiser example](dependency-cruiser-example.md).
 
-These links are provided for reference only. Listing a repository does not imply affiliation, endorsement, or integration with Invaris. For reuse, consult the applicable license and notices in the linked repository.
+Use these links to explore related tools. Check each repository's license and notices before reuse. Listing a project does not imply an Invaris integration or affiliation.
 
 ## API and integration verification
 

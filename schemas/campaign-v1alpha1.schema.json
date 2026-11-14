@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/campaign-v1alpha1.schema.json",
+  "title": "Invaris campaign v1alpha1",
+  "description": "A sequential campaign over existing harnesses inside the campaign directory. Go validation additionally loads every referenced harness, checks that the referenced experiment or challenge exists with the right harness version and a structured guard, rejects duplicate references, and checks that enabled requirements apply to at least one declared experiment kind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "name",
+    "trustMode",
+    "networkPolicy",
+    "experiments",
+    "acceptance"
+  ],
+  "properties": {
+    "version": {
+      "const": "invaris.campaign/v1alpha1"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "trustMode": {
+      "const": "trusted-local"
+    },
+    "networkPolicy": {
+      "const": "unrestricted"
+    },
+    "experiments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/experiment"
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requireNoSurvivors",
+        "requireAllGuardrailsProven",
+        "requireNoInconclusive",
+        "requireNoMixed"
+      ],
+      "properties": {
+        "requireNoSurvivors": {
+          "type": "boolean"
+        },
+        "requireAllGuardrailsProven": {
+          "type": "boolean"
+        },
+        "requireNoInconclusive": {
+          "type": "boolean"
+        },
+        "requireNoMixed": {
+          "type": "boolean"
+        },
+        "requireNoInvalid": {
+          "type": "boolean"
+        },
+        "minMutationScore": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/tool"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "harness",
+        "repeat"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "kind": {
+          "enum": [
+            "mutation",
+            "guardrail"
+          ]
+        },
+        "harness": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*//)(?!(?:.*/)?\\.{1,2}(?:/|$))(?!(?:.*/)?\\.(?:git|invaris)(?:/|$))[^\\\\:\\u0000]+$"
+        },
+        "experimentId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "challengeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repeat": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "mutation"
+            }
+          },
+          "required": [
+            "experimentId"
+          ],
+          "not": {
+            "required": [
+              "challengeId"
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "guardrail"
+            }
+          },
+          "required": [
+            "challengeId"
+          ],
+          "not": {
+            "required": [
+              "experimentId"
+            ]
+          }
+        }
+      ]
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "program"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "program": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "envAllowlist": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^=\\u0000]+$",
+            "not": {
+              "const": "PWD"
+            }
+          }
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        }
+      }
+    }
+  }
+}

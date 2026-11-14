@@ -118,6 +118,9 @@ func (s Specification) Validate() error {
 		if c.PolicyID != "" && (strings.TrimSpace(c.PolicyID) != c.PolicyID || (s.Policies != nil && !policies[c.PolicyID])) {
 			return fmt.Errorf("invalid policy ID for command %q", c.ID)
 		}
+		if c.MinInspected < 0 || c.MinInspected > 0 && c.PolicyID == "" {
+			return fmt.Errorf("minInspected for command %q requires a policyId and a positive value", c.ID)
+		}
 		for _, arg := range c.Args {
 			if strings.ContainsRune(arg, 0) {
 				return fmt.Errorf("invalid argument for command %q", c.ID)

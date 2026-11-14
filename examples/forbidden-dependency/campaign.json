@@ -1,0 +1,21 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "forbidden-dependency-campaign",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {
+      "id": "introduce-dependency",
+      "kind": "guardrail",
+      "harness": "invaris.json",
+      "challengeId": "introduce-dependency",
+      "repeat": 2
+    }
+  ],
+  "acceptance": {
+    "requireNoSurvivors": false,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

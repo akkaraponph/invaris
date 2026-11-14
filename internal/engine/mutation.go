@@ -31,9 +31,7 @@ func runMutationEvidence(ctx context.Context, spec Specification, root string) e
 	experiment, observations := runMutation(ctx, spec, root, workspace.Prepare, (*workspace.Workspace).Close)
 	r := evidenceMetadata(ctx, spec, root, "mutate", started, time.Now().UTC())
 	r.SchemaVersion = evidence.MutationSchemaVersion
-	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
-		experiment.EngineVersion = &info.Main.Version
-	}
+	experiment.EngineVersion = engineVersion()
 	r.Gate = domain.Gate{Precedence: domain.FailureFirst}
 	r.Experiment, r.Observations = &experiment, observations
 	r.Decision = domain.MutationDecision(experiment.Verdict)
@@ -51,6 +49,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		TestCommandID: in.Test.ID, ValidationCommandID: in.Validation.ID, TestIDs: slices.Clone(in.TestIDs),
 		Verdict: domain.MutationInconclusive, Stages: []domain.Stage{},
 	}
+	defer func() { e.ReasonCategory = domain.ReasonCategory(e.Reason) }()
 	record := func(name string, start time.Time, reason string, err error) {
 		stage := domain.Stage{Name: name, Status: domain.StageOK, DurationMs: time.Since(start).Milliseconds()}
 		if reason != "" {
@@ -83,7 +82,8 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		return
 	}
 	record("prepare", start, "", nil)
-	workspaceRoot, statErr := os.Lstat(ws.Root)
+	guard, statErr := newIntegrity(ws.Root)
+	workspaceRoot := guard.info
 	defer func() {
 		start := time.Now()
 		info, err := os.Lstat(ws.Root)
@@ -109,23 +109,6 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		observations = append(observations, observation(res, kind, cmd, observationLimit(spec)))
 		return res, &evidence.MutationCommandResult{ObservationID: res.ID}
 	}
-	integrity := func(before map[string]workspace.Entry) error {
-		info, err := os.Lstat(ws.Root)
-		if err != nil {
-			return err
-		}
-		if !os.SameFile(workspaceRoot, info) || info.Mode() != workspaceRoot.Mode() {
-			return errors.New("workspace root changed")
-		}
-		after, err := workspace.Snapshot(ws.Root)
-		if err != nil {
-			return err
-		}
-		if len(workspace.Diff(before, after)) != 0 {
-			return errors.New("workspace manifest changed")
-		}
-		return nil
-	}
 	evaluate := func(kind string, cmd Command, before map[string]workspace.Entry) (*evidence.MutationCommandResult, bool) {
 		start := time.Now()
 		res, result := run(kind, cmd)
@@ -145,7 +128,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		case ctx.Err() != nil:
 			record(kind, start, commandFailure(ctx.Err()), ctx.Err())
 		default:
-			if err = integrity(before); err != nil {
+			if err = guard.verify(before); err != nil {
 				record(kind, start, "workspace_changed", err)
 			} else if kind == "baseline" && *res.ExitCode == 1 {
 				record(kind, start, "unhealthy_baseline", nil)
@@ -161,11 +144,12 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		return
 	}
 	start = time.Now()
-	before, err := workspace.Snapshot(ws.Root)
+	before, err := guard.snapshot()
 	if err = errors.Join(statErr, err); err != nil {
 		record("baseline", start, "workspace_changed", err)
 		return
 	}
+	e.SourceSnapshot = &domain.SourceSnapshot{SHA256: workspace.ManifestDigest(before), Files: len(before)}
 	var ok bool
 	e.Baseline, ok = evaluate("baseline", in.Test, before)
 	if !ok || contextEnded() {
@@ -173,7 +157,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	}
 
 	start = time.Now()
-	applied, err := workspace.Replace(ws.Root, m.Path, m.Before, m.After)
+	applied, err := workspace.ReplaceExpecting(ws.Root, m.Path, m.Before, m.After, m.PreimageSHA256)
 	if err != nil {
 		record("mutate", start, "mutation_rejected", err)
 		return
@@ -216,6 +200,16 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		e.Verdict, e.Reason = domain.MutationSurvived, "all_tests_passed"
 	}
 	return
+}
+
+// engineVersion is the module version of this build, or nil for a
+// development build whose version is unknown.
+func engineVersion() *string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		v := info.Main.Version
+		return &v
+	}
+	return nil
 }
 
 func commandFailure(err error) string {

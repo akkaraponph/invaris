@@ -189,6 +189,15 @@ func ValidPath(name string) bool {
 // compared before and after the write, and any difference other than the one
 // declared file is an error.
 func Replace(root, path, before, after string) (Mutation, error) {
+	return ReplaceExpecting(root, path, before, after, "")
+}
+
+// ReplaceExpecting is Replace with an optional precondition: when preimage is
+// non-empty it must equal the lowercase hex SHA-256 of the whole target file
+// as found at call time, or nothing is written. This pins the experiment to
+// the exact content it was authored against. The digest identifies content;
+// it is not an attestation of who produced it.
+func ReplaceExpecting(root, path, before, after, preimage string) (Mutation, error) {
 	var m Mutation
 	if !ValidPath(path) {
 		return m, fmt.Errorf("unsafe mutation path %q", path)
@@ -214,6 +223,9 @@ func Replace(root, path, before, after string) (Mutation, error) {
 	data, err := os.ReadFile(target)
 	if err != nil {
 		return m, err
+	}
+	if preimage != "" && hashBytes(data) != preimage {
+		return m, errors.New("target content does not match the declared preimage digest")
 	}
 	marker := []byte(before)
 	first := bytes.Index(data, marker)
@@ -343,4 +355,37 @@ func Diff(a, b map[string]Entry) []string {
 func hashBytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
+}
+
+// ManifestDigest returns a deterministic SHA-256 over a manifest: every path in
+// sorted order with its kind, mode, content hash and link target. Equal digests
+// mean equal manifests; the digest identifies content and is not attestation.
+func ManifestDigest(m map[string]Entry) string {
+	paths := make([]string, 0, len(m))
+	for p := range m {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	h := sha256.New()
+	for _, p := range paths {
+		e := m[p]
+		fmt.Fprintf(h, "%d:%s\x00%s\x00%o\x00%s\x00%s\x00", len(p), p, e.Kind, e.Mode, e.SHA256, e.Link)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// Subtree returns the entries of m below dir, with paths relative to dir, as
+// Snapshot would record them for a copy of that directory. Dir "." returns m.
+func Subtree(m map[string]Entry, dir string) map[string]Entry {
+	if dir == "." {
+		return m
+	}
+	prefix := dir + "/"
+	out := map[string]Entry{}
+	for p, e := range m {
+		if rest, ok := strings.CutPrefix(p, prefix); ok {
+			out[rest] = e
+		}
+	}
+	return out
 }

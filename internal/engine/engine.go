@@ -7,6 +7,7 @@ import (
 
 	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/evidence"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -43,6 +44,11 @@ type Command struct {
 	EnvAllowlist   []string `json:"envAllowlist,omitempty"`
 	TimeoutSeconds int      `json:"timeoutSeconds,omitempty"`
 	PolicyID       string   `json:"policyId,omitempty"`
+	// MinInspected is a floor declared in the harness for structured guards.
+	// It is checked against the guard's self-reported count, so a guard that
+	// silently narrows its scope below what the author expects is refused.
+	// It does not make the reported count truthful.
+	MinInspected int `json:"minInspected,omitempty"`
 }
 type Challenge struct {
 	ID             string `json:"id"`
@@ -70,10 +76,18 @@ type Result struct {
 	// Set for provider guards: the provider identity and its validated check.
 	Provider      *adapter.Identity `json:"-"`
 	ProviderCheck *domain.Check     `json:"-"`
-	Stdout        string            `json:"-"`
-	Stderr        string            `json:"-"`
-	Truncated     bool              `json:"-"`
-	commandErr    error
+	// Execution provenance of the command that ran: the resolved program, its
+	// file hash (empty when unreadable), and the settings that applied.
+	ExecPath, ExecSHA256 string
+	TimeoutSeconds       int
+	EnvNames             []string
+	// reason is the machine-readable reason for a challenge that produced no
+	// staged proof (configuration or negotiation failures).
+	reason     string
+	Stdout     string `json:"-"`
+	Stderr     string `json:"-"`
+	Truncated  bool   `json:"-"`
+	commandErr error
 }
 
 // Report is the engine's working result. The CLI emits evidence.Report
@@ -148,17 +162,36 @@ func Run(ctx context.Context, spec Specification, root, action string) Report {
 	return report
 }
 
+// runChallengeEvidence runs one challenge of a harness exactly as `challenge`
+// would, and returns its proof and observations. The harness gate is dropped
+// because it may name other challenges; the campaign applies its own policy.
+// ok is false when the evidence does not contain exactly that proof.
+func runChallengeEvidence(ctx context.Context, spec Specification, root, challengeID string) (domain.Proof, []evidence.Observation, bool) {
+	one := spec
+	one.Gate, one.Challenges = nil, nil
+	for _, c := range spec.Challenges {
+		if c.ID == challengeID {
+			one.Challenges = []Challenge{c}
+		}
+	}
+	r := buildEvidence(ctx, one, root, "challenge", Run(ctx, one, root, "challenge"))
+	if len(r.Proofs) != 1 || r.Proofs[0].ID != challengeID {
+		return domain.Proof{}, r.Observations, false
+	}
+	return r.Proofs[0], r.Observations, true
+}
+
 func challenge(ctx context.Context, root string, spec Specification, providers providerState, c Challenge) (r Result) {
 	started := time.Now()
 	r = Result{ID: c.ID, Status: "INCONCLUSIVE", StartedAt: started.UTC()}
 	defer func() { r.DurationMs = time.Since(started).Milliseconds(); r.FinishedAt = time.Now().UTC() }()
 	if err := validatePath(c.File); err != nil {
-		r.Detail = err.Error()
+		r.Detail, r.reason = err.Error(), domain.ReasonInvalidTarget
 		return
 	}
 	for _, id := range spec.RequiredAdapters {
 		if why := providers.unavailable(id); why != "" {
-			r.Detail = why
+			r.Detail, r.reason = why, domain.ReasonProviderUnavailable
 			return
 		}
 	}
@@ -170,7 +203,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 			continue
 		}
 		if why := providers.unsupported(g); why != "" {
-			r.Detail = why
+			r.Detail, r.reason = why, domain.ReasonProviderUnavailable
 			return
 		}
 		expect = expectation{Policy: g.PolicyID, Rule: g.PolicyID}
@@ -197,7 +230,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 		}
 	}
 	if evaluate == nil {
-		r.Detail = "guard not found"
+		r.Detail, r.reason = "guard not found", domain.ReasonGuardNotFound
 		return
 	}
 	proof := prove(ctx, root, c, expect, evaluate, workspace.Prepare, (*workspace.Workspace).Close)

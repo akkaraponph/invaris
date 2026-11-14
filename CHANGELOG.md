@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.0
+
+Invaris 0.2.0 adds campaigns: several mutation and guardrail experiments run together from one frozen copy of the source, with repeats, separate mutation and guardrail scores, and an explicit acceptance decision. Build with Go 1.27.4 or later. The offline examples use a POSIX shell.
+
+### Highlights
+
+- Run `invaris campaign` with an [`invaris.campaign/v1alpha1`](schemas/campaign-v1alpha1.schema.json) file. A campaign references existing v1alpha3 mutation experiments and v1alpha2 structured challenges anywhere under its directory, copies that directory once into a frozen snapshot, and runs each selected experiment up to five times from fresh copies. Reports use [`invaris.evidence/v1alpha4`](schemas/evidence-v1alpha4.schema.json). See [Campaigns](docs/campaigns.md).
+- Every attempt and its full child evidence is kept. Repeats are `CONSISTENT`, `MIXED` or `INCOMPLETE`; there is no voting.
+- The mutation score (`killed / (killed + survived)`) and the guardrail proof rate (`proven / (proven + unproven)`) count consistent experiments once each and are `null` when nothing is eligible. They are never combined.
+- A typed acceptance policy (`requireNoSurvivors`, `requireAllGuardrailsProven`, `requireNoInconclusive`, `requireNoMixed`, optional `requireNoInvalid` and `minMutationScore`) decides `ACCEPT`, `REJECT` or `REFUSE`. Incomplete or contradictory evidence refuses before any reject.
+- CLI options: `--only ID` runs a recorded subset, `--format text` prints a summary, and `--parallel N` (1 to 8, default 1) runs attempts concurrently. Exit codes stay `0` ACCEPT, `1` REJECT, `2` REFUSE or error.
+- Source identity: the snapshot manifest digest, one digest per evaluated directory, Git revision and dirty state. Optional campaign `tools` record tool versions such as `go version`.
+- Cancellation stops further attempts, records canceled and unstarted work, removes the snapshot, and still writes a valid partial report.
+
+### Evidence and compatibility
+
+- `run`, `check`, `challenge` and `mutate` keep their inputs, exit codes and report versions.
+- Proofs gain `reason` and `reasonCategory`, and mutation experiments gain `reasonCategory`, with one shared vocabulary (`result`, `setup`, `infrastructure`, `evidence`).
+- Reports record `gitDirty`, a `sourceSnapshot` digest per proof and experiment, and per-observation `executable` (path and SHA-256), `timeoutSeconds` and `envAllowlist`. Unknown values are `null`.
+- **Schema update:** these keys are required in the `invaris.evidence/v1alpha2` and `v1alpha3` schemas published with 0.1.0. Consumers that validate strictly against the 0.1.0 schemas must update.
+- **Behaviour change in `challenge`:** a guard that writes into the workspace now yields `INCONCLUSIVE` (`workspace_changed`) instead of a proof. A structured guard that exits 0 or 1 with rejected output now gives reason `malformed_evidence` instead of `execution_failed`; the verdict stays `INCONCLUSIVE`.
+- Add optional `preimageSha256` to the v1alpha3 mutation (a stale target is rejected before any write) and optional `minInspected` to structured command guards.
+
+### Examples and verification
+
+- Add [`examples/go-project`](examples/go-project/README.md): Go tests killing or missing a mutant, an import guard proving a challenge, and campaigns with six outcomes and a deterministic mixed-result fixture.
+- Add campaigns for the shell mutation and forbidden-dependency examples. `scripts/smoke.sh` and `scripts/validate-schemas.py` cover every campaign file and report.
+- Add a [design note](docs/decisions/0001-campaign-engine.md) for the campaign decisions, including why execution is not sandboxed and baselines are not reused.
+
 ## 0.1.0
 
 Invaris runs trusted local workflows and turns guard challenges and single-mutant experiments into versioned JSON evidence. Build with Go 1.27.4 or later. The offline examples use a POSIX shell.
@@ -21,10 +50,10 @@ Invaris runs trusted local workflows and turns guard challenges and single-mutan
 - Typed checks, proofs and gate decisions (`internal/domain`); evidence validation, deterministic serialization, redaction of configured secrets and exclusive artifact persistence (`internal/evidence`). Missing required results or incomplete evidence can no longer yield `ACCEPT`.
 - Publish `schemas/harness-v1alpha2.schema.json` and `schemas/evidence-v1alpha2.schema.json`; `scripts/validate-schemas.py` validates real CLI output against them.
 - Fix: `runner.Result.FinishedAt` was never set (and command durations were consequently wrong); it is now recorded on every path.
-- Add the `invaris.adapter/v1alpha1` provider protocol (`internal/adapter`, `schemas/adapter-v1alpha1.schema.json`, `docs/adapter-protocol.md`): one bounded JSON request and one response per provider process over the shared runner, with strict validation of UTF-8, the single-value boundary, request ID, version, provider identity, finding scope and native exit semantics; a conformance test table, a provider conformance kit (`INVARIS_CONFORMANCE_PROVIDER`) and an independent Python example provider (`adapters/example/main.py`).
-- Wire negotiated providers into the engine and CLI for `invaris.dev/v1alpha2`: adapters, provider guards and `requiredAdapters` now execute instead of being refused. Each used provider is discovered once before any step runs; an unmet required capability refuses the run with all work recorded `NOT_RUN`, an optional unsupported guard is `NOT_RUN`, and provider or protocol failures and identity changes refuse. Evidence gains `discover` observations with provider identity. Lifecycle order is steps, command guards, then provider guards.
-- Add `invaris-command-provider`, a generic structured-command provider (`cmd/invaris-command-provider`) that preserves the command's native exit status and inspected counts and never fabricates evidence, and `examples/provider/invaris.json`.
-- Proof stages and cleanup are authoritative: new `internal/workspace` (restrictive copier, `Replace` with before/after digests and a before/after manifest check that exactly the declared file changed, verified `Close`) and `prove` in the engine. Baseline and challenged checks use one evaluator in one copy; the target is revalidated after the baseline; `PROVEN` needs exactly one finding with the exact policy, rule and path and a verified cleanup. Evidence proofs gain `detail`, `mutation` and `stages` (schema and validator updated: a `PROVEN` proof without a recorded mutation or an `OK` cleanup stage is invalid). Adds `docs/threat-model.md`.
+- Add the [provider protocol](docs/adapter-protocol.md): one bounded JSON request and response per provider process. Validate UTF-8, single JSON values, request IDs, versions, provider identity, finding scope, and native exits. Include conformance tests, an external-provider test kit (`INVARIS_CONFORMANCE_PROVIDER`), and a Python example (`adapters/example/main.py`).
+- Run v1alpha2 adapters, provider guards, and `requiredAdapters`. Discover each used provider once before steps run. Missing required capabilities refuse the run; unsupported optional guards are `NOT_RUN`. Provider failures, protocol errors, and identity changes cause refusal. Reports record discovery and provider identity. Execution order is steps, command guards, then provider guards.
+- Add `invaris-command-provider`, a generic structured-command provider (`cmd/invaris-command-provider`) that preserves the command's native exit status and inspected counts and validates evidence, plus `examples/provider/invaris.json`.
+- Add `internal/workspace` for restricted copying, one-file replacement with digests and manifest checks, and verified cleanup. Baseline and challenged checks use the same evaluator and copy. Revalidate the target after the baseline. Strong proofs require one finding matching the policy, rule, and path. Reports add `detail`, `mutation`, and `stages`; `PROVEN` requires a recorded mutation and an `OK` cleanup stage. Document the [threat model](docs/threat-model.md).
 - `adapter.Call` now always sends `policyIds` and `scope` as arrays, never `null`.
 - Verify Dependency-Cruiser 18.7.2 (MIT) end to end, including an ineffective-rule control, using the adapter lockfile.
 - Add subprocess exit-contract tests and offline smoke checks. The release workflow targets Go 1.27.4 on Linux and macOS and runs pinned Dependency-Cruiser separately.

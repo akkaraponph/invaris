@@ -18,6 +18,8 @@ go build -o "$tmp/invaris" ./cmd/invaris
 go build -o "$tmp/invaris-command-provider" ./cmd/invaris-command-provider
 export PATH="$tmp:$PATH"
 
+examples_before=$(git -C "$root" status --porcelain --untracked-files=all -- examples 2>/dev/null || true)
+
 count=0
 accept() {
     "$tmp/invaris" --report "$tmp/report.json" "$1" "$2" >"$tmp/stdout.json"
@@ -58,6 +60,57 @@ mutation() {
 mutation killed 0 KILLED
 mutation survived 1 SURVIVED
 mutation invalid 2 INVALID
+
+# campaign DIR FILE EXIT DECISION [--only ID]
+campaign() {
+    dir=$1 file=$2 want=$3 decision=$4
+    shift 4
+    status=0
+    (cd "$dir" && "$tmp/invaris" --report "$tmp/report.json" campaign "$@" "$file") >"$tmp/stdout.json" || status=$?
+    test "$status" -eq "$want"
+    cmp "$tmp/report.json" "$tmp/stdout.json"
+    grep -q '"schemaVersion": "invaris.evidence/v1alpha4"' "$tmp/stdout.json"
+    grep -q "\"decision\": \"$decision\"" "$tmp/stdout.json"
+    rm "$tmp/report.json"
+    count=$((count + 1))
+    printf 'PASS campaign %s/%s %s(%s)\n' "${dir#"$root"/}" "$file" "${1:+$* }" "$decision"
+}
+
+campaign "$root/examples/mutation" campaign.json 1 REJECT
+campaign "$root/examples/forbidden-dependency" campaign.json 0 ACCEPT
+
+# The Go example runs the real Go toolchain and needs a warm or writable cache.
+gp="$root/examples/go-project"
+(cd "$gp" && go test -count=1 ./... >/dev/null)
+printf 'PASS go test %s\n' "$gp"
+count=$((count + 1))
+for action in check challenge; do
+    accept "$action" "$gp/guardrail.json"
+done
+go_mutation() {
+    cfg="$gp/mutation-$1.json"
+    status=0
+    "$tmp/invaris" mutate "$cfg" >"$tmp/stdout.json" || status=$?
+    test "$status" -eq "$2"
+    grep -q "\"verdict\": \"$3\"" "$tmp/stdout.json"
+    count=$((count + 1))
+    printf 'PASS mutate %s (%s)\n' "$cfg" "$3"
+}
+go_mutation killed 0 KILLED
+go_mutation survived 1 SURVIVED
+go_mutation invalid 2 INVALID
+
+campaign "$gp" campaign.json 2 REFUSE
+campaign "$gp" campaign-accept.json 0 ACCEPT
+campaign "$gp" campaign.json 1 REJECT --only mutation-survived
+mkdir "$tmp/sequence"
+export INVARIS_FIXTURE_STATE="$tmp/sequence"
+campaign "$gp" campaign-mixed.json 2 REFUSE
+grep -q '"stability": "MIXED"' "$tmp/stdout.json"
+
+# No run may write back into the examples.
+examples_after=$(git -C "$root" status --porcelain --untracked-files=all -- examples 2>/dev/null || true)
+test "$examples_before" = "$examples_after"
 
 if "$real_provider"; then
     export PATH="$root/adapters/dependency-cruiser:$PATH"

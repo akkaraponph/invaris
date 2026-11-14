@@ -27,7 +27,7 @@ func accepted() Report {
 		Gate:          domain.Gate{RequiredGuards: []string{"g"}, RequiredProofs: []string{"c"}, Precedence: domain.FailureFirst},
 		Steps:         []domain.Check{{ID: "s", Status: domain.Pass, ExitCode: ptr(0)}},
 		Checks:        []domain.Check{{ID: "g", PolicyID: "p1", Status: domain.Pass, Inspected: ptr(3), ExitCode: ptr(0)}},
-		Proofs: []domain.Proof{{ID: "c", PolicyID: "p1", GuardID: "g", Target: "src/a.js", FaultID: "fault-1", EvidenceStrength: domain.StrengthStrong, Status: domain.Proven,
+		Proofs: []domain.Proof{{ID: "c", PolicyID: "p1", GuardID: "g", Target: "src/a.js", FaultID: "fault-1", EvidenceStrength: domain.StrengthStrong, Status: domain.Proven, Reason: domain.ReasonGuardDetected, ReasonCategory: domain.CategoryResult,
 			Mutation:   &domain.Mutation{Path: "src/a.js", BeforeSHA256: strings.Repeat("a", 64), AfterSHA256: strings.Repeat("b", 64)},
 			Stages:     []domain.Stage{{Name: domain.StageCleanup, Status: domain.StageOK}},
 			Baseline:   &domain.Check{ID: "c:baseline", Status: domain.Pass, Inspected: ptr(3)},
@@ -214,5 +214,30 @@ func TestPersistArtifact(t *testing.T) {
 	}
 	if _, err := PersistArtifact(filepath.Join(dir, "missing"), "x", []byte("x")); err == nil {
 		t.Fatal("persisted into missing directory")
+	}
+}
+
+func TestValidateReasonConsistency(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		p    domain.Proof
+		ok   bool
+	}{
+		{"proven", domain.Proof{ID: "c", Status: domain.Proven, Reason: domain.ReasonGuardDetected, ReasonCategory: domain.CategoryResult}, true},
+		{"unknown reason", domain.Proof{ID: "c", Status: domain.Inconclusive, Reason: "made_up", ReasonCategory: "setup"}, false},
+		{"wrong category", domain.Proof{ID: "c", Status: domain.Inconclusive, Reason: domain.ReasonTimeout, ReasonCategory: domain.CategorySetup}, false},
+		{"proven with a failure reason", domain.Proof{ID: "c", Status: domain.Proven, Reason: domain.ReasonTimeout, ReasonCategory: domain.CategoryInfrastructure}, false},
+		{"inconclusive with a result reason", domain.Proof{ID: "c", Status: domain.Inconclusive, Reason: domain.ReasonGuardDetected, ReasonCategory: domain.CategoryResult}, false},
+		{"missing reason", domain.Proof{ID: "c", Status: domain.Unproven}, false},
+		{"not run needs none", domain.Proof{ID: "c", Status: domain.ProofNotRun}, true},
+		{"bad snapshot", domain.Proof{ID: "c", Status: domain.Inconclusive, Reason: domain.ReasonTimeout, ReasonCategory: domain.CategoryInfrastructure, SourceSnapshot: &domain.SourceSnapshot{SHA256: "xyz"}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var problems int
+			validateReason(tc.p, func(string, ...any) { problems++ })
+			if (problems == 0) != tc.ok {
+				t.Fatalf("problems = %d, want ok=%v", problems, tc.ok)
+			}
+		})
 	}
 }
