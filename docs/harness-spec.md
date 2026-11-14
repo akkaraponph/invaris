@@ -32,6 +32,12 @@ For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to tr
 
 A guard is a strict union: the command form (`program`, optional `args`, `policyId`) or the provider form (`adapterId`, `policyId`, `scope`, opaque `options`). Mixing fields is invalid. A provider guard must name a declared adapter, a `policyId` (declared in `policies` when that list exists) and a non-empty `scope` of canonical relative paths (`.` only as a scope root). `options` is passed to the provider unchanged. Challenges may reference command or provider guards. For a provider guard, the policy ID is also the expected native rule ID. Invaris runs the same guard before and after its controlled replacement.
 
+The [Go project example](../examples/go-project/README.md) runs real `go test` tests through a small evaluator and a structured import guard.
+
+### Declared inspection floor
+
+A structured command guard (one with `policyId`) may declare `minInspected`, a positive integer. The engine refuses the check if the guard reports fewer inspected targets. The floor comes from the harness, so a guard that silently narrows its own scope is caught. It is still compared with the guard's self-reported count: the engine cannot verify that the guard inspected what it claims. `minInspected` is refused on steps, on guards without `policyId`, and on provider guards (which declare `scope` instead).
+
 ### Provider negotiation
 
 Invaris discovers each used provider **once** before dispatch. For `run` and `check`, a provider is used if a guard names it or `requiredAdapters` lists it. Discovery includes the guard options when the provider’s participating guards share the same options. Then:
@@ -52,7 +58,7 @@ The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both h
 
 `invaris.dev/v1alpha3` is the input version for `mutate`. It requires a name, `trustMode: "trusted-local"`, `networkPolicy: "unrestricted"`, a nonempty `writablePaths` list, and one `experiment`. See the [v1alpha3 schema](../schemas/harness-v1alpha3.schema.json).
 
-The experiment declares an `id`, a `mutation` with `id`, `operator: "replace"`, `path`, `before`, and `after`, two commands named `validation` and `test`, and 1 to 128 unique, case-sensitive `testIds`. IDs are nonblank and have no surrounding whitespace. The path must appear exactly in `writablePaths`. Replacement strings must be nonempty and distinct. The engine requires exactly one occurrence of the literal preimage, including overlapping matches, and changes only the declared target.
+The experiment declares an `id`, a `mutation` with `id`, `operator: "replace"`, `path`, `before`, and `after`, two commands named `validation` and `test`, and 1 to 128 unique, case-sensitive `testIds`. IDs are nonblank and have no surrounding whitespace. The path must appear exactly in `writablePaths`. Replacement strings must be nonempty and distinct. An optional `preimageSha256` (64 lowercase hex characters) pins the whole target file: if its SHA-256 at mutation time differs, the mutation is rejected (`mutation_rejected`) and nothing is written. Use it to tie an experiment to the exact content it was authored against; it identifies content and is not an attestation of its origin. The engine requires exactly one occurrence of the literal preimage, including overlapping matches, and changes only the declared target.
 
 Commands use `id`, `program`, optional `args`, `envAllowlist`, and `timeoutSeconds`. Their IDs must be distinct. Omitted timeouts and zero use 30 seconds. An omitted or empty environment allowlist uses the default PATH and inherits no ambient variables. `redactEnv` and `storeSensitiveOutput` are optional. Required fields cannot be omitted, and null, unknown, and duplicate fields are rejected.
 

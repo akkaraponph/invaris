@@ -22,6 +22,8 @@ Provider scope comes from the harness. The engine checks finding paths against i
 
 Mutation experiments compare the workspace manifest across the baseline, validity check, and mutant tests. Commands must place build products and caches outside the workspace. The checks detect persistent changes at stage boundaries. Trusted commands can access other paths, change external state, or temporarily alter and restore files. The replacement installs a new file at the target, so an existing hard link does not receive the replacement bytes. A moved or replaced workspace makes cleanup unverifiable. The engine checks the original path and does not chase a moved directory.
 
+Trust boundary for evidence: an adapter or evaluator reports what it inspected, which tests ran and what failed. The engine checks that the report is well formed, names the expected policy, path and test IDs, and agrees with the exit status. It cannot establish that the report is truthful. `minInspected` and `preimageSha256` constrain what the harness author expects; they do not authenticate the tool or the content's origin.
+
 Mutation evaluators are trusted to report completed test cases, assertion failures, and validity assessments truthfully. Exit and evidence checks establish consistency with the declared case IDs. Digests identify the recorded contents. Report redaction covers configured literal secrets, including truncated excerpt prefixes, and cannot recognize transformed or undeclared secrets.
 
 Evaluators must wait for their children and close their streams before issuing a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.

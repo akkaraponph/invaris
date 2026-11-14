@@ -4,6 +4,8 @@ The release slice supports `run`, `check`, and `challenge` for trusted local har
 
 The CLI also supports `mutate` with a [v1alpha3 harness](harness-spec.md#single-mutant-harness). It evaluates one explicit replacement, requires completed validity and test evidence, and emits a separate mutation verdict in the v1alpha3 report. The offline fixtures cover killed, surviving, and invalid mutants.
 
+A mutation may pin the target's whole-file digest with `preimageSha256`, and a structured command guard may declare a `minInspected` floor independent of its self-reported count. Neither is attestation. Mutation campaigns, scores, parallelism and equivalent-mutant detection remain deferred.
+
 Required providers are discovered before dispatch. Strong proofs record a passing baseline, a single controlled replacement and its hashes, matching challenged evidence, and verified cleanup. The legacy harness accepts weak marker proofs for compatibility.
 
 The generic command bridge and Python protocol example are covered by offline fixtures. Dependency-Cruiser 18.7.2 is the verified real analyzer. See [provider support](provider-support.md) for its platform and language coverage. The release workflow builds and tests pull requests targeting `main` on Linux and macOS with the Go version in `go.mod`. See [GitHub Actions](https://github.com/akkaraponph/invaris/actions) for hosted results and the [contribution guide](../CONTRIBUTING.md) for merge requirements.
