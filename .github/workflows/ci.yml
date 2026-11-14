@@ -1,17 +1,19 @@
 name: Release checks
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
 
 jobs:
   go:
+    name: Go checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        go: ['1.23.x', stable]
     env:
       GOTOOLCHAIN: local
       GOPROXY: 'off'
@@ -20,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
+          go-version-file: go.mod
           cache: false
       - uses: actions/setup-python@v5
         with:
@@ -43,7 +45,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version-file: go.mod
           cache: false
       - uses: actions/setup-node@v4
         with:

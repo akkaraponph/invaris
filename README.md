@@ -10,7 +10,7 @@ Invaris is an experimental, standalone harness execution and guardrail-verificat
 
 ## Quick start
 
-Requires Go 1.23+ and a POSIX shell for the bundled demonstration.
+Requires Go 1.27.4 or later and a POSIX shell for the bundled demonstration.
 
 ```sh
 go test ./...
@@ -42,6 +42,10 @@ Run only trusted harnesses, executables, and analyzer configs. Commands have the
 ## Architecture direction
 
 See [`docs/architecture.md`](docs/architecture.md) for runtime, adapter contracts, and guard lifecycle, and the [roadmap](docs/roadmap.md) for follow-up work. Invaris is intentionally independent from Panda Suite and can be called from any AI skill, CI job, or developer workflow.
+
+## Contributing
+
+Develop changes on a topic branch and open a pull request targeting `main`. Keep the pull request up to date with `main`, resolve review conversations, and wait for the Linux, macOS, and Dependency-Cruiser checks to pass before merging. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) for merge requirements.
 
 ## License
 
