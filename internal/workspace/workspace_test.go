@@ -350,3 +350,37 @@ func TestReplaceDoesNotWriteThroughHardLink(t *testing.T) {
 		t.Fatalf("linked file changed: %q %v", content, err)
 	}
 }
+
+func TestReplaceExpectingPreimage(t *testing.T) {
+	w := prepared(t, map[string]string{"f": "A B"})
+	sum := sha256.Sum256([]byte("A B"))
+	good := hex.EncodeToString(sum[:])
+	before, _ := Snapshot(w.Root)
+	for _, bad := range []string{strings.Repeat("0", 64), "short"} {
+		if _, err := ReplaceExpecting(w.Root, "f", "A", "Z", bad); err == nil {
+			t.Fatalf("accepted preimage %q", bad)
+		}
+	}
+	if after, _ := Snapshot(w.Root); len(Diff(before, after)) != 0 {
+		t.Fatal("refused replacement changed the workspace")
+	}
+	m, err := ReplaceExpecting(w.Root, "f", "A", "Z", good)
+	if err != nil || m.BeforeSHA256 != good {
+		t.Fatalf("ReplaceExpecting = %+v, %v", m, err)
+	}
+}
+
+func FuzzValidPath(f *testing.F) {
+	for _, s := range []string{"a/b", "../x", "/abs", "a//b", "./a", `a\b`, "c:x", "a\x00", ""} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, name string) {
+		if !ValidPath(name) {
+			return
+		}
+		// An accepted path is canonical, relative and cannot leave the root.
+		if filepath.ToSlash(filepath.Clean(name)) != name || filepath.IsAbs(name) || strings.Contains("/"+name+"/", "/../") {
+			t.Fatalf("ValidPath accepted %q", name)
+		}
+	})
+}

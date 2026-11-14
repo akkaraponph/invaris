@@ -189,6 +189,15 @@ func ValidPath(name string) bool {
 // compared before and after the write, and any difference other than the one
 // declared file is an error.
 func Replace(root, path, before, after string) (Mutation, error) {
+	return ReplaceExpecting(root, path, before, after, "")
+}
+
+// ReplaceExpecting is Replace with an optional precondition: when preimage is
+// non-empty it must equal the lowercase hex SHA-256 of the whole target file
+// as found at call time, or nothing is written. This pins the experiment to
+// the exact content it was authored against. The digest identifies content;
+// it is not an attestation of who produced it.
+func ReplaceExpecting(root, path, before, after, preimage string) (Mutation, error) {
 	var m Mutation
 	if !ValidPath(path) {
 		return m, fmt.Errorf("unsafe mutation path %q", path)
@@ -214,6 +223,9 @@ func Replace(root, path, before, after string) (Mutation, error) {
 	data, err := os.ReadFile(target)
 	if err != nil {
 		return m, err
+	}
+	if preimage != "" && hashBytes(data) != preimage {
+		return m, errors.New("target content does not match the declared preimage digest")
 	}
 	marker := []byte(before)
 	first := bytes.Index(data, marker)

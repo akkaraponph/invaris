@@ -173,7 +173,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	}
 
 	start = time.Now()
-	applied, err := workspace.Replace(ws.Root, m.Path, m.Before, m.After)
+	applied, err := workspace.ReplaceExpecting(ws.Root, m.Path, m.Before, m.After, m.PreimageSHA256)
 	if err != nil {
 		record("mutate", start, "mutation_rejected", err)
 		return

@@ -39,6 +39,8 @@ func TestMutationHarnessContract(t *testing.T) {
 		{`"test":{"id":"test","program":"sh","envAllowlist":[]},`, ``},
 		{`"program":"sh"`, `"program":"sh","policyId":""`},
 		{`"program":"sh"`, `"program":"sh","timeoutSeconds":301`},
+		{`"after":"new"`, `"after":"new","preimageSha256":"ABC"`},
+		{`"after":"new"`, `"after":"new","preimageSha256":"` + strings.Repeat("A", 64) + `"`},
 		{`,"testIds":["second","first"]`, ``},
 		{`["second","first"]`, `[]`},
 		{`["second","first"]`, `["second","second"]`},
