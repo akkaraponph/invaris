@@ -10,6 +10,25 @@ Invaris is an experimental, standalone harness execution, guardrail verification
 
 Version [0.1.0](CHANGELOG.md#010).
 
+## Install the CLI
+
+Download the archive for your system from the [v0.1.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.1.0). Archives are available for Linux and macOS on `amd64` and `arm64`. Each contains `invaris`, `invaris-command-provider`, the license, and a README.
+
+For example, use a new directory and the [GitHub CLI](https://cli.github.com/) on macOS arm64:
+
+```sh
+mkdir invaris-cli
+cd invaris-cli
+gh release download v0.1.0 --repo akkaraponph/invaris --pattern 'invaris_0.1.0_darwin_arm64.tar.gz' --pattern SHA256SUMS
+shasum -a 256 -c --ignore-missing SHA256SUMS
+tar -xzf invaris_0.1.0_darwin_arm64.tar.gz
+./invaris
+```
+
+`./invaris` prints usage and exits with status 2 when invoked without an action. Choose the archive matching your system and put both executables on your `PATH` to invoke them by name. The command provider is needed for harnesses that use it. The archive does not include example harnesses, so clone the repository to try the commands below.
+
+For your own project, put a trusted `invaris.json` in the project directory and run `invaris check`, `invaris run`, or `invaris challenge`. Pass a harness path as the last argument to select another file. Run `invaris --report report.json check invaris.json` to save the JSON report to a new file. See the [harness specification](docs/harness-spec.md) for configuration and the [mutation contract](docs/harness-spec.md#single-mutant-harness) for `mutate`.
+
 ## Quick start
 
 Requires Go 1.27.4 or later and a POSIX shell for the bundled demonstration.
