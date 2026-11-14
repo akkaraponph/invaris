@@ -9,6 +9,8 @@ Invaris is a local Go CLI. The engine validates a JSON harness before dispatch, 
 - `internal/workspace` copies a checkout, performs the controlled replacement, and verifies cleanup.
 - `internal/domain` evaluates typed results and gate requirements. `internal/evidence` validates, redacts, and serializes the public report.
 
+Proofs and mutation experiments share workspace-integrity checks, a failure-reason vocabulary and provenance fields; their verdicts stay separate. See [reasons and provenance](evidence-schema.md#reasons-and-categories).
+
 A check can pass, fail, refuse, or remain unrun. A proof requires a passing baseline and a challenged finding that matches the expected policy, native rule, and file. Legacy marker proofs carry weak evidence. A guard that misses the challenged fault is unproven. An unevaluable challenge is inconclusive. A gate can choose failure-first or refusal-first when both outcomes are present in one report.
 
 The CLI emits `invaris.evidence/v1alpha2` and maps `ACCEPT`, `REJECT`, and `REFUSE` to exits 0, 1, and 2. See the [evidence schema](evidence-schema.md), [adapter protocol](adapter-protocol.md), [threat model](threat-model.md), and [roadmap](roadmap.md).

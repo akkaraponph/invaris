@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add `reason` and `reasonCategory` to every proof and `reasonCategory` to mutation experiments, with one shared vocabulary (`result`, `setup`, `infrastructure`, `evidence`).
+- Add provenance: `gitDirty`, a `sourceSnapshot` digest per proof and experiment, and per-observation `executable` (path and SHA-256), `timeoutSeconds` and `envAllowlist`. Unknown values are `null`.
+- `challenge` now verifies workspace integrity across the baseline and challenged check, as `mutate` does. A guard that writes into the workspace now yields `INCONCLUSIVE` (`workspace_changed`) instead of a proof.
+- The new report keys are required in the existing `invaris.evidence/v1alpha2` and `v1alpha3` schemas, which were published with 0.1.0. Consumers that validate strictly against the old schemas must update.
+
 - Add [`examples/go-project`](examples/go-project/README.md): ordinary Go tests killing or missing a mutant, and a structured import guard proving a forbidden-dependency challenge.
 - Add optional `preimageSha256` to the v1alpha3 mutation: a stale target is rejected before any write.
 - Add optional `minInspected` to structured command guards: reports below the declared floor are refused.

@@ -59,9 +59,9 @@ cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for <code>run</code>, <code>check</code>, and <code>challenge</code>. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests and proof stages.</p>
+      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for <code>run</code>, <code>check</code>, and <code>challenge</code>. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests, proof stages, a machine-readable <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reasons-and-categories">reason</a> and the <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reproducibility-provenance">inputs it can identify</a>.</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
-      <p>The mutation example returns <code>KILLED</code> and writes a v1alpha3 report with the baseline, validity, and selected test outcomes.</p>
+      <p>The mutation example returns <code>KILLED</code> and writes a v1alpha3 report with the baseline, validity, and selected test outcomes. Reports hold whole-file digests, not the edit itself: <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a> to inspect it.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
@@ -79,12 +79,13 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Provider support</a> <span>Install and try the Dependency-Cruiser example</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/ecosystem.md">Related projects</a> <span>Open-source verification and guardrail tools</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/go-project">Go project example</a> <span>Real go tests and an import guard, with the evidence that explains each result</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#010">Changelog</a> <span>Version 0.1.0</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Planned providers, isolation, and CLI features</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Experiment trust and explanation first; then isolation and tooling</span></li>
       </ul>
     </section>
 
