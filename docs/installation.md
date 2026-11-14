@@ -47,7 +47,7 @@ command -v invaris
 invaris
 ```
 
-The first command lookup should show the installation path. Running `invaris` without an action prints usage and exits with status 2; that is expected.
+`command -v invaris` should show the installation path. Running `invaris` without an action prints usage and exits with status 2; that is expected.
 
 For future terminals, add the following line once to `~/.bashrc` for Bash or `~/.zshrc` for Zsh, changing the path if necessary:
 
@@ -83,7 +83,7 @@ invaris --report report.json check
 
 `check` runs the guard against `source.txt`. `challenge` reports `PROVEN` after detecting the controlled mutation in a disposable copy. Both return JSON reports and exit 0 on success. The last command also saves the report to `report.json`; use a new filename each time because existing reports are never overwritten.
 
-For an existing project, write a trusted `invaris.json` describing that project's actual checks rather than treating the demo guard as project coverage. See the [harness specification](harness-spec.md). A harness can explicitly invoke a shell; the engine does not interpret shell syntax itself.
+For an existing project, write a trusted `invaris.json` with commands that check that project. The demo guard checks only its sample file. See the [harness specification](harness-spec.md). A harness can explicitly invoke a shell; the engine does not interpret shell syntax itself.
 
 You can select a harness by absolute path from any directory:
 
@@ -91,7 +91,9 @@ You can select a harness by absolute path from any directory:
 invaris check "$INVARIS_PROJECT/invaris.json"
 ```
 
-The harness's containing folder is the workspace root. A relative `--report` destination is resolved from the terminal's current directory. Custom tools and providers installed outside `/usr/bin:/bin` need `"envAllowlist": ["PATH"]` on the relevant command or adapter, or an absolute executable path. Adding the CLI to your terminal PATH does not automatically expose that PATH to its child commands. Provider dependencies may need their own allowlists; see the [adapter protocol](adapter-protocol.md#the-generic-command-provider).
+The harness's containing folder is the workspace root. A relative `--report` destination is resolved from the terminal's current directory.
+
+Custom tools and providers installed outside `/usr/bin:/bin` need `"envAllowlist": ["PATH"]` on the relevant command or adapter, or an absolute executable path. Allowlist `PATH` separately for child commands that need your terminal's search path. Provider dependencies may need their own allowlists; see the [adapter protocol](adapter-protocol.md#the-generic-command-provider).
 
 ## Windows CMD and PowerShell through WSL
 

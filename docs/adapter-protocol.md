@@ -1,6 +1,6 @@
 # Adapter protocol: `invaris.adapter/v1alpha1`
 
-A provider is an external process that evaluates a policy with some tool and reports typed evidence. Invaris starts one process per request, writes one JSON request to its stdin, and reads one JSON response from its stdout. Providers may be written in any language and need no Invaris code. Providers run as trusted local commands; this protocol is not a sandbox.
+A provider runs a tool to check a policy and translates its results into typed evidence. Invaris starts one process per request, writes one JSON request to its stdin, and reads one JSON response from its stdout. Providers can use any language and do not need to link an Invaris library. Providers run as trusted local commands; this protocol is not a sandbox.
 
 Schema: [`schemas/adapter-v1alpha1.schema.json`](../schemas/adapter-v1alpha1.schema.json). Go client: `adapter.Call` in `internal/adapter`. Working example: [`adapters/example/main.py`](../adapters/example/main.py) (Python standard library only).
 
@@ -42,17 +42,17 @@ Every response carries `version`, `requestId` (must equal the request's), and `p
 | `FAIL` | `inspected` > 0, `exitCode` 1, at least one finding. |
 | `REFUSE` | At least one diagnostic, no findings; any `exitCode` (for example a crashed tool). Never accepts. |
 
-`NOT_RUN` is not allowed from a provider. Evidence that contradicts the native status (for example `PASS` with exit 127, or `FAIL` with no findings) is a protocol violation. Each finding needs the requested `policyId`, a non-empty native `ruleId`, a canonical relative `path` inside the requested scope (an entry itself or beneath it; `src` does not cover `src2`), and a `message` (may be empty). Rule-specific proof correlation (does this finding match the fault that was injected?) is done by the proof stage, which knows the expected rule.
+`NOT_RUN` is not allowed from a provider. Evidence that contradicts the native status (for example `PASS` with exit 127, or `FAIL` with no findings) is a protocol violation. Each finding needs the requested `policyId`, a non-empty native `ruleId`, a canonical relative `path` inside the requested scope (an entry itself or beneath it; `src` does not cover `src2`), and a `message` (may be empty). The proof stage checks whether the finding matches the injected change and expected rule.
 
 ### Error codes
 
 `INVALID_REQUEST`, `UNSUPPORTED_PROTOCOL`, `UNSUPPORTED_CAPABILITY`, `TOOL_UNAVAILABLE`, `EVIDENCE_UNAVAILABLE`, `EXECUTION_TIMEOUT`, `MALFORMED_OUTPUT`, `INTERNAL_PROVIDER_FAILURE`. An unknown code is a protocol violation. If the request itself cannot be parsed, the provider has no request ID to echo; it should exit nonzero.
 
-### Policy violation versus failure
+### Policy violations and execution failures
 
 | Situation | Provider behavior | Client result |
 | --- | --- | --- |
-| Rule violated | exit 0, `check.status` `FAIL` with findings | success: a typed FAIL for the gate |
+| Rule violated | exit 0, `check.status` `FAIL` with findings | valid response; the gate receives `FAIL` |
 | Tool crashed, config invalid | exit 0, `check.status` `REFUSE` with diagnostics, or an `error` | refusal, never accepted |
 | Provider process failed, timed out, output too large | nonzero exit or no output | `ErrTransport` |
 | Response breaks a rule above | any | `ErrInvalidResponse`; no check is returned |
@@ -69,22 +69,26 @@ echo '["/usr/bin/node", "/abs/path/to/provider.mjs"]' > /tmp/provider.json
 INVARIS_CONFORMANCE_PROVIDER=/tmp/provider.json go test ./internal/adapter -run TestProviderConformance -count=1 -v
 ```
 
-The kit needs no fixtures. It sends discover, then hostile requests (unsupported protocol version, unknown operation, garbage input, escaping or absolute scope, unknown policy, and `mutate` when you do not advertise it), and requires each to be refused with a typed `error` or a nonzero exit, never a check or mutation. `TestConformance` (no provider needed) documents how the client rejects bad responses; read its table to see every violation a response must avoid. Validate your own responses against the JSON Schema as well. To also check clean and violating output on your own fixtures, call `adapter.Call` in a small Go test as `TestExampleProvider` does for the bundled example.
+The kit sends `discover`, then invalid or unsupported requests: an unsupported version, unknown operation, malformed input, escaping or absolute scope, unknown policy, and `mutate` when not advertised. Each must return a typed `error` or a nonzero exit. A check or mutation response fails the test.
+
+`TestConformance` (no provider needed) documents how the client rejects bad responses; read its table to see every violation a response must avoid. Validate your own responses against the JSON Schema as well.
+
+To also check clean and violating output on your own fixtures, call `adapter.Call` in a small Go test as `TestExampleProvider` does for the bundled example.
 
 Without the variable, the kit runs the bundled Python example; it is skipped, with a logged reason, when `python3` is absent. The example implements the check-only policy `no-forbidden-marker` (a file under scope containing `FORBIDDEN_MARKER`), reports `mutate` as `UNSUPPORTED_CAPABILITY`, and refuses empty evidence with `EVIDENCE_UNAVAILABLE`.
 
 ## The generic command provider
 
-`cmd/invaris-command-provider` is a separate executable that bridges any command speaking the [`invaris.inspection/v1alpha1`](inspection.md) JSON contract. Install it on `PATH` (`go build -o … ./cmd/invaris-command-provider`) or reference it by absolute path. Options for a check: `{"program": "...", "args": [...], "envAllowlist": [...], "timeoutSeconds": 0}`; unknown options are rejected. The command runs in the project root through the shared runner.
+`cmd/invaris-command-provider` is a separate executable that bridges any command speaking the [`invaris.inspection/v1alpha1`](inspection.md) JSON contract. Build it with `go build -o /tmp/invaris-command-provider ./cmd/invaris-command-provider`, then reference that absolute path in the adapter configuration or install the executable on `PATH`. Options for a check: `{"program": "...", "args": [...], "envAllowlist": [...], "timeoutSeconds": 0}`; unknown options are rejected. The command runs in the project root through the shared runner.
 
 - Discovery advertises **structured-command support only**: no languages, no proof types, no mutation (`mutate` is `UNSUPPORTED_CAPABILITY`). Because it is policy-agnostic it echoes the policy IDs it was asked about; the command's own evidence is verified against the requested policy at check time.
-- A check is PASS or FAIL only if the command prints exactly one valid inspection report for the requested policy with a positive `inspected` count and its native exit status agrees (0 with no findings, or 1 with at least one). The inspected count is the command's own; it is never invented.
+- A check is PASS or FAIL only if the command prints exactly one valid inspection report for the requested policy with a positive `inspected` count and its native exit status agrees (0 with no findings, or 1 with at least one). The provider preserves the command's inspected count.
 - Otherwise the check is `REFUSE` with a diagnostic, **keeping the native exit status** and a null `inspected`: no JSON (a command that only prints a marker), a nonzero exit with no findings, findings with exit 0, zero targets, a wrong policy or an oversized output. A missing program is `TOOL_UNAVAILABLE` and a timeout `EXECUTION_TIMEOUT`.
 - The scope is not passed to the command (the v1alpha1 inspection contract has no scope input); findings outside the scope are refused by the client.
 - The provider identity is `invaris-command-provider` with its version, and the configured program as `toolName`.
 
-## Status
+## Engine integration
 
-The protocol, client, example provider and generic command provider are implemented and tested, and the engine uses them: see [Provider negotiation](harness-spec.md#provider-negotiation). The [Dependency-Cruiser provider](provider-support.md) uses one named native rule per guard and supports engine-managed proofs. Discovery includes check options when all participating guards for an adapter share the same options. Providers that need options during discovery can use one adapter declaration per option set. A refusal check can preserve a native process exit outside 0 and 1 and any verified inspected count.
+The engine discovers providers as described in [provider negotiation](harness-spec.md#provider-negotiation). The [Dependency-Cruiser provider](dependency-cruiser-example.md) uses one named native rule per guard and supports engine-managed proofs. Discovery includes check options when all participating guards for an adapter share the same options. Providers that need options during discovery can use one adapter declaration per option set. A refusal check can preserve a native process exit outside 0 and 1 and any verified inspected count.
 
 See [Contributing](../CONTRIBUTING.md) for the release checks and security disclosure process.

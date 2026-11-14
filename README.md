@@ -2,11 +2,9 @@
 
 ![Invaris banner: Harness execution and guardrail verification](assets/banners/github-readme-1600x480.png)
 
-**Execution under invariants.**
+Invaris is an experimental Go CLI that runs project checks and tests whether those checks detect a deliberate file change. A JSON harness defines the commands, guards, and changes to test. Each run produces a JSON report.
 
-Invaris is an experimental, standalone harness execution, guardrail verification, and mutation-testing engine. It is designed for multi-language workflows and tool adapters. The initial implementation is a deliberately small Go CLI with a standard-library Go core and optional external analyzers.
-
-> **Status: experimental local CLI.** Invaris runs trusted commands and provider guards and verifies controlled file-mutation proofs and single-mutant test experiments. See the [provider support matrix](docs/provider-support.md) for the tested integrations.
+Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
 Version [0.1.0](CHANGELOG.md#010).
 
@@ -49,7 +47,7 @@ These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1al
 
 ## Go project example
 
-[`examples/go-project`](examples/go-project/README.md) shows ordinary Go tests detecting (or missing) a behavioral mutation and a structured guard catching a forbidden import, with the evidence fields that answer what changed and what was proved.
+The [Go project example](examples/go-project/README.md) shows tests detecting and missing a code change, plus a guard catching a forbidden import. Its guide explains how to read each result.
 
 ## Single-mutant example
 
@@ -66,11 +64,12 @@ The fixtures report `KILLED` (exit 0), `SURVIVED` (exit 1), and `INVALID` (exit 
 
 ## How it works
 
-The versioned JSON harness describes ordered `steps`, independent `guards`, and `challenges`. Each command specifies an executable and arguments; the engine does not implicitly invoke a shell. A command may explicitly invoke a shell, as the bundled POSIX example does. Treat all harness configuration as trusted code.
+The JSON harness describes ordered `steps`, policy checks called `guards`, and deliberate changes called `challenges`. Each command specifies an executable and literal arguments. To use shell syntax, configure a shell as the executable, as the bundled POSIX example does.
 
-- `run`: execute steps in order; stop on first failed step, then run all guards.
+- `run`: execute steps in order; by default, stop on the first failed step, then run all guards.
 - `check`: execute guards without steps.
 - `challenge`: create a separate temporary workspace, run a clean baseline guard there, replace one expected marker, and require the selected guard to produce the expected finding for that policy, native rule, and file. Legacy marker-only guards can produce weak proofs.
+- `mutate`: run selected tests on the original code, apply one replacement, validate the changed code, then run the same tests again.
 
 A challenge is `PROVEN` under the legacy weak output-marker contract only when the baseline passed and the mutated guard failed with the expected evidence. This does not establish a structured rule identity. A missing executable, timeout, workspace error, or ambiguous replacement is `INCONCLUSIVE`. A challenge that does not detect the injected violation is `UNPROVEN`.
 
@@ -82,13 +81,13 @@ See [`examples/invaris.json`](examples/invaris.json) and [`examples/source.txt`]
 
 Run only trusted harnesses, executables, and analyzer configs. Commands have the invoking user's permissions and can access external paths and the network. `writablePaths` constrains the engine's replacement and `networkPolicy` declares unrestricted access. The engine caps command time and output, and the copier rejects symlinks and special files and limits copies to 2,000 entries and 10 MiB per file. See the [threat model](docs/threat-model.md).
 
-## Architecture direction
+## Architecture
 
-See [`docs/architecture.md`](docs/architecture.md) for runtime, adapter contracts, and guard lifecycle, and the [roadmap](docs/roadmap.md) for follow-up work. Invaris is intentionally independent from Panda Suite and can be called from any AI skill, CI job, or developer workflow.
+See the [architecture guide](docs/architecture.md) for component responsibilities and execution flow, and the [roadmap](docs/roadmap.md) for future work. Scripts, CI jobs, and AI tools can invoke the CLI.
 
-## Related Projects
+## Inspiration and related projects
 
-Invaris runs checks and uses controlled changes to verify that a guard detects the expected violation. The [open-source ecosystem catalog](docs/ecosystem.md) lists related tools for API and integration testing, architecture rules, fault injection, mutation and property-based testing, policy enforcement, and security scanning.
+Dependency-Cruiser, Redproof, Stryker, and Promptfoo [inspired Invaris](docs/provider-support.md). The [open-source ecosystem catalog](docs/ecosystem.md) lists related testing, guardrail, and security tools.
 
 ## Contributing
 
@@ -96,7 +95,7 @@ Develop changes on a topic branch and open a pull request targeting `staging`. P
 
 ## License
 
-The source repository has an Apache-2.0 license. The optional [Dependency-Cruiser](docs/provider-support.md) tool uses the MIT license.
+The source repository has an Apache-2.0 license. The optional [Dependency-Cruiser](docs/dependency-cruiser-example.md) tool uses the MIT license.
 
 ## Structured command guards
 

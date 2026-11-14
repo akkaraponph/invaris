@@ -1,35 +1,39 @@
 # Threat model: proofs and workspaces
 
-Invaris runs harness commands as trusted local processes. A proof (`challenge`) or mutation test (`mutate`) adds one controlled change to a disposable copy of the checkout; this page states what that protects and what it does not.
+Invaris runs commands with your user permissions. Use trusted harnesses, executables, and analyzer configurations. A challenge or mutation experiment runs in a disposable project copy, which provides a place to apply and inspect one controlled change.
 
 ## What is protected
 
-- **The source checkout is only read.** Baselines, the mutation and the challenged check run in a temporary copy. Dirty, untracked and read-only files in the checkout keep their bytes and modes.
-- **The mutation is the engine's, and only one file changes.** The engine replaces one occurrence of the declared marker in the declared file. The target is revalidated after the baseline: a baseline that replaced it with a symlink (to a file or a directory) or removed or reshaped it makes the proof inconclusive and nothing is written through the link. The workspace manifest (paths, modes, content hashes) is compared before and after the replacement and across each evaluator, and any other difference is an error. The before and after hashes are recorded.
-- **Cleanup is part of the proof.** The copy is removed and its absence verified before a proof or mutation verdict is final. A cleanup failure makes the proof inconclusive; a report validator also rejects `PROVEN` without an `OK` cleanup stage.
-- **The copier is restrictive.** It refuses symbolic links and non-regular files, at most 2,000 entries and 10 MiB per file, skips `.git` and `.invaris`, and refuses a temporary directory inside the checkout.
+- **Engine operations use the copy.** Baselines, replacements, and evaluators run in a temporary workspace. The engine copies the source checkout without changing its files, including dirty, untracked, and read-only files. Trusted commands can still access the source through absolute paths.
+- **One declared replacement is allowed.** The engine replaces exactly one occurrence in the declared file and records whole-file hashes before and after. It revalidates the target after the baseline and rejects symlinks, removed targets, and ambiguous matches. Replacement installs a new file, so existing hard links retain their original bytes.
+- **Cleanup is verified.** The engine removes the copy and checks that it is absent before finalizing a result. Cleanup failure yields `INCONCLUSIVE`. Report validation rejects `PROVEN` without a recorded mutation and an `OK` cleanup stage.
+- **Copy size and file types are restricted.** The copier accepts at most 2,000 entries and 10 MiB per file. It rejects symbolic links and non-regular files, skips `.git` and `.invaris`, and refuses temporary directories inside the checkout.
 
 ## Integrity guarantees shared by proofs and mutations
 
-Both lifecycles verify the workspace root identity and compare the manifest (paths, modes, content hashes) at stage boundaries: across the baseline, and after the final evaluator, where only the engine's one declared replacement may differ. For a mutation experiment this covers the baseline, validity check and mutant tests; for a proof, the baseline and the challenged check. A violation makes the result `INCONCLUSIVE` with reason `workspace_changed`, never a proof or a verdict. A guard that writes caches, reports or build products into the workspace therefore cannot certify a proof: direct them outside it. The evaluators remain separate; only these guarantees are shared. They detect persistent changes visible at stage boundaries, not changes restored within a stage, external state, or reads of absolute paths.
+The engine records a workspace manifest containing paths, file modes, and content hashes. At stage boundaries it checks that the workspace root is the same directory and that the manifest matches the expected state:
+
+- After the baseline, files must match the original copy.
+- After validation and tests, or the challenged guard, files must match the copy with only the engine's replacement applied.
+
+A persistent change yields `INCONCLUSIVE` with reason `workspace_changed`. Direct caches, reports, and build products outside the workspace. The checks detect changes visible at stage boundaries. They cannot detect changes that a command restores before returning.
+
+If a command moves or replaces the workspace directory, cleanup becomes unverifiable. The engine checks the original path and does not follow a moved directory.
 
 ## What is not protected
 
-- **No sandbox.** A baseline or guard command runs with the user's permissions and can read or write absolute paths (including the source checkout), use the network or start detached processes. The manifest check covers the mutation operation, not those commands.
-- **Local races.** The path checks in the mutation are not atomic. A concurrent local process that can write the temporary directory could race them.
-- **Trusted analyzers.** A guard that reports a finding at the right rule and path for the wrong reason still proves detection of that finding; the proof shows the guard noticed this change, not that its rules are complete.
-- **Marker proofs are weak.** Without a `policyId`, `PROVEN` rests on an output marker and is accepted only when the gate allows weak evidence.
-- **Platform boundaries.** The runner targets the child process group on Linux and macOS. Other platforms only have direct-child termination. See [current state](current-state.md) for release verification.
+- **External files and network access.** Commands can read and write absolute paths, change external state, use the network, and start detached processes. The disposable copy is not a sandbox.
+- **Concurrent local writes.** Path checks and replacements are not atomic. Another process with write access to the temporary directory can race them.
+- **Tool honesty.** Providers and evaluators report what they inspected, which tests ran, and what failed. Invaris checks report structure, expected identifiers, paths, and exit codes. It trusts tools to report truthfully.
+- **Rule completeness.** A proof shows that the selected guard detected this change. It does not establish that the guard detects every violation. Marker proofs rely on output text and require a gate that permits weak evidence.
+- **Detached descendants.** Cancellation targets the child process group on Linux and macOS. Other platforms terminate only the direct child. Detached descendants can escape group termination.
 
-Provider scope comes from the harness. The engine checks finding paths against it and trusts the provider’s report of how many targets it inspected.
+Provider findings must fall within the harness's declared scope. Inspection counts remain the provider's claim. `minInspected` sets a minimum count; `preimageSha256` requires exact target contents. Neither authenticates a tool or the origin of its inputs.
 
+## Evidence and retained inputs
 
-Mutation experiments compare the workspace manifest across the baseline, validity check, and mutant tests. Commands must place build products and caches outside the workspace. The checks detect persistent changes at stage boundaries. Trusted commands can access other paths, change external state, or temporarily alter and restore files. The replacement installs a new file at the target, so an existing hard link does not receive the replacement bytes. A moved or replaced workspace makes cleanup unverifiable. The engine checks the original path and does not chase a moved directory.
+Matching `beforeSha256`, `afterSha256`, and `configDigest` against retained files verifies the recorded edit. It does not authenticate the report or identify who ran it. Dirty and untracked files are copied, so `gitRevision` alone may not recover the original target. See the [inspection procedure](evidence-schema.md#inspecting-the-actual-edit).
 
-Content identity is not authenticity: matching `beforeSha256`, `afterSha256` and `configDigest` against retained files shows the recorded edit is reproducible from those bytes, not who produced them. A `challenge` baseline can change the target before the replacement, and dirty or untracked files are copied, so `gitRevision` alone does not recover the preimage. Retained raw harness and source are not redacted and can hold secrets ([inspection procedure](evidence-schema.md#inspecting-the-actual-edit)).
+Retained harnesses and source files can contain secrets and are outside report redaction. Report redaction covers configured literal secret values, including prefixes cut off in excerpts. Encoded, transformed, and undeclared secrets can remain visible.
 
-Trust boundary for evidence: an adapter or evaluator reports what it inspected, which tests ran and what failed. The engine checks that the report is well formed, names the expected policy, path and test IDs, and agrees with the exit status. It cannot establish that the report is truthful. `minInspected` and `preimageSha256` constrain what the harness author expects; they do not authenticate the tool or the content's origin.
-
-Mutation evaluators are trusted to report completed test cases, assertion failures, and validity assessments truthfully. Exit and evidence checks establish consistency with the declared case IDs. Digests identify the recorded contents. Report redaction covers configured literal secrets, including truncated excerpt prefixes, and cannot recognize transformed or undeclared secrets.
-
-Evaluators must wait for their children and close their streams before issuing a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.
+Evaluators must wait for their children and close their streams before returning a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.

@@ -1,17 +1,32 @@
 # Current implementation
 
-The release slice supports `run`, `check`, and `challenge` for trusted local harnesses. It reads `invaris.dev/v1alpha1` and `invaris.dev/v1alpha2`, emits typed `invaris.evidence/v1alpha2` JSON, and can publish an exact copy to a new report path. The CLI retains separate check outcomes even when a gate must choose one exit status.
+Invaris runs trusted local commands in sequence. It supports four actions:
 
-The CLI also supports `mutate` with a [v1alpha3 harness](harness-spec.md#single-mutant-harness). It evaluates one explicit replacement, requires completed validity and test evidence, and emits a separate mutation verdict in the v1alpha3 report. The offline fixtures cover killed, surviving, and invalid mutants.
+| Action | Harness version | Report version | Purpose |
+| --- | --- | --- | --- |
+| `run` | v1alpha1 or v1alpha2 | v1alpha2 | Run steps and guards |
+| `check` | v1alpha1 or v1alpha2 | v1alpha2 | Run guards |
+| `challenge` | v1alpha1 or v1alpha2 | v1alpha2 | Test whether a guard detects a declared violation |
+| `mutate` | v1alpha3 | v1alpha3 | Test whether selected tests detect one declared code change |
 
-A mutation may pin the target's whole-file digest with `preimageSha256`, and a structured command guard may declare a `minInspected` floor independent of its self-reported count. Neither is attestation. Mutation campaigns, scores, parallelism and equivalent-mutant detection remain deferred.
+Harness versions use the `invaris.dev/` prefix; reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
 
-Mutation evidence is hash-only: reports record whole-file before and after digests, not the replacement text, and no patch artifacts are produced. Inspecting an edit needs the report plus operator-retained harness and target bytes ([how](evidence-schema.md#inspecting-the-actual-edit)).
+## Experiments and results
 
-Reports carry machine-readable reasons and categories shared by proofs and mutations, a source-snapshot digest, `gitDirty`, and per-command executable hashes, timeouts and environment names. Proofs and mutations verify workspace integrity the same way. These identify inputs; they do not make a run reproducible. See [reasons](evidence-schema.md#reasons-and-categories) and [provenance](evidence-schema.md#reproducibility-provenance).
+A challenge runs a passing baseline, applies one replacement, and checks for the expected finding. Strong proofs match the policy, native rule, and target path. Legacy harnesses can accept weaker proofs based on output markers.
 
-Required providers are discovered before dispatch. Strong proofs record a passing baseline, a single controlled replacement and its hashes, matching challenged evidence, and verified cleanup. The legacy harness accepts weak marker proofs for compatibility.
+A mutation experiment runs the selected tests on the original code, applies one replacement, checks validity, and runs the same tests on a valid mutant. Offline fixtures demonstrate `KILLED`, `SURVIVED`, and `INVALID` results.
 
-The generic command bridge and Python protocol example are covered by offline fixtures. Dependency-Cruiser 18.7.2 is the verified real analyzer. See [Dependency-Cruiser example](dependency-cruiser-example.md) for its platform and language coverage. The release workflow builds and tests pull requests targeting `main` on Linux and macOS with the Go version in `go.mod`. See [GitHub Actions](https://github.com/akkaraponph/invaris/actions) for hosted results and the [contribution guide](../CONTRIBUTING.md) for merge requirements.
+Both actions check workspace integrity between stages and verify cleanup before reporting a conclusive result. Commands must write caches and build products outside the disposable workspace. Reports include reasons, categories, source snapshot digests, Git state, and command settings. See [reasons](evidence-schema.md#reasons-and-categories) and [recorded inputs](evidence-schema.md#reproducibility-provenance).
 
-Execution is trusted-local and serial. The report has an artifact field and the library supports exclusive artifact persistence. The CLI does not produce additional artifact files. See the [threat model](threat-model.md) and [roadmap](roadmap.md) for the release boundary and follow-up priorities.
+Use `preimageSha256` to require an exact target file before a mutation. Use `minInspected` to require a minimum reported inspection count from a structured command guard. The engine still trusts tools to report their work truthfully.
+
+Reports record whole-file digests for each edit. To inspect the edit later, retain the harness and original target bytes as described in [inspecting the actual edit](evidence-schema.md#inspecting-the-actual-edit). The CLI currently writes reports without additional artifact files.
+
+## Providers and verification
+
+Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
+
+The release workflow tests pull requests targeting `main` on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
+
+Mutation campaigns, scoring, parallel execution, and equivalent-mutant detection are future work. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).
