@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600" role="img" aria-label="Invaris brand asset"><defs></defs><rect width="1600" height="600" fill="#0B111A"/><g fill="none" stroke="#233749" stroke-width="2" opacity=".8">
+      <path d="M-40 168H288L448 72H816"/>
+      <path d="M928 558L1072 468H1640"/>
+      <path d="M1168 -40 L1296 78H1640"/>
+    </g><path d="M-10 486H208L272 438H432" fill="none" stroke="#20D1B3" stroke-width="5" opacity=".95"/>
+    <path d="M1376 78 L1440 30H1620" fill="none" stroke="#20D1B3" stroke-width="5" opacity=".7"/><rect x="110" y="106" width="1380" height="392" rx="22" fill="#101C29" stroke="#233749" stroke-width="2"/><rect x="112" y="108" width="1376" height="62" rx="20" fill="#1D2B39"/><circle cx="158" cy="140" r="7" fill="#587083"/><circle cx="187" cy="140" r="7" fill="#587083"/><circle cx="216" cy="140" r="7" fill="#20D1B3"/><text x="1250" y="149" fill="#92A6B9" style="font-family:Inter, sans-serif; font-size:13px; font-weight:600; letter-spacing:1.0px">INVARIS / EXECUTION</text><text x="169" y="250" fill="#20D1B3" style="font-family:monospace;font-size:31px">$ invaris verify</text><text x="169" y="317" fill="#F4F8FC" style="font-family:monospace;font-size:29px">&gt; harness checks</text><text x="169" y="365" fill="#F4F8FC" style="font-family:monospace;font-size:29px">&gt; guardrail rules</text><text x="169" y="432" fill="#20D1B3" style="font-family:monospace;font-size:28px">  INVARIANT CORE</text><g transform="translate(1130 214) scale(0.898438)"><g fill="#F4F8FC">
+      <path d="M76 20H180V40H76Z M76 216H180V236H76Z"/>
+      <path d="M66 20L16 56V199L66 236V212L36 190V66L66 44Z"/>
+      <path d="M190 20L240 56V199L190 236V212L220 190V66L190 44Z"/>
+      <path d="M92 72H164V94H142V163H164V185H92V163H114V94H92Z" />
+    </g><g fill="#20D1B3"><path d="M60 84H77V182H60Z M179 84H196V182H179Z"/></g></g></svg>

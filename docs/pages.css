@@ -1,11 +1,11 @@
 :root {
   color-scheme: dark;
-  --background: #101716;
-  --surface: #172220;
-  --text: #ecf4f0;
-  --muted: #b0c4bc;
-  --accent: #a7f4d1;
-  --border: #40554e;
+  --background: #0b111a;
+  --surface: #101c29;
+  --text: #f4f8fc;
+  --muted: #92a6b9;
+  --accent: #20d1b3;
+  --border: #233749;
   font-family: Inter, system-ui, sans-serif;
   line-height: 1.6;
 }
@@ -41,9 +41,27 @@ footer { border-top: 1px solid var(--border); color: var(--muted); }
 a { color: var(--accent); text-underline-offset: .2em; }
 a:hover { text-decoration-thickness: .15em; }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-.wordmark { font-weight: 750; text-decoration: none; }
+.wordmark img { display: block; width: 9rem; height: auto; }
 
-.hero { padding-block: clamp(3rem, 10vw, 8rem); }
+.hero {
+  display: grid;
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+
+.hero-cover {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+}
+
+@media (min-width: 56rem) {
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+  .hero h1 { font-size: clamp(3rem, 5.5vw, 4.75rem); }
+}
 
 h1, h2 { line-height: 1.12; }
 

@@ -1,5 +1,7 @@
 # Invaris
 
+![Invaris banner: Harness execution and guardrail verification](assets/banners/github-readme-1600x480.png)
+
 **Execution under invariants.**
 
 Invaris is an experimental, standalone harness execution and guardrail-verification engine. It is designed for multi-language workflows and tool adapters. The initial implementation is a deliberately small Go CLI with a standard-library Go core and optional external analyzers.

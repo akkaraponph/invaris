@@ -42,4 +42,18 @@ go.work.sum
 ._*
 .Spotlight-V100
 .Trashes
+.fseventsd/
+.TemporaryItems/
 Icon?
+!/assets/icons/
+
+# Windows Explorer and Recycle Bin
+[Tt]humbs.db
+[Ee]hthumbs.db
+[Ee]hthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux desktop and filesystem metadata
+.directory
+.fuse_hidden*
