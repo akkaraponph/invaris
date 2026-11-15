@@ -8,6 +8,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/evidence"
+	"github.com/akkaraponph/invaris/internal/mutation"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -57,6 +58,9 @@ type Challenge struct {
 	Before         string `json:"before"`
 	After          string `json:"after"`
 	ExpectedOutput string `json:"expectedOutput"`
+	// Builtin is set only by the v1alpha4 decoder: the challenge's edit is
+	// planned by a built-in operator instead of Before and After.
+	Builtin *mutation.Spec `json:"-"`
 }
 type Result struct {
 	ID         string      `json:"id"`

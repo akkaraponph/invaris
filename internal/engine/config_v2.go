@@ -92,6 +92,12 @@ func decodeV2(raw []byte) (Specification, error) {
 	if err := d.Decode(&extra); err != io.EOF {
 		return Specification{}, errors.New("harness must contain exactly one JSON object")
 	}
+	return buildV2(in)
+}
+
+// buildV2 converts the v1alpha2 wire form (also used by v1alpha4 after its
+// challenges are converted) to the internal specification.
+func buildV2(in specV2) (Specification, error) {
 	s := Specification{
 		FailFast: in.FailFast, AlwaysRunGuards: in.AlwaysRunGuards, Version: in.Version, Name: in.Name,
 		Steps: in.Steps, Challenges: in.Challenges, NetworkPolicy: in.NetworkPolicy, TrustMode: in.TrustMode,

@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/akkaraponph/invaris/internal/mutation"
 )
 
 func Load(path string) (Specification, error) {
@@ -39,6 +41,8 @@ func decodeSpecification(raw []byte) (Specification, error) {
 		s, err = decodeMutation(raw)
 	case versionV2:
 		s, err = decodeV2(raw)
+	case versionV4:
+		s, err = decodeV4(raw)
 	default:
 		s, err = decodeV1(raw)
 	}
@@ -76,10 +80,10 @@ func (s Specification) Validate() error {
 	if s.Experiment != nil {
 		return errors.New("experiments require invaris.dev/v1alpha3")
 	}
-	if s.Version != versionV1 && s.Version != versionV2 {
+	if s.Version != versionV1 && s.Version != versionV2 && s.Version != versionV4 {
 		return fmt.Errorf("unsupported harness version %q", s.Version)
 	}
-	if s.Version == versionV2 {
+	if s.Version == versionV2 || s.Version == versionV4 {
 		if err := s.validateV2(); err != nil {
 			return err
 		}
@@ -148,7 +152,24 @@ func (s Specification) Validate() error {
 	challenges := map[string]bool{}
 	for _, c := range s.Challenges {
 		policy, knownGuard := guards[c.Guard]
-		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || ids[c.ID] || challenges[c.ID] || !knownGuard || c.Before == "" || c.After == "" || c.Before == c.After || (policy == "" && c.ExpectedOutput == "") {
+		if c.ID == "" || strings.TrimSpace(c.ID) != c.ID || ids[c.ID] || challenges[c.ID] || !knownGuard {
+			return fmt.Errorf("invalid challenge %q", c.ID)
+		}
+		if c.Builtin != nil {
+			// Built-in operators prove only with strong, structured evidence.
+			if s.Version != versionV4 {
+				return fmt.Errorf("challenge %s: built-in mutations require %s", c.ID, versionV4)
+			}
+			if err := mutation.Validate(*c.Builtin); err != nil {
+				return fmt.Errorf("challenge %s: %w", c.ID, err)
+			}
+			if policy == "" {
+				return fmt.Errorf("challenge %s: a built-in mutation requires a guard with a policyId", c.ID)
+			}
+			if c.Before != "" || c.After != "" || c.ExpectedOutput != "" {
+				return fmt.Errorf("challenge %s mixes mutation with before, after or expectedOutput", c.ID)
+			}
+		} else if c.Before == "" || c.After == "" || c.Before == c.After || (policy == "" && c.ExpectedOutput == "") {
 			return fmt.Errorf("invalid challenge %q", c.ID)
 		}
 		if s.WritablePaths != nil && !writable[c.File] {

@@ -74,6 +74,8 @@ go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
       <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. Add <code>--format text</code> or <code>--format compact</code> after <code>check</code> or <code>challenge</code> for a <a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md#output-formats">readable summary</a>; the exit code and any <code>--report</code> file stay the same. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
       <p>Challenges verify workspace integrity and cleanup before finalizing a proof. Reports record the change's digests, stages, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reasons-and-categories">outcome reason</a>, and <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reproducibility-provenance">input identifiers</a>.</p>
+      <p>To challenge guards without writing <code>before</code> and <code>after</code> strings, a v1alpha4 harness can name a <a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">built-in operator</a>. The example emits portable <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#portable-profile-v1alpha5">v1alpha5 evidence</a>:</p>
+      <pre><code>cd examples/operators &amp;&amp; go run ../../cmd/invaris challenge --format text</code></pre>
       <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
       <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
@@ -92,14 +94,16 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness, campaign, adapter, and evidence contracts</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, and evidence v1alpha2 to v1alpha5 contracts</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/ecosystem.md">Related projects</a> <span>Open-source verification and guardrail tools</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/go-project">Go project example</a> <span>Go tests, an import guard, and report examples</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/operators">Operator example</a> <span>Challenge three offline guards with built-in operators</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>

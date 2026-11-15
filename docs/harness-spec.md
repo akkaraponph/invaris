@@ -1,6 +1,6 @@
 # Harness configuration
 
-A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md).
+A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports, or [`invaris.dev/v1alpha4`](#v1alpha4-built-in-operators) with built-in operators, which emits v1alpha5. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md). To create a starter harness, see [`invaris init`](authoring.md#create-a-harness-with-init).
 
 ## Common fields and validation
 
@@ -27,11 +27,11 @@ For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to tr
 ## Output formats
 
 ```sh
-invaris [--report new-file.json] check [--format json|text|compact] [harness.json]
-invaris [--report new-file.json] challenge [--format json|text|compact] [harness.json]
+invaris [--report new-file.json] check [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]
+invaris [--report new-file.json] challenge [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]
 ```
 
-The default is `json` on every terminal and in CI. `text` prints each guard (status, policy, inspected count, findings, exit, evidence ID, duration and diagnostics) or each proof (guard, target, expected policy and path or `marker (weak evidence)`, observed findings, baseline and challenged status, verdict, reason, evidence ID, duration and failed stages), then `Decision:` with counts. `compact` prints one line per guard or proof and a final decision line, with no JSON. Flags go after the action and before the optional harness file; each may appear once. An unknown flag or format, a repeated or empty flag, a flag after the harness file, or an extra argument exits `2` before anything runs. `run` and `mutate` print JSON only and reject `--format`.
+The default is `json` on every terminal and in CI. `text` prints each guard (status, policy, inspected count, findings, exit, evidence ID, duration and diagnostics) or each proof (guard, target, expected policy and path or `marker (weak evidence)`, observed findings, baseline and challenged status, verdict, reason, evidence ID, duration and failed stages), then `Decision:` with counts. `compact` prints one line per guard or proof and a final decision line, with no JSON. Flags go after the action and before the optional harness file; each may appear once. An unknown flag or format, a repeated or empty flag, a flag after the harness file, or an extra argument exits `2` before anything runs. `run` and `mutate` print JSON only and reject `--format`. Every action accepts `--evidence-version v1alpha5` to request the [portable evidence profile](evidence-schema.md#portable-profile-v1alpha5); no other value is accepted.
 
 Text and compact output are rendered from the validated, redacted report after any `--report` file is published; they never recompute a decision, and the exit code is the report's. The `--report` file is always the JSON report. Output has no color or other terminal control sequences: control characters in names, IDs and messages are escaped, values with spaces or `=` are quoted, diagnostic messages are cut at 160 bytes with `... (truncated)`, and IDs are never truncated. A missing measurement prints `n/a`.
 
@@ -97,6 +97,28 @@ Without a configured gate, every declared guard or challenge is required. An act
 v1alpha1 inputs use a derived gate that permits weak marker proofs. v1alpha2 accepts weak `PROVEN` results only when `allowWeakEvidence` is true.
 
 The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both harness versions. Run `sh scripts/smoke.sh` to verify the bundled offline configurations.
+
+## v1alpha4 built-in operators
+
+`invaris.dev/v1alpha4` is the v1alpha2 guard harness plus built-in challenge mutations. It is a separate branch from the v1alpha3 behavioral mutation harness and accepts `run`, `check` and `challenge`. Its schema is [`schemas/harness-v1alpha4.schema.json`](../schemas/harness-v1alpha4.schema.json). Every v1alpha2 rule applies, including explicit `trustMode` and `networkPolicy`, exact `writablePaths` (omitted means no mutation) and the gate. The only difference in defaults: without a configured gate, **weak marker evidence is not permitted** (as in v1alpha2). Upgrading a v1alpha2 file is a manual edit; [`migrate`](authoring.md#upgrade-a-v1alpha1-harness-with-migrate) only produces v1alpha2.
+
+A challenge has either the literal form (`before`, `after`, optional `expectedOutput`) or a `mutation` object, decided by which fields are present, even as empty strings. Mixing them, `"mutation": null` and `"mutation": {}` are refused before anything runs.
+
+```json
+{"id": "spacing", "guard": "whitespace", "file": "notes.txt",
+ "mutation": {"operator": "trailing-whitespace", "version": "1", "preimageSha256": "<64 lowercase hex>"}}
+```
+
+| Field | Requirement |
+| --- | --- |
+| `operator` | `trailing-whitespace`, `crlf-injection` or `secret-leak-injection` ([catalog](mutation-operators.md)) |
+| `version` | `"1"` |
+| `preimageSha256` | Lowercase hex SHA-256 of the whole target file as authored. The edit is refused (`INCONCLUSIVE`, `mutation_rejected`) when the copied file no longer matches. |
+| `fixture` | Required as `invaris-test-token-v1` for `secret-leak-injection`, and forbidden on the others |
+
+No other options, seeds, globs or file references exist. The challenge's guard must declare a `policyId` (a structured command guard or a provider guard): a built-in challenge cannot be proven by an output marker, and the finding must match that policy as its rule at the target path. A built-in challenge runs through the same lifecycle as a literal one: fresh copy, healthy baseline with inspected targets, then the planned edit installed with the preimage pinned and re-validated, the same guard over the same scope, classification, integrity check and verified cleanup. A guard that reports the expected finding is `PROVEN`; one that still passes is `UNPROVEN`; a wrong or extra finding, a missing tool, a timeout or a cleanup failure is `INCONCLUSIVE`.
+
+A v1alpha4 harness always produces [v1alpha5 evidence](evidence-schema.md#portable-profile-v1alpha5), including on early failure. See the runnable [operator example](../examples/operators/README.md).
 
 ## Single-mutant harness
 

@@ -57,6 +57,12 @@ Retained harnesses and source files can contain secrets and are outside report r
 
 Evaluators must wait for their children and close their streams before returning a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.
 
+## Built-in operators and portable evidence
+
+Built-in operators plan their edit from the target bytes read through the same checks as a literal replacement, and install it with the declared preimage pinned, so a target changed after authoring is refused rather than edited. The synthetic secret is a fixed, documented test token; no operator produces a real credential or contacts a service, but a trusted guard you choose can still use the network.
+
+The v1alpha5 profile withholds the root path, executable paths, argument lists, output excerpts and free-text details, and keeps hashes, IDs and counts. Command digests let a reader confirm that a challenged check ran the baseline's command without seeing it. The projection does not hide secrets placed in IDs, policy names or file names, and older report versions still carry paths and bounded output. Neither profile authenticates the report.
+
 ## Authoring commands
 
 `init` and `migrate` run no harness command, guard or package script, and their output is not evidence. `init --detect` only checks which marker files exist at the project root; symbolic links and special files are refused rather than followed. `init` publishes with a hard link that fails if the name exists, so it never overwrites a file.

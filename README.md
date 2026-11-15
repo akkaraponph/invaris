@@ -30,7 +30,7 @@ invaris
 
 Replace the path if you installed elsewhere. `invaris` without an action prints usage and exits with status 2. See the guide for [persistent Bash and Zsh setup](docs/installation.md#run-from-bash-or-zsh) and [project examples](docs/installation.md#put-example-files-in-a-specific-project-folder).
 
-For your own project, put a trusted `invaris.json` in the project directory and run `invaris check`, `invaris run`, or `invaris challenge`. Pass a harness path as the last argument to select another file. Run `invaris --report report.json check invaris.json` to save the JSON report to a new file. See the [harness specification](docs/harness-spec.md) for configuration and the [mutation contract](docs/harness-spec.md#single-mutant-harness) for `mutate`.
+For your own project, run `invaris init` to create a starter `invaris.json` (see [create and upgrade harnesses](docs/authoring.md)), or put a trusted `invaris.json` in the project directory, and run `invaris check`, `invaris run`, or `invaris challenge`. Pass a harness path as the last argument to select another file. Run `invaris --report report.json check invaris.json` to save the JSON report to a new file. See the [harness specification](docs/harness-spec.md) for configuration and the [mutation contract](docs/harness-spec.md#single-mutant-harness) for `mutate`.
 
 ## Quick start
 
@@ -43,7 +43,7 @@ go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json
 ```
 
-These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1alpha2 harnesses. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
+These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1alpha2 harnesses. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. Add `--format text` or `--format compact` after `check` or `challenge` for a human-readable summary; JSON stays the default and the `--report` file is always JSON (see [output formats](docs/harness-spec.md#output-formats)). See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
 
 ## Go project example
 

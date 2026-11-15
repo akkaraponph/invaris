@@ -202,9 +202,14 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	return
 }
 
-// engineVersion is the module version of this build, or nil for a
-// development build whose version is unknown.
+// engineVersion is the linked release version when one was set, otherwise
+// the module version of this build, or nil for a development build whose
+// version is unknown. It is never invented.
 func engineVersion() *string {
+	if releaseVersion != "" {
+		v := releaseVersion
+		return &v
+	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		v := info.Main.Version
 		return &v

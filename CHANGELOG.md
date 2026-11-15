@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased (0.3.0 candidate)
+
+Developer experience and trustworthy mutation verification. Default inputs, flags, report versions and exit codes (`0` ACCEPT, `1` REJECT, `2` REFUSE or error) are unchanged; everything below is additive or opt-in. Build with Go 1.27.4 or later.
+
+### Added
+
+- `invaris init` creates a starter `invaris.json` (`generic`, or `--preset go` with a `go test ./...` guard) and `invaris init --detect` reports project markers. It never runs project code or overwrites a file. See [create and upgrade harnesses](docs/authoring.md).
+- `invaris migrate` converts a v1alpha1 harness to v1alpha2 with the same commands, writable targets, policies and effective gate (including weak marker evidence), refusing anything it cannot carry over. `--dry-run` previews; a real migration keeps an exact `.bak`, takes a lock and replaces atomically.
+- `--format text|compact` for `check` and `challenge`, and `--format compact` for `campaign`. JSON stays the default and the `--report` file is always JSON. Output has no color or control sequences.
+- `invaris.dev/v1alpha4` guard harnesses with built-in challenge operators `trailing-whitespace`, `crlf-injection` and `secret-leak-injection` (version `"1"`, pinned by `preimageSha256`), proven only with structured guard evidence. See the [operator catalog](docs/mutation-operators.md) and the [offline example](examples/operators/README.md).
+- `invaris.evidence/v1alpha5`, a portable profile for every action: built-in mutation metadata with a stable reproduction identity, command digests, the engine version, per-guard and per-operator campaign effectiveness, and a privacy projection that withholds paths, arguments, output and free text. Automatic for v1alpha4 inputs; `--evidence-version v1alpha5` for others. See the [evidence reference](docs/evidence-schema.md#portable-profile-v1alpha5).
+- Schemas [`harness-v1alpha4`](schemas/harness-v1alpha4.schema.json) and [`evidence-v1alpha5`](schemas/evidence-v1alpha5.schema.json). Older schemas are unchanged.
+
+### Changed
+
+- Workspace copies stop on cancellation between entries and 1 MiB chunks, remove the partial copy, and report `canceled` or `timeout` instead of `workspace_prepare_failed`.
+- Release builds can link their version (`-X github.com/akkaraponph/invaris/internal/engine.releaseVersion=v0.3.0`), which `engineVersion` then reports.
+
+### Compatibility notes
+
+- Reports from a migrated harness say compatibility `native`, and its config digest changes.
+- v1alpha5 consumers must read new fields; older consumers keep receiving the older versions unless they opt in. A v1alpha4 harness always produces v1alpha5, and an older binary refuses it.
+- To undo a migration, review and restore the `.bak` file by hand.
+
 ## 0.2.0
 
 Invaris 0.2.0 adds campaigns: several mutation and guardrail experiments run together from one frozen copy of the source, with repeats, separate mutation and guardrail scores, and an explicit acceptance decision. Build with Go 1.27.4 or later. The offline examples use a POSIX shell.

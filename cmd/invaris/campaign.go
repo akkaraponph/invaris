@@ -12,7 +12,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/evidence"
 )
 
-const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text|compact] [--parallel N] [campaign.json]"
+const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text|compact] [--parallel N] [--evidence-version v1alpha5] [campaign.json]"
 
 // runCampaignCLI loads, runs and reports a campaign. Like the other actions it
 // writes nothing to stdout until the validated report has been published to
@@ -25,10 +25,21 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 		return 2
 	}
 	var only []string
-	format, file, parallel := "", "", 0
+	format, file, parallel, version := "", "", 0, ""
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
+		case arg == "--evidence-version":
+			if version != "" {
+				return usage(arg + " is repeated")
+			}
+			if i+1 >= len(args) || args[i+1] == "" {
+				return usage(arg + " requires a value")
+			}
+			i++
+			if version = args[i]; version != evidenceV5Flag {
+				return usage("unsupported evidence version: " + version + " (only " + evidenceV5Flag + " can be requested)")
+			}
 		case arg == "--only" || arg == "--format" || arg == "--parallel":
 			if i+1 >= len(args) {
 				return usage(arg + " requires a value")
@@ -85,7 +96,12 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 			return 2
 		}
 	}
-	report := engine.RunCampaign(ctx, c, selected, only, parallel)
+	var report evidence.CampaignReport
+	if version != "" || engine.CampaignRequiresV5(c) {
+		report = engine.RunCampaignV5(ctx, c, selected, only, parallel)
+	} else {
+		report = engine.RunCampaign(ctx, c, selected, only, parallel)
+	}
 	data, err := evidence.MarshalCampaign(report)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
