@@ -19,7 +19,8 @@ Developer experience and trustworthy mutation verification. Default inputs, flag
 
 - Workspace copies stop on cancellation between entries and 1 MiB chunks, remove the partial copy, and report `canceled` or `timeout` instead of `workspace_prepare_failed`.
 - Release builds can link their version (`-X github.com/akkaraponph/invaris/internal/engine.releaseVersion=v0.3.0`), which `engineVersion` then reports.
-- CI runs only on pushes to main, including merge commits, so a promotion does not also start a duplicate PR build. It also runs a 10-second operator fuzz smoke, packages both executables for Linux and macOS on amd64 and arm64, verifies archive checksums and native installation, and retains checked archives as workflow artifacts.
+- CI runs on pull requests to `staging` and `main` and on pushes to `main`, with separate format/vet, test (Linux and macOS), fuzz, Dependency-Cruiser and packaging jobs. Packaging builds the archives once and verifies them natively on Linux amd64, Linux arm64 and macOS arm64.
+- Pushing a `vX.Y.Z` tag on `main` runs CI, builds and verifies the archives and publishes the GitHub release with `SHA256SUMS` and the prepared release notes.
 
 ### Compatibility notes
 

@@ -1,0 +1,75 @@
+name: Release
+
+# Pushing a tag vMAJOR.MINOR.PATCH that points at a commit on main runs the
+# full CI, builds the archives once, verifies them natively and publishes a
+# GitHub release with docs/releases/MAJOR.MINOR.PATCH.md as its notes. A tag
+# that fails any gate publishes nothing.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Check tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag is on main and has notes and a changelog entry
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=${TAG#v}
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main ||
+            { echo "::error::$TAG does not point at a commit on main"; exit 1; }
+          test -s "docs/releases/$version.md" ||
+            { echo "::error::missing docs/releases/$version.md"; exit 1; }
+          grep -qx "## $version" CHANGELOG.md ||
+            { echo "::error::CHANGELOG.md has no '## $version' section"; exit 1; }
+
+  ci:
+    name: CI
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    name: Package
+    needs: ci
+    uses: ./.github/workflows/package.yml
+    with:
+      version: ${{ github.ref_name }}
+      artifact-name: release-${{ github.ref_name }}
+      retention-days: 30
+
+  publish:
+    name: Publish GitHub release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" dist/* \
+            --verify-tag \
+            --title "Invaris $TAG" \
+            --notes-file "docs/releases/${TAG#v}.md"
