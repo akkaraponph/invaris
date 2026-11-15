@@ -1,14 +1,18 @@
 # Current implementation
 
-Invaris runs trusted local commands in sequence. It supports five actions:
+Invaris runs trusted local commands in sequence. It supports five verification actions and two authoring commands:
 
 | Action | Harness version | Report version | Purpose |
 | --- | --- | --- | --- |
-| `run` | v1alpha1 or v1alpha2 | v1alpha2 | Run steps and guards |
-| `check` | v1alpha1 or v1alpha2 | v1alpha2 | Run guards |
-| `challenge` | v1alpha1 or v1alpha2 | v1alpha2 | Test whether a guard detects a declared violation |
-| `mutate` | v1alpha3 | v1alpha3 | Test whether selected tests detect one declared code change |
-| `campaign` | campaign v1alpha1 | v1alpha4 | Run several mutation and challenge experiments in sequence, with repeats, scores and an acceptance policy |
+| `run` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Run steps and guards |
+| `check` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Run guards |
+| `challenge` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Test whether a guard detects a declared violation or built-in operator edit |
+| `mutate` | v1alpha3 | v1alpha3 (v1alpha5 on request) | Test whether selected tests detect one declared code change |
+| `campaign` | campaign v1alpha1 | v1alpha4 (v1alpha5 with a v1alpha4 harness or on request) | Run several mutation and challenge experiments in sequence, with repeats, scores and an acceptance policy |
+| `init` | writes v1alpha2 | none | Detect project markers and create a starter harness without running project code |
+| `migrate` | v1alpha1 to v1alpha2 | none | Upgrade a harness with the same behavior, keeping a backup |
+
+`check`, `challenge` and `campaign` can print `--format text` or `compact` summaries; JSON is the default.
 
 Harness versions use the `invaris.dev/` prefix, campaign files use `invaris.campaign/`, and reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
 
@@ -20,7 +24,7 @@ A mutation experiment runs the selected tests on the original code, applies one 
 
 Both actions check workspace integrity between stages and verify cleanup before reporting a conclusive result. Commands must write caches and build products outside the disposable workspace. Reports include reasons, categories, source snapshot digests, Git state, and command settings. See [reasons](evidence-schema.md#reasons-and-categories) and [recorded inputs](evidence-schema.md#reproducibility-provenance).
 
-Use `preimageSha256` to require an exact target file before a mutation. Use `minInspected` to require a minimum reported inspection count from a structured command guard. The engine still trusts tools to report their work truthfully.
+A v1alpha4 challenge can name a [built-in operator](mutation-operators.md) (trailing whitespace, CRLF injection or a synthetic secret line) instead of literal `before` and `after` text; it requires a structured guard and a `preimageSha256`. Use `preimageSha256` to require an exact target file before a mutation. Use `minInspected` to require a minimum reported inspection count from a structured command guard. The engine still trusts tools to report their work truthfully.
 
 Reports record whole-file digests for each edit. To inspect the edit later, retain the harness and original target bytes as described in [inspecting the actual edit](evidence-schema.md#inspecting-the-actual-edit). The CLI currently writes reports without additional artifact files.
 
@@ -32,6 +36,6 @@ A [campaign](campaigns.md) references existing mutation and challenge harnesses 
 
 Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
 
-The release workflow tests pull requests targeting `main`, and each push to `main` after a merge, on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
+The release workflow runs only on pushes to `main`, including merge commits, on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
 
-Isolation, caching, and equivalent-mutant detection are future work; baseline reuse was declined. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).
+The [portable v1alpha5 profile](evidence-schema.md#portable-profile-v1alpha5) withholds paths, arguments, output and free text, and adds command digests, reproduction identities for built-in edits and campaign effectiveness rows. Isolation, caching, semantic (AST) operators and equivalent-mutant detection are future work; baseline reuse was declined. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).

@@ -182,8 +182,8 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 			if e.ChallengeID == nil || e.ExperimentID != nil {
 				return Campaign{}, fmt.Errorf("experiment %s: a guardrail entry needs challengeId and no experimentId", e.ID)
 			}
-			if spec.Version != versionV2 {
-				return Campaign{}, fmt.Errorf("experiment %s: harness %s is not an %s challenge harness", e.ID, e.Harness, versionV2)
+			if spec.Version != versionV2 && spec.Version != versionV4 {
+				return Campaign{}, fmt.Errorf("experiment %s: harness %s is not an %s challenge harness (or %s)", e.ID, e.Harness, versionV2, versionV4)
 			}
 			if err := structuredChallenge(spec, *e.ChallengeID); err != nil {
 				return Campaign{}, fmt.Errorf("experiment %s: %w", e.ID, err)

@@ -12,7 +12,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/evidence"
 )
 
-const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text] [--parallel N] [campaign.json]"
+const campaignUsage = "invaris [--report new-file.json] campaign [--only ID]... [--format json|text|compact] [--parallel N] [--evidence-version v1alpha5] [campaign.json]"
 
 // runCampaignCLI loads, runs and reports a campaign. Like the other actions it
 // writes nothing to stdout until the validated report has been published to
@@ -25,10 +25,21 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 		return 2
 	}
 	var only []string
-	format, file, parallel := "", "", 0
+	format, file, parallel, version := "", "", 0, ""
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
+		case arg == "--evidence-version":
+			if version != "" {
+				return usage(arg + " is repeated")
+			}
+			if i+1 >= len(args) || args[i+1] == "" {
+				return usage(arg + " requires a value")
+			}
+			i++
+			if version = args[i]; version != evidenceV5Flag {
+				return usage("unsupported evidence version: " + version + " (only " + evidenceV5Flag + " can be requested)")
+			}
 		case arg == "--only" || arg == "--format" || arg == "--parallel":
 			if i+1 >= len(args) {
 				return usage(arg + " requires a value")
@@ -59,7 +70,7 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 	switch format {
 	case "":
 		format = "json"
-	case "json", "text":
+	case formatJSON, formatText, formatCompact:
 	default:
 		return usage("unsupported format: " + format)
 	}
@@ -85,7 +96,12 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 			return 2
 		}
 	}
-	report := engine.RunCampaign(ctx, c, selected, only, parallel)
+	var report evidence.CampaignReport
+	if version != "" || engine.CampaignRequiresV5(c) {
+		report = engine.RunCampaignV5(ctx, c, selected, only, parallel)
+	} else {
+		report = engine.RunCampaign(ctx, c, selected, only, parallel)
+	}
 	data, err := evidence.MarshalCampaign(report)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -97,8 +113,11 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 			return 2
 		}
 	}
-	if format == "text" {
-		data = []byte(campaignText(report))
+	if format != formatJSON {
+		if data, err = formatCampaign(report, format); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
 	}
 	if _, err := stdout.Write(data); err != nil {
 		fmt.Fprintln(stderr, "write stdout:", err)
@@ -118,7 +137,7 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 func campaignText(r evidence.CampaignReport) string {
 	var b strings.Builder
 	line := func(format string, args ...any) { fmt.Fprintf(&b, format+"\n", args...) }
-	line("Invaris campaign: %s", r.Campaign)
+	line("Invaris campaign: %s", message(r.Campaign))
 	line("")
 	line("Experiments: %d", len(r.Experiments))
 	line("Selected:    %d", r.Selection.Selected)
@@ -160,6 +179,34 @@ func campaignText(r evidence.CampaignReport) string {
 		} else {
 			line("  Proof rate:    n/a (no eligible challenges; %d excluded)", g.Excluded)
 		}
+	}
+	if e := r.Effectiveness; e != nil && len(e.ByGuard)+len(e.ByOperator) > 0 {
+		line("")
+		line("Guardrail effectiveness (experiments; attempt reasons counted per attempt)")
+		rows := func(title string, rs []evidence.EffectivenessRow) {
+			line("  %s", title)
+			for _, row := range rs {
+				id := row.ID
+				if row.OperatorVersion != "" {
+					id += "@" + row.OperatorVersion
+				}
+				rate := "n/a"
+				if row.ProofRate != nil {
+					rate = fmt.Sprintf("%.1f%%", *row.ProofRate*100)
+				}
+				var reasons []string
+				for _, rc := range row.Reasons {
+					reasons = append(reasons, fmt.Sprintf("%s=%d", rc.Reason, rc.Count))
+				}
+				extra := ""
+				if len(reasons) > 0 {
+					extra = "  attempt reasons: " + strings.Join(reasons, ", ")
+				}
+				line("    %-32s proven=%d unproven=%d excluded=%d filtered=%d rate=%s%s", token(id), row.Proven, row.Unproven, row.Excluded, row.Filtered, rate, extra)
+			}
+		}
+		rows("By guard", e.ByGuard)
+		rows("By operator", e.ByOperator)
 	}
 	line("")
 	line("Results")

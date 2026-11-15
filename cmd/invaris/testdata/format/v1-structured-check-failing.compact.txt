@@ -1,0 +1,2 @@
+FAIL fixture-guard policy=no-forbidden-marker findings=1
+REJECT checks=1

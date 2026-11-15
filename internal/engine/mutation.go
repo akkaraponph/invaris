@@ -28,7 +28,7 @@ func runMutationEvidence(ctx context.Context, spec Specification, root string) e
 			{Code: "INVALID_MUTATION_HARNESS", Message: message},
 		}}
 	}
-	experiment, observations := runMutation(ctx, spec, root, workspace.Prepare, (*workspace.Workspace).Close)
+	experiment, observations := runMutation(ctx, spec, root, prepareFunc(ctx), (*workspace.Workspace).Close)
 	r := evidenceMetadata(ctx, spec, root, "mutate", started, time.Now().UTC())
 	r.SchemaVersion = evidence.MutationSchemaVersion
 	experiment.EngineVersion = engineVersion()
@@ -78,7 +78,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		err = errors.New("unsafe mutation workspace")
 	}
 	if err != nil {
-		record("prepare", start, "workspace_prepare_failed", err)
+		record("prepare", start, prepareFailure(err), err)
 		return
 	}
 	record("prepare", start, "", nil)
@@ -202,14 +202,34 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	return
 }
 
-// engineVersion is the module version of this build, or nil for a
-// development build whose version is unknown.
+// engineVersion is the linked release version when one was set, otherwise
+// the module version of this build, or nil for a development build whose
+// version is unknown. It is never invented.
 func engineVersion() *string {
+	if releaseVersion != "" {
+		v := releaseVersion
+		return &v
+	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		v := info.Main.Version
 		return &v
 	}
 	return nil
+}
+
+// prepareFunc binds ctx to the workspace copier, so ending the context stops
+// a copy in progress and removes the partial workspace.
+func prepareFunc(ctx context.Context) func(string) (*workspace.Workspace, error) {
+	return func(source string) (*workspace.Workspace, error) { return workspace.PrepareContext(ctx, source) }
+}
+
+// prepareFailure is the reason for a workspace that could not be prepared:
+// canceled or timeout when the context ended during the copy.
+func prepareFailure(err error) string {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return commandFailure(err)
+	}
+	return domain.ReasonPrepareFailed
 }
 
 func commandFailure(err error) string {

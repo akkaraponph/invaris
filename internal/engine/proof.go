@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/mutation"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -26,7 +27,7 @@ type expectation struct {
 // evaluator, run in the same workspace over the same scope, produces the
 // baseline and the challenged check; the one declared file is replaced between
 // them; and the copy is removed and verified absent before the proof is final.
-// Production passes workspace.Prepare and (*Workspace).Close; tests inject
+// Production passes prepareFunc(ctx) and (*Workspace).Close; tests inject
 // failures. A proof is PROVEN only when every stage succeeded, including
 // cleanup. The source checkout is never written.
 func prove(ctx context.Context, root string, c Challenge, expect expectation,
@@ -60,7 +61,7 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 	}
 	if !stage(domain.StagePrepare, start, err) {
 		fail("prepare workspace: %v", err)
-		p.Reason = domain.ReasonPrepareFailed
+		p.Reason = prepareFailure(err)
 		p.ReasonCategory = domain.ReasonCategory(p.Reason)
 		return p
 	}
@@ -143,9 +144,10 @@ func proofStages(ctx context.Context, ws *workspace.Workspace, c Challenge, expe
 		return domain.Inconclusive, err.Error(), reason
 	}
 
-	// The target is revalidated inside Replace, after the baseline ran.
+	// The target is revalidated when it is read and again when it is
+	// replaced, after the baseline ran.
 	start = time.Now()
-	m, err := workspace.Replace(ws.Root, c.File, c.Before, c.After)
+	m, err := applyChallengeMutation(ws.Root, c)
 	if !stage(domain.StageMutate, start, err) {
 		return domain.Inconclusive, err.Error(), domain.ReasonMutationRejected
 	}
@@ -224,4 +226,24 @@ func classify(expect expectation, target string, got domain.Check) (domain.Proof
 func faultID(policy string, m workspace.Mutation) string {
 	sum := sha256.Sum256([]byte(policy + "\x00" + m.Path + "\x00" + m.BeforeSHA256 + "\x00" + m.AfterSHA256))
 	return "fault-" + hex.EncodeToString(sum[:8])
+}
+
+// applyChallengeMutation makes the challenge's one edit in the workspace. A
+// literal challenge replaces Before with After. A built-in operator reads the
+// target through the workspace's checked reader, plans the whole-file edit
+// purely, and installs it with ReplaceExpecting pinned to the declared
+// preimage, which re-validates the target. Nothing else writes the copy.
+func applyChallengeMutation(root string, c Challenge) (workspace.Mutation, error) {
+	if c.Builtin == nil {
+		return workspace.Replace(root, c.File, c.Before, c.After)
+	}
+	data, err := workspace.ReadTarget(root, c.File)
+	if err != nil {
+		return workspace.Mutation{}, err
+	}
+	edit, err := mutation.Plan(*c.Builtin, data)
+	if err != nil {
+		return workspace.Mutation{}, err
+	}
+	return workspace.ReplaceExpecting(root, c.File, string(edit.Before), string(edit.After), c.Builtin.PreimageSHA256)
 }

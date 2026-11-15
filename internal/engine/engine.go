@@ -8,6 +8,7 @@ import (
 	"github.com/akkaraponph/invaris/internal/adapter"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/evidence"
+	"github.com/akkaraponph/invaris/internal/mutation"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -57,6 +58,9 @@ type Challenge struct {
 	Before         string `json:"before"`
 	After          string `json:"after"`
 	ExpectedOutput string `json:"expectedOutput"`
+	// Builtin is set only by the v1alpha4 decoder: the challenge's edit is
+	// planned by a built-in operator instead of Before and After.
+	Builtin *mutation.Spec `json:"-"`
 }
 type Result struct {
 	ID         string      `json:"id"`
@@ -233,7 +237,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 		r.Detail, r.reason = "guard not found", domain.ReasonGuardNotFound
 		return
 	}
-	proof := prove(ctx, root, c, expect, evaluate, workspace.Prepare, (*workspace.Workspace).Close)
+	proof := prove(ctx, root, c, expect, evaluate, prepareFunc(ctx), (*workspace.Workspace).Close)
 	r.Proof = &proof
 	r.Status, r.Detail = string(proof.Status), proof.Detail
 	if len(runs) > 0 {

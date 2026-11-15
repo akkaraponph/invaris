@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "<runId>",
+  "action": "check",
+  "target": "<root>",
+  "harness": "structured-v1alpha2",
+  "configDigest": "sha256:5a8cd872a496fc73832c9b95abe6ec48e1c13bb0d2890d18869ff3481e10ee0e",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha2",
+    "warnings": []
+  },
+  "policies": [
+    {
+      "id": "no-forbidden-marker",
+      "allowEmpty": false
+    }
+  ],
+  "gate": {
+    "requiredGuards": [
+      "fixture-guard"
+    ],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "fixture-guard",
+      "kind": "guard",
+      "status": "PASS",
+      "startedAt": "<time>",
+      "finishedAt": "<time>"
+    }
+  ],
+  "steps": [],
+  "checks": [
+    {
+      "id": "fixture-guard",
+      "policyId": "no-forbidden-marker",
+      "providerId": "invaris-command",
+      "status": "PASS",
+      "inspected": 1,
+      "findings": [],
+      "diagnostics": [],
+      "exitCode": 0
+    }
+  ],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "fixture-guard",
+      "kind": "guard",
+      "program": "sh",
+      "args": [
+        "guard.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-forbidden-marker\",\"inspected\":1,\"findings\":[]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 1,
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": []
+}

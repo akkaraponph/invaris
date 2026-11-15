@@ -1,0 +1,5 @@
+Invaris check: "evil\x1b[31mname\nnext"
+  guard "g\x1b[0m"  status=FAIL  policy=none  inspected=n/a  findings=0  exit=1
+    evidence="g\x1b[0m"  duration=<ms>
+    COMMAND_FAILED: exit status 1
+Decision: REJECT  checks=1 pass=0 fail=1 refuse=0 not_run=0

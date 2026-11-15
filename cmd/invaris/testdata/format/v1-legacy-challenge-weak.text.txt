@@ -1,0 +1,7 @@
+Invaris challenge: example-guardrail-proof
+  input invaris.dev/v1alpha1 (legacy compatibility)
+  detect-forbidden-import  guard=no-forbidden-import  target=source.txt
+    expected=marker (weak evidence)  strength=weak
+    baseline=PASS  observed=FAIL  proof=PROVEN  reason=marker_matched
+    evidence=detect-forbidden-import:challenged  duration=<ms>
+Decision: ACCEPT  proofs=1 proven=1 unproven=0 inconclusive=0 not_run=0

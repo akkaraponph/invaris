@@ -120,6 +120,11 @@ type CampaignReport struct {
 	Decision             domain.Decision             `json:"decision"`
 	Diagnostics          []domain.Diagnostic         `json:"diagnostics"`
 	Artifacts            []Artifact                  `json:"artifacts"`
+
+	// ProfileV5 additions, serialized only in ProfileV5 reports.
+	MutationMetadata []MutationMetadata `json:"-"`
+	CommandDigests   []CommandDigest    `json:"-"`
+	Effectiveness    *Effectiveness     `json:"-"`
 }
 
 // AttemptID is the stable ID of attempt index (1-based) of an experiment.
@@ -182,8 +187,14 @@ func (r CampaignReport) Complete() bool {
 func ValidateCampaign(r CampaignReport) error {
 	var problems []error
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Errorf(format, args...)) }
-	if r.SchemaVersion != CampaignSchemaVersion {
-		bad("schemaVersion must be %q", CampaignSchemaVersion)
+	v5 := r.SchemaVersion == ProfileV5
+	if r.SchemaVersion != CampaignSchemaVersion && !v5 {
+		bad("schemaVersion must be %q or %q", CampaignSchemaVersion, ProfileV5)
+	}
+	if v5 {
+		validateCampaignV5(r, bad)
+	} else if len(r.MutationMetadata) != 0 || len(r.CommandDigests) != 0 || r.Effectiveness != nil {
+		bad("%s fields are only valid in %s", ProfileV5, ProfileV5)
 	}
 	if r.Action != "campaign" {
 		bad("action must be campaign")
@@ -517,11 +528,15 @@ func MarshalCampaign(r CampaignReport) ([]byte, error) {
 	if err := ValidateCampaign(r); err != nil {
 		return nil, fmt.Errorf("invalid campaign report: %w", err)
 	}
+	var v any = r
+	if r.SchemaVersion == ProfileV5 {
+		v = normalizeCampaignV5(r)
+	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(r); err != nil {
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

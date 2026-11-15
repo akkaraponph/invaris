@@ -120,7 +120,7 @@ func (s Specification) SupportsAction(action string) bool {
 	case "mutate":
 		return s.Version == versionV3
 	case "run", "check", "challenge":
-		return s.Version == versionV1 || s.Version == versionV2
+		return s.Version == versionV1 || s.Version == versionV2 || s.Version == versionV4
 	default:
 		return false
 	}

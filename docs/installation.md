@@ -1,6 +1,8 @@
 # Install Invaris and run it from a terminal
 
-The [v0.2.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
+The [v0.3.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
+
+The commands below target v0.3.0. During release preparation, its tag and download assets are not yet published; use a source build or the checked main-build artifacts in the [release guide](releasing.md). The previous published release remains [v0.2.0](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0).
 
 ## Install into a specific folder
 
@@ -8,18 +10,18 @@ These commands work in Bash or Zsh. Choose an absolute installation path and the
 
 | System | Archive |
 | --- | --- |
-| macOS, Apple Silicon | `invaris_0.2.0_darwin_arm64.tar.gz` |
-| macOS, Intel | `invaris_0.2.0_darwin_amd64.tar.gz` |
-| Linux or WSL, x86-64 | `invaris_0.2.0_linux_amd64.tar.gz` |
-| Linux or WSL, ARM64 | `invaris_0.2.0_linux_arm64.tar.gz` |
+| macOS, Apple Silicon | `invaris_0.3.0_darwin_arm64.tar.gz` |
+| macOS, Intel | `invaris_0.3.0_darwin_amd64.tar.gz` |
+| Linux or WSL, x86-64 | `invaris_0.3.0_linux_amd64.tar.gz` |
+| Linux or WSL, ARM64 | `invaris_0.3.0_linux_arm64.tar.gz` |
 
 For example, install on macOS Apple Silicon into `$HOME/.local/share/invaris`. Change the first two values for another folder or system. Use a new folder for the first installation; extraction replaces files with matching names.
 
 ```sh
 INVARIS_HOME="$HOME/.local/share/invaris"
-INVARIS_ARCHIVE="invaris_0.2.0_darwin_arm64.tar.gz"
+INVARIS_ARCHIVE="invaris_0.3.0_darwin_arm64.tar.gz"
 mkdir -p "$INVARIS_HOME"
-gh release download v0.2.0 --repo akkaraponph/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
+gh release download v0.3.0 --repo akkaraponph/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
 cd "$INVARIS_HOME"
 ```
 
@@ -72,18 +74,19 @@ This copies the structured example into a new demo folder you choose. Run in Bas
 ```sh
 INVARIS_SOURCE="$HOME/invaris-source"
 INVARIS_PROJECT="$HOME/projects/invaris-demo"
-git clone --branch v0.2.0 --depth 1 https://github.com/akkaraponph/invaris.git "$INVARIS_SOURCE"
+git clone --branch v0.3.0 --depth 1 https://github.com/akkaraponph/invaris.git "$INVARIS_SOURCE"
 mkdir -p "$INVARIS_PROJECT"
 cp "$INVARIS_SOURCE/examples/structured/invaris.json" "$INVARIS_SOURCE/examples/structured/guard.sh" "$INVARIS_SOURCE/examples/structured/source.txt" "$INVARIS_PROJECT/"
 cd "$INVARIS_PROJECT"
 invaris check
 invaris challenge
+invaris challenge --format text
 invaris --report report.json check
 ```
 
-`check` runs the guard against `source.txt`. `challenge` reports `PROVEN` after detecting the controlled mutation in a disposable copy. Both return JSON reports and exit 0 on success. The last command also saves the report to `report.json`; use a new filename each time because existing reports are never overwritten.
+`check` runs the guard against `source.txt`. `challenge` reports `PROVEN` after detecting the controlled mutation in a disposable copy. Both return JSON reports and exit 0 on success; `--format text` prints a readable summary with the same exit code. The last command also saves the report to `report.json`; use a new filename each time because existing reports are never overwritten.
 
-For an existing project, write a trusted `invaris.json` with commands that check that project. The demo guard checks only its sample file. See the [harness specification](harness-spec.md). A harness can explicitly invoke a shell; the engine does not interpret shell syntax itself.
+For an existing project, run `invaris init --detect` to see which project markers Invaris recognizes, then `invaris init` (or `invaris init --preset go` for a Go module) to create a starter `invaris.json` without running any project code; see [create and upgrade harnesses](authoring.md). Then add trusted commands that check that project. The demo guard checks only its sample file. See the [harness specification](harness-spec.md). A harness can explicitly invoke a shell; the engine does not interpret shell syntax itself.
 
 You can select a harness by absolute path from any directory:
 

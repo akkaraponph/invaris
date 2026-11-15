@@ -44,6 +44,25 @@ for action in check challenge; do
     accept "$action" "$root/examples/forbidden-dependency/invaris.json"
 done
 
+# Built-in operators (v1alpha4 harness, v1alpha5 evidence), offline.
+v5() {
+    status=0
+    (cd "$root/examples/operators" && "$tmp/invaris" --report "$tmp/report.json" "$@") >"$tmp/stdout.json" || status=$?
+    test "$status" -eq 0
+    cmp "$tmp/report.json" "$tmp/stdout.json"
+    grep -q '"schemaVersion": "invaris.evidence/v1alpha5"' "$tmp/stdout.json"
+    grep -q '"decision": "ACCEPT"' "$tmp/stdout.json"
+    rm "$tmp/report.json"
+    count=$((count + 1))
+    printf 'PASS v1alpha5 %s examples/operators\n' "$*"
+}
+for action in check challenge campaign; do
+    v5 "$action"
+done
+(cd "$root/examples/operators" && "$tmp/invaris" challenge --format compact) | grep -q '^ACCEPT proofs=3$'
+count=$((count + 1))
+printf 'PASS challenge --format compact examples/operators\n'
+
 mutation() {
     cfg="$root/examples/mutation/$1.json"
     status=0

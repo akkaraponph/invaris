@@ -4,8 +4,9 @@
 Builds the CLI into a temporary directory, runs it on the shipped examples and
 on temporary harnesses, checks the exit codes, validates every emitted report
 against its evidence schema (v1alpha2, v1alpha3 for mutate, v1alpha4 for
-campaign), validates the example harnesses and campaigns against their input
-schemas, and requires deliberate counterexamples to be rejected.
+campaign, v1alpha5 for v1alpha4 harnesses and --evidence-version v1alpha5),
+validates the example harnesses and campaigns against their input schemas, and
+requires deliberate counterexamples to be rejected.
 
 Requires the pinned validator: pip install -r scripts/requirements-schema.txt
 Exit status: 0 all checks passed, 1 a check failed, 2 the environment is unusable.
@@ -284,6 +285,95 @@ def campaign_checks(binary, provider_dir):
         check(not valid(ev, bad), f"campaign evidence counterexample accepted: {label}")
 
 
+def v5_checks(binary, tmp):
+    """The v1alpha4 operator example and opted-in old inputs emit valid v1alpha5."""
+    v5 = validator(load("evidence-v1alpha5.schema.json"))
+    h4 = validator(load("harness-v1alpha4.schema.json"))
+    ex = ROOT / "examples"
+    project = tmp / "operators"
+    shutil.copytree(ex / "operators", project)
+    harness4 = json.loads((project / "invaris.json").read_text())
+    check(valid(h4, harness4), "operator example harness violates harness-v1alpha4 schema")
+    docs = {}
+
+    def emit(label, cwd, args, want_exit, want_decision):
+        code, out, err = run_cli(binary, cwd, *args)
+        check(code == want_exit, f"v5 {label}: exit {code}, want {want_exit} ({err.strip()})")
+        try:
+            doc = json.loads(out)
+        except ValueError:
+            check(False, f"v5 {label}: stdout is not JSON")
+            return
+        errors = sorted(v5.iter_errors(doc), key=lambda e: list(e.path))
+        check(not errors, f"v5 {label}: report violates schema: {errors[0].message if errors else ''}")
+        check(doc.get("schemaVersion") == "invaris.evidence/v1alpha5" and doc.get("decision") == want_decision, f"v5 {label}: version or decision")
+        docs[label] = doc
+
+    for action in ("run", "check", "challenge"):
+        emit(f"operators {action}", project, [action], 0, "ACCEPT")
+    emit("operators campaign", project, ["campaign"], 0, "ACCEPT")
+    emit("structured check opted in", ex / "structured", ["check", "--evidence-version", "v1alpha5"], 0, "ACCEPT")
+    emit("legacy challenge opted in", ex, ["challenge", "--evidence-version", "v1alpha5", "invaris.json"], 0, "ACCEPT")
+    emit("mutate opted in", ex / "mutation", ["mutate", "--evidence-version", "v1alpha5", "survived.json"], 1, "REJECT")
+    emit("mutation campaign opted in", ex / "mutation", ["campaign", "--evidence-version", "v1alpha5", "campaign.json"], 1, "REJECT")
+    # A preimage that does not match: REJECTED, INCONCLUSIVE, REFUSE.
+    stale = tmp / "operators-stale"
+    shutil.copytree(ex / "operators", stale)
+    (stale / "notes.txt").write_text("edited after authoring\n")
+    emit("operators stale preimage", stale, ["challenge"], 2, "REFUSE")
+    rejected = [m for m in docs.get("operators stale preimage", {}).get("mutationMetadata", []) if m["application"] == "REJECTED"]
+    check(len(rejected) == 1 and rejected[0]["beforeSha256"] is None, "stale preimage must give one REJECTED entry without hashes")
+
+    def mutated(base, edit):
+        doc = copy.deepcopy(base)
+        edit(doc)
+        return doc
+
+    accepted = docs.get("operators challenge")
+    if accepted:
+        for key in ("engineVersion", "mutationMetadata", "commandDigests", "target"):
+            check(not valid(v5, mutated(accepted, lambda d, k=key: d.pop(k))), f"v5 report missing {key} accepted")
+        negatives = {
+            "v1alpha2 schemaVersion": lambda d: d.update(schemaVersion="invaris.evidence/v1alpha2"),
+            "root path": lambda d: d.update(target="/home/user/project"),
+            "argv": lambda d: d["observations"][0].update(args=["scan.sh"]),
+            "stdout": lambda d: d["observations"][0].update(stdout="{}"),
+            "executable path": lambda d: d["observations"][0]["executable"].update(path="/bin/sh"),
+            "proof detail": lambda d: d["proofs"][0].update(detail="free text"),
+            "unknown operator": lambda d: d["mutationMetadata"][0].update(operator="replace"),
+            "operator version 2": lambda d: d["mutationMetadata"][0].update(operatorVersion="2"),
+            "fixture on whitespace": lambda d: d["mutationMetadata"][0].update(fixture="invaris-test-token-v1"),
+            "secret without fixture": lambda d: d["mutationMetadata"][2].pop("fixture"),
+            "applied without hashes": lambda d: d["mutationMetadata"][0].update(beforeSha256=None),
+            "not applied with hashes": lambda d: d["mutationMetadata"][0].update(application="NOT_APPLIED"),
+            "bad reproductionId": lambda d: d["mutationMetadata"][0].update(reproductionId="abc"),
+            "bad command digest": lambda d: d["commandDigests"][0].update(sha256="md5:x"),
+            "metadata unknown field": lambda d: d["mutationMetadata"][0].update(seed=1),
+        }
+        for label, edit in negatives.items():
+            check(not valid(v5, mutated(accepted, edit)), f"v5 counterexample accepted: {label}")
+    campaign = docs.get("operators campaign")
+    if campaign:
+        for label, edit in {
+            "campaign without effectiveness": lambda d: d.pop("effectiveness"),
+            "campaign attempt detail": lambda d: d["experiments"][0]["attempts"][0].update(detail="free text"),
+            "campaign tool argv": lambda d: d["experiments"][0]["attempts"][0]["observations"][0].update(args=["x"]),
+        }.items():
+            check(not valid(v5, mutated(campaign, edit)), f"v5 counterexample accepted: {label}")
+    for label, edit in {
+        "builtin and literal mixed": lambda d: d["challenges"][0].update(before="a", after="b"),
+        "builtin without preimage": lambda d: d["challenges"][0]["mutation"].pop("preimageSha256"),
+        "builtin version 2": lambda d: d["challenges"][0]["mutation"].update(version="2"),
+        "builtin unknown option": lambda d: d["challenges"][0]["mutation"].update(seed=1),
+        "secret without fixture": lambda d: d["challenges"][2]["mutation"].pop("fixture"),
+        "fixture on crlf": lambda d: d["challenges"][1]["mutation"].update(fixture="invaris-test-token-v1"),
+        "v1alpha2 version": lambda d: d.update(version="invaris.dev/v1alpha2"),
+    }.items():
+        check(not valid(h4, mutated(harness4, edit)), f"harness-v1alpha4 counterexample accepted: {label}")
+    # The old v1alpha2 harness schema still refuses the new mutation field.
+    check(not valid(validator(load("harness-v1alpha2.schema.json")), mutated(harness4, lambda d: d.update(version="invaris.dev/v1alpha2"))), "harness-v1alpha2 accepted a built-in mutation")
+
+
 def main():
     if shutil.which("go") is None:
         print("go toolchain not found", file=sys.stderr)
@@ -430,6 +520,7 @@ def main():
 
         mutation_checks(binary)
         campaign_checks(binary, tmp)
+        v5_checks(binary, tmp)
 
     adapter_checks()
     print(f"{checks} checks, {len(failures)} failed")

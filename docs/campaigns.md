@@ -20,9 +20,9 @@ A campaign does not define experiments. Each entry points to an existing harness
 | Kind | Harness | Reference field | Verdicts |
 | --- | --- | --- | --- |
 | `mutation` | [`invaris.dev/v1alpha3`](harness-spec.md#single-mutant-harness) | `experimentId` | `KILLED`, `SURVIVED`, `INVALID`, `INCONCLUSIVE` |
-| `guardrail` | [`invaris.dev/v1alpha2`](harness-spec.md#v1alpha2-additions) | `challengeId` | `PROVEN`, `UNPROVEN`, `INCONCLUSIVE` |
+| `guardrail` | [`invaris.dev/v1alpha2`](harness-spec.md#v1alpha2-additions) or [`invaris.dev/v1alpha4`](harness-spec.md#v1alpha4-built-in-operators) | `challengeId` | `PROVEN`, `UNPROVEN`, `INCONCLUSIVE` |
 
-A guardrail entry must use a challenge whose guard declares a `policyId` (a structured command guard or a provider guard). Campaigns therefore accept only strong proof evidence; v1alpha1 harnesses and output-marker guards are rejected when the campaign is loaded. The harness `gate` is not used: the campaign policy replaces it.
+A guardrail entry must use a challenge whose guard declares a `policyId` (a structured command guard or a provider guard). Campaigns therefore accept only strong proof evidence; v1alpha1 harnesses and output-marker guards are rejected when the campaign is loaded. The harness `gate` is not used: the campaign policy replaces it. A campaign that references any v1alpha4 harness, even through an experiment filtered out with `--only`, emits [v1alpha5 evidence](evidence-schema.md#portable-profile-v1alpha5); `--evidence-version v1alpha5` requests it for any campaign.
 
 ## Define a campaign
 
@@ -131,15 +131,24 @@ This order differs from the single-experiment gate, whose default is failure-fir
 
 A failure to prepare or run an experiment is never reported as a surviving mutant or an unproven guard. Completed attempts keep their evidence when later work fails. On cancellation each active command's process group is stopped through the normal runner, no further attempt starts, the snapshot is removed, and a valid partial report is still written. Detached processes can escape process-group termination; see the [threat model](threat-model.md).
 
+## Effectiveness (v1alpha5)
+
+A [v1alpha5 campaign report](evidence-schema.md#portable-profile-v1alpha5) adds `effectiveness`, which breaks the guardrail summary down by guard and by operator. Behavioral mutation experiments never appear in it, and it never changes the mutation score, the proof rate, the acceptance evaluation or the decision.
+
+- `byGuard` has one row per guard, identified by harness path and guard ID (`checks/invaris.json#whitespace`), so equal guard IDs in two harnesses stay separate.
+- `byOperator` has one row per built-in operator and version (`trailing-whitespace` with `operatorVersion` `"1"`), plus a `replace` row, without `operatorVersion`, for literal `before`/`after` challenges.
+
+Rows are sorted by ID (then version). Each row lists its `experiments` and counts them once each, after the same aggregation as the summary: repeats count once, a failed repeat makes the experiment inconclusive, and disagreeing repeats stay `mixed` with no vote. `planned` is the sum of `proven`, `unproven`, `inconclusive`, `mixed`, `notExecuted` and `filtered`; `executed` counts selected experiments with at least one attempt that ran; `eligible` is `proven + unproven`; `excluded` is `inconclusive + mixed + notExecuted`; filtered experiments are in neither. `proofRate` is `proven / eligible` as a fraction from 0 to 1, or `null` when nothing is eligible. `reasons` lists infrastructure reasons such as `timeout` and `canceled` **per attempt**, sorted by reason, so they can exceed the number of experiments; they are not added to any bucket. The validator recomputes every row from the experiments it lists. `--format text` prints the rows as percentages.
+
 ## CLI
 
 ```sh
-invaris [--report new-file.json] campaign [--only ID]... [--format json|text] [--parallel N] [campaign.json]
+invaris [--report new-file.json] campaign [--only ID]... [--format json|text|compact] [--parallel N] [--evidence-version v1alpha5] [campaign.json]
 ```
 
 - The default file is `campaign.json` in the current directory.
 - `--only ID` selects an experiment by exact ID; repeat it to select several. The other experiments are recorded as `FILTERED_OUT` with no attempts, the report's `selection.mode` is `filtered`, and requirements about kinds that are no longer selected become `NOT_APPLICABLE`. An unknown or repeated ID exits 2 before anything runs.
-- `--format text` prints the summary below instead of JSON. The `--report` file is always JSON.
+- `--format text` prints the summary below instead of JSON; `--format compact` prints one line per experiment (result, ID, kind and attempts) and a final line with the decision, mutation score and proof rate. The default is JSON whatever the terminal. The `--report` file is always JSON.
 - `--parallel N` runs up to N attempts at once (1 to 8, default 1). See [parallel attempts](#parallel-attempts).
 - Exit codes: `0` ACCEPT, `1` REJECT, `2` REFUSE.
 

@@ -1,0 +1,2 @@
+PROVEN detect-marker guard=fixture-guard target=source.txt reason=guard_detected
+ACCEPT proofs=1
