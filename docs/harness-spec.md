@@ -20,7 +20,7 @@ Paths use forward slashes. Absolute paths, empty segments, `.` or `..` segments,
 
 Optional `policies` declares permitted policy IDs. Optional `networkPolicy` currently accepts only `unrestricted`; it does not provide network isolation. Optional `writablePaths` restricts challenge targets to the listed exact paths: omission retains legacy behavior, whereas an explicit empty list permits no mutation. These declarations do not confine trusted commands. `requiredAdapters` is valid only in v1alpha2 (see provider negotiation below).
 
-The existing v1alpha1 examples remain valid. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#output-migration)).
+The existing v1alpha1 examples remain valid; [`invaris migrate`](authoring.md#upgrade-a-v1alpha1-harness-with-migrate) converts one to v1alpha2 without changing its behavior. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#output-migration)).
 
 For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to true. When `failFast` is false, later steps are attempted after a failed step. When `alwaysRunGuards` is false, guards are skipped after a step failure. Skipped steps and guards appear as `NOT_RUN` with a reason; a skipped guard cannot produce a passing action. Cancellation also records unstarted work as `NOT_RUN`.
 

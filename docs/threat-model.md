@@ -56,3 +56,9 @@ Matching `beforeSha256`, `afterSha256`, and `configDigest` against retained file
 Retained harnesses and source files can contain secrets and are outside report redaction. Report redaction covers configured literal secret values, including prefixes cut off in excerpts. Encoded, transformed, and undeclared secrets can remain visible.
 
 Evaluators must wait for their children and close their streams before returning a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.
+
+## Authoring commands
+
+`init` and `migrate` run no harness command, guard or package script, and their output is not evidence. `init --detect` only checks which marker files exist at the project root; symbolic links and special files are refused rather than followed. `init` publishes with a hard link that fails if the name exists, so it never overwrites a file.
+
+`migrate` keeps an exact backup, takes an exclusive lock file and re-checks the harness identity and bytes before an atomic rename. These checks serialize cooperating migrations and catch ordinary concurrent edits; they do not defend against a hostile local process racing the same paths. A killed process or power loss can leave the lock, backup or a temporary file; nothing removes them automatically. See [recovery](authoring.md#failures-and-recovery).

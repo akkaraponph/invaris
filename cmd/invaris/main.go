@@ -35,6 +35,16 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate") {
+		if reportPath != "" {
+			fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
+			return 2
+		}
+		if args[0] == "init" {
+			return runInitCLI(args[1:], stdout, stderr)
+		}
+		return runMigrateCLI(args[1:], stdout, stderr)
+	}
 	if len(args) >= 1 && args[0] == "campaign" {
 		return runCampaignCLI(ctx, reportPath, args[1:], stdout, stderr)
 	}

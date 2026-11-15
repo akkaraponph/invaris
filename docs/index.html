@@ -33,6 +33,14 @@
       <h2 id="workflow">Choose an action</h2>
       <dl class="commands">
         <div>
+          <dt><code>init</code></dt>
+          <dd>Detect project markers and create a starter <code>invaris.json</code> without running project code or overwriting files.</dd>
+        </div>
+        <div>
+          <dt><code>migrate</code></dt>
+          <dd>Upgrade a v1alpha1 harness to v1alpha2 with the same commands and gate, keeping an exact backup.</dd>
+        </div>
+        <div>
           <dt><code>run</code></dt>
           <dd>Run the configured steps in order, then run guards. By default, steps stop at the first failure.</dd>
         </div>
@@ -81,6 +89,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <h2 id="reference">Reference</h2>
       <ul class="reference">
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
