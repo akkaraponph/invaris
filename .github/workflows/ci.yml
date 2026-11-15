@@ -33,6 +33,16 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: go build -o "${RUNNER_TEMP}/invaris" ./cmd/invaris
+      - run: go test ./internal/mutation -run '^$' -fuzz '^FuzzPlan$' -fuzztime=10s
+      - name: Cross-build release targets
+        run: |
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            for pkg in invaris invaris-command-provider; do
+              GOOS=${target%/*} GOARCH=${target#*/} go build \
+                -ldflags "-X github.com/akkaraponph/invaris/internal/engine.releaseVersion=v0.3.0-ci" \
+                -o "${RUNNER_TEMP}/build/${target}/${pkg}" "./cmd/${pkg}"
+            done
+          done
       - run: sh scripts/smoke.sh
       - run: python -m pip install -r scripts/requirements-schema.txt
       - run: python scripts/validate-schemas.py

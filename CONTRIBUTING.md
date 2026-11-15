@@ -17,10 +17,19 @@ Use Go 1.27.4 or later and a POSIX shell on Linux or macOS. Python 3 enables the
 go test ./...
 go test -race ./...
 go vet ./...
+go test ./internal/mutation -run '^$' -fuzz '^FuzzPlan$' -fuzztime=10s
 sh scripts/smoke.sh
 python3 -m venv /tmp/invaris-schema-venv
 /tmp/invaris-schema-venv/bin/python -m pip install -r scripts/requirements-schema.txt
 /tmp/invaris-schema-venv/bin/python scripts/validate-schemas.py
+```
+
+`smoke.sh` sets `GOTOOLCHAIN=local`, so the Go on `PATH` must itself be 1.27.4 or later. The compatibility goldens in `cmd/invaris/testdata/compat` pin the default report shapes; refresh them with `go test ./cmd/invaris -run TestCompatibilityGoldens -update-compat` only for a deliberate contract change, and review the diff. Text and compact output goldens are in `cmd/invaris/testdata/format` (`-update-format`).
+
+Release archives link the version into the engine, so `engineVersion` reports it:
+
+```sh
+GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/akkaraponph/invaris/internal/engine.releaseVersion=v0.3.0" -o dist/linux-amd64/invaris ./cmd/invaris
 ```
 
 For an adapter, start with the [protocol and conformance kit](docs/adapter-protocol.md#testing-a-third-party-provider). Provide clean, violating, and unevaluable fixtures. Run a positive proof and a surviving-mutation control with any real analyzer, and record the tool version and platform. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md) for the pinned Dependency-Cruiser installation and test commands.
