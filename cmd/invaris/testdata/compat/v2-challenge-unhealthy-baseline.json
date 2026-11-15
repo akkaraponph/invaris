@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "<runId>",
+  "action": "challenge",
+  "target": "<root>",
+  "harness": "structured-v1alpha2",
+  "configDigest": "sha256:5a8cd872a496fc73832c9b95abe6ec48e1c13bb0d2890d18869ff3481e10ee0e",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha2",
+    "warnings": []
+  },
+  "policies": [
+    {
+      "id": "no-forbidden-marker",
+      "allowEmpty": false
+    }
+  ],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [
+      "detect-marker"
+    ],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "detect-marker",
+      "kind": "challenge",
+      "status": "INCONCLUSIVE",
+      "startedAt": "<time>",
+      "finishedAt": "<time>"
+    }
+  ],
+  "steps": [],
+  "checks": [],
+  "proofs": [
+    {
+      "id": "detect-marker",
+      "policyId": "no-forbidden-marker",
+      "guardId": "fixture-guard",
+      "target": "source.txt",
+      "faultId": "",
+      "evidenceStrength": "strong",
+      "status": "INCONCLUSIVE",
+      "reason": "unhealthy_baseline",
+      "reasonCategory": "setup",
+      "detail": "baseline guard did not pass: FAIL",
+      "sourceSnapshot": {
+        "sha256": "fa982f08e950a062ee235f338b525475f000debb039d823cc1e6808d7de5ec67",
+        "files": 3
+      },
+      "mutation": null,
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "FAILED",
+          "durationMs": 0,
+          "detail": "baseline guard did not pass: FAIL"
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "detect-marker:baseline",
+        "policyId": "no-forbidden-marker",
+        "providerId": "invaris-command",
+        "status": "FAIL",
+        "inspected": 1,
+        "findings": [
+          {
+            "policyId": "no-forbidden-marker",
+            "ruleId": "no-forbidden-marker",
+            "path": "source.txt",
+            "message": ""
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "COMMAND_FAILED",
+            "message": "exit status 1"
+          }
+        ],
+        "exitCode": 1
+      },
+      "challenged": null
+    }
+  ],
+  "observations": [
+    {
+      "id": "fixture-guard",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [
+        "guard.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 1,
+      "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-forbidden-marker\",\"inspected\":1,\"findings\":[{\"policyId\":\"no-forbidden-marker\",\"path\":\"source.txt\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 0,
+  "decision": "REFUSE",
+  "diagnostics": [
+    {
+      "code": "PROOF_INCONCLUSIVE",
+      "message": "detect-marker: baseline guard did not pass: FAIL"
+    }
+  ],
+  "artifacts": []
+}

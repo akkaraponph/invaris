@@ -1,0 +1,268 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha4",
+  "runId": "<runId>",
+  "action": "campaign",
+  "campaign": "compat-no-eligible",
+  "campaignConfigDigest": "sha256:924025b333dbe479b5241a067daac3df0546bb7cd5e9456c4d74cd46265669cf",
+  "engineVersion": "<engineVersion>",
+  "sourceIdentity": {
+    "snapshotSha256": "5ca30b00fd22667d9ae70b8930455dc564a02223d9a83f948addd317d2e00aa9",
+    "files": 7,
+    "roots": [
+      {
+        "path": ".",
+        "sha256": "5ca30b00fd22667d9ae70b8930455dc564a02223d9a83f948addd317d2e00aa9",
+        "files": 7
+      }
+    ],
+    "gitRevision": null,
+    "gitDirty": null,
+    "excluded": [
+      ".git",
+      ".invaris"
+    ]
+  },
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "selection": {
+    "mode": "all",
+    "only": [],
+    "selected": 1,
+    "filtered": 0
+  },
+  "parallelism": 1,
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "stages": [
+    {
+      "name": "snapshot",
+      "status": "OK",
+      "durationMs": 0,
+      "detail": ""
+    },
+    {
+      "name": "cleanup",
+      "status": "OK",
+      "durationMs": 0,
+      "detail": ""
+    }
+  ],
+  "tools": [],
+  "experiments": [
+    {
+      "id": "invalid",
+      "kind": "mutation",
+      "harness": "invalid.json",
+      "root": ".",
+      "harnessDigest": "sha256:81d3a963458a301d994f72922003b61a44dca9caf2e51d51a5f259d8dc3540d5",
+      "referenceId": "mutation-invalid",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "invalid#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "INVALID",
+          "reason": "mutant_invalid",
+          "reasonCategory": "result",
+          "detail": "",
+          "startedAt": "<time>",
+          "finishedAt": "<time>",
+          "durationMs": 0,
+          "mutation": {
+            "id": "mutation-invalid",
+            "mutationId": "replace-invalid",
+            "engineVersion": "<engineVersion>",
+            "operator": "replace",
+            "target": "behavior.sh",
+            "testCommandId": "assert-covered",
+            "validationCommandId": "syntax",
+            "testIds": [
+              "covered"
+            ],
+            "verdict": "INVALID",
+            "reason": "mutant_invalid",
+            "reasonCategory": "result",
+            "sourceSnapshot": {
+              "sha256": "5ca30b00fd22667d9ae70b8930455dc564a02223d9a83f948addd317d2e00aa9",
+              "files": 7
+            },
+            "mutation": {
+              "path": "behavior.sh",
+              "beforeSha256": "84e25163fff0bdd890c37c50bf70daefe961eaa0ed661af12eac77008fc142a0",
+              "afterSha256": "f2a21d3385884fdd73393859a6a07ee86d2123c3abbcb8b687fd3dbadc94edb2"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 0,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 0,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 0,
+                "detail": ""
+              },
+              {
+                "name": "validation",
+                "status": "OK",
+                "durationMs": 0,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 0,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "observationId": "mutation-invalid:baseline",
+              "tests": [
+                {
+                  "id": "covered",
+                  "status": "PASS"
+                }
+              ],
+              "validity": ""
+            },
+            "validation": {
+              "observationId": "mutation-invalid:validation",
+              "tests": null,
+              "validity": "INVALID"
+            },
+            "tests": null
+          },
+          "proof": null,
+          "observations": [
+            {
+              "id": "mutation-invalid:baseline",
+              "kind": "baseline",
+              "program": "sh",
+              "args": [
+                "test.sh"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "<time>",
+              "finishedAt": "<time>",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"covered\",\"status\":\"PASS\"}]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "<executable>",
+                "sha256": "<executable-sha256>"
+              },
+              "timeoutSeconds": 30,
+              "envAllowlist": []
+            },
+            {
+              "id": "mutation-invalid:validation",
+              "kind": "validation",
+              "program": "sh",
+              "args": [
+                "validate.sh"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "<time>",
+              "finishedAt": "<time>",
+              "exitCode": 1,
+              "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}\n",
+              "stderr": "sh: line 4: unexpected EOF while looking for matching `''\nsh: line 7: syntax error: unexpected end of file\n",
+              "truncated": false,
+              "diagnostics": [
+                {
+                  "code": "COMMAND_FAILED",
+                  "message": "exit status 1"
+                }
+              ],
+              "executable": {
+                "path": "<executable>",
+                "sha256": "<executable-sha256>"
+              },
+              "timeoutSeconds": 30,
+              "envAllowlist": []
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "INVALID",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    }
+  ],
+  "mutationSummary": {
+    "killed": 0,
+    "survived": 0,
+    "invalid": 1,
+    "inconclusive": 0,
+    "mixed": 0,
+    "notExecuted": 0,
+    "filtered": 0,
+    "eligible": 0,
+    "excluded": 1,
+    "score": null
+  },
+  "guardrailSummary": {
+    "proven": 0,
+    "unproven": 0,
+    "inconclusive": 0,
+    "mixed": 0,
+    "notExecuted": 0,
+    "filtered": 0,
+    "eligible": 0,
+    "excluded": 0,
+    "proofRate": null
+  },
+  "acceptancePolicy": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": false,
+    "requireNoInconclusive": false,
+    "requireNoMixed": true,
+    "requireNoInvalid": false,
+    "minMutationScore": null
+  },
+  "acceptanceEvaluation": {
+    "complete": true,
+    "requirements": [
+      {
+        "requirement": "requireNoSurvivors",
+        "status": "SATISFIED",
+        "experiments": []
+      },
+      {
+        "requirement": "requireNoMixed",
+        "status": "SATISFIED",
+        "experiments": []
+      }
+    ]
+  },
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": []
+}

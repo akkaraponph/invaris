@@ -1,0 +1,91 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "<runId>",
+  "action": "check",
+  "target": "<root>",
+  "harness": "example-guardrail-proof",
+  "configDigest": "sha256:44675c22fabfd22367c969036d8cf885023ee5cf0bb784f9a7fc53057c0ade76",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "legacy",
+    "inputVersion": "invaris.dev/v1alpha1",
+    "warnings": [
+      "v1alpha1 harness: trusted-local execution with weak marker evidence permitted for compatibility; migrate to invaris.dev/v1alpha2 for explicit gates"
+    ]
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [
+      "no-forbidden-import"
+    ],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": true
+  },
+  "lifecycle": [
+    {
+      "id": "no-forbidden-import",
+      "kind": "guard",
+      "status": "PASS",
+      "startedAt": "<time>",
+      "finishedAt": "<time>"
+    }
+  ],
+  "steps": [],
+  "checks": [
+    {
+      "id": "no-forbidden-import",
+      "policyId": "",
+      "providerId": "invaris-command",
+      "status": "PASS",
+      "inspected": null,
+      "findings": [],
+      "diagnostics": [],
+      "exitCode": 0
+    }
+  ],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "no-forbidden-import",
+      "kind": "guard",
+      "program": "sh",
+      "args": [
+        "-c",
+        "if grep -q FORBIDDEN_IMPORT source.txt; then echo FORBIDDEN_IMPORT; exit 1; fi"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 1,
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": []
+}
