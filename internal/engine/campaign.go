@@ -30,7 +30,7 @@ import (
 // has its own workspace; commands that share caches, ports or other external
 // state can affect each other, which a sequential run (1) avoids.
 func RunCampaign(ctx context.Context, c Campaign, selected []bool, only []string, parallel int) evidence.CampaignReport {
-	return runCampaign(ctx, c, selected, only, parallel, workspace.Prepare, (*workspace.Workspace).Close)
+	return runCampaign(ctx, c, selected, only, parallel, prepareFunc(ctx), (*workspace.Workspace).Close)
 }
 
 // MaxParallel bounds --parallel.
@@ -95,7 +95,7 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 	if err != nil {
 		stage(evidence.StageSnapshot, start, err)
 		diagnose("SNAPSHOT_FAILED", err.Error())
-		notStarted(domain.ReasonPrepareFailed, "the campaign snapshot could not be prepared")
+		notStarted(prepareFailure(err), "the campaign snapshot could not be prepared")
 	} else {
 		digest, roots, err := freezeSnapshot(c, snap.Root, &r.SourceIdentity)
 		stage(evidence.StageSnapshot, start, err)
@@ -332,7 +332,7 @@ func runAttempt(ctx context.Context, x CampaignExperiment, root, digest string, 
 	var snapshot *domain.SourceSnapshot
 	switch x.Kind {
 	case domain.KindMutation:
-		m, observations := runMutation(ctx, x.Spec, root, workspace.Prepare, (*workspace.Workspace).Close)
+		m, observations := runMutation(ctx, x.Spec, root, prepareFunc(ctx), (*workspace.Workspace).Close)
 		m.EngineVersion = engineVersion()
 		a.Mutation, a.Observations = &m, observations
 		v := string(m.Verdict)

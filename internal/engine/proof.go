@@ -26,7 +26,7 @@ type expectation struct {
 // evaluator, run in the same workspace over the same scope, produces the
 // baseline and the challenged check; the one declared file is replaced between
 // them; and the copy is removed and verified absent before the proof is final.
-// Production passes workspace.Prepare and (*Workspace).Close; tests inject
+// Production passes prepareFunc(ctx) and (*Workspace).Close; tests inject
 // failures. A proof is PROVEN only when every stage succeeded, including
 // cleanup. The source checkout is never written.
 func prove(ctx context.Context, root string, c Challenge, expect expectation,
@@ -60,7 +60,7 @@ func prove(ctx context.Context, root string, c Challenge, expect expectation,
 	}
 	if !stage(domain.StagePrepare, start, err) {
 		fail("prepare workspace: %v", err)
-		p.Reason = domain.ReasonPrepareFailed
+		p.Reason = prepareFailure(err)
 		p.ReasonCategory = domain.ReasonCategory(p.Reason)
 		return p
 	}

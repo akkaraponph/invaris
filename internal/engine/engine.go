@@ -233,7 +233,7 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 		r.Detail, r.reason = "guard not found", domain.ReasonGuardNotFound
 		return
 	}
-	proof := prove(ctx, root, c, expect, evaluate, workspace.Prepare, (*workspace.Workspace).Close)
+	proof := prove(ctx, root, c, expect, evaluate, prepareFunc(ctx), (*workspace.Workspace).Close)
 	r.Proof = &proof
 	r.Status, r.Detail = string(proof.Status), proof.Detail
 	if len(runs) > 0 {

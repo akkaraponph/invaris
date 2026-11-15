@@ -7,7 +7,9 @@ Invaris runs commands with your user permissions. Use trusted harnesses, executa
 - **Engine operations use the copy.** Baselines, replacements, and evaluators run in a temporary workspace. The engine copies the source checkout without changing its files, including dirty, untracked, and read-only files. Trusted commands can still access the source through absolute paths.
 - **One declared replacement is allowed.** The engine replaces exactly one occurrence in the declared file and records whole-file hashes before and after. It revalidates the target after the baseline and rejects symlinks, removed targets, and ambiguous matches. Replacement installs a new file, so existing hard links retain their original bytes.
 - **Cleanup is verified.** The engine removes the copy and checks that it is absent before finalizing a result. Cleanup failure yields `INCONCLUSIVE`. Report validation rejects `PROVEN` without a recorded mutation and an `OK` cleanup stage.
-- **Copy size and file types are restricted.** The copier accepts at most 2,000 entries and 10 MiB per file. It rejects symbolic links and non-regular files, skips `.git` and `.invaris`, and refuses temporary directories inside the checkout.
+- **Copy size and file types are restricted.** The copier accepts at most 2,000 entries and 10 MiB per file. It rejects symbolic links and non-regular files, skips `.git` and `.invaris` at every level (so nested repositories and submodule metadata are not reconstructed, and guards that need Git cannot run in a copy), and refuses temporary directories inside the checkout.
+- **Cancellation stops copying.** Interrupting a run checks for cancellation before every copied entry and between 1 MiB chunks of each file. A canceled copy is removed, and the result is `INCONCLUSIVE` with reason `canceled` (or `timeout` for a deadline) instead of `workspace_prepare_failed`. There is no total-byte budget: a large tree is bounded only by the entry and file limits.
+- **Every target read and write uses the same checks.** The engine reads a target only after confirming that it is a canonical relative path resolving to itself without symbolic links, naming a bounded, owner-writable regular file, and it repeats those checks when it writes.
 
 ## Integrity guarantees shared by proofs and mutations
 
@@ -27,6 +29,7 @@ If a command moves or replaces the workspace directory, cleanup becomes unverifi
 - **Tool honesty.** Providers and evaluators report what they inspected, which tests ran, and what failed. Invaris checks report structure, expected identifiers, paths, and exit codes. It trusts tools to report truthfully.
 - **Rule completeness.** A proof shows that the selected guard detected this change. It does not establish that the guard detects every violation. Marker proofs rely on output text and require a gate that permits weak evidence.
 - **Detached descendants.** Cancellation targets the child process group on Linux and macOS. Other platforms terminate only the direct child. Detached descendants can escape group termination.
+- **Forced termination.** `SIGKILL` or power loss runs no cleanup: an `invaris-proof-*` directory can remain in the temporary directory. Remove it by hand once no run is active. Invaris does not scavenge temporary directories, because another run may own them.
 
 Provider findings must fall within the harness's declared scope. Inspection counts remain the provider's claim. `minInspected` sets a minimum count; `preimageSha256` requires exact target contents. Neither authenticates a tool or the origin of its inputs.
 
