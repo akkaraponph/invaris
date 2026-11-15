@@ -113,6 +113,12 @@ type Report struct {
 	Diagnostics   []domain.Diagnostic `json:"diagnostics"`
 	Artifacts     []Artifact          `json:"artifacts"`
 	Experiment    *MutationExperiment `json:"experiment,omitempty"`
+
+	// ProfileV5 additions. They are serialized only in ProfileV5 reports,
+	// where they are required; older versions never carry them.
+	EngineVersion    *string            `json:"-"`
+	MutationMetadata []MutationMetadata `json:"-"`
+	CommandDigests   []CommandDigest    `json:"-"`
 }
 
 var (
@@ -129,12 +135,18 @@ var (
 func Validate(r Report) error {
 	var problems []error
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Errorf(format, args...)) }
+	v5 := r.SchemaVersion == ProfileV5
 	if r.Action == "mutate" {
-		if r.SchemaVersion != MutationSchemaVersion {
-			bad("mutate requires schemaVersion %q", MutationSchemaVersion)
+		if r.SchemaVersion != MutationSchemaVersion && !v5 {
+			bad("mutate requires schemaVersion %q or %q", MutationSchemaVersion, ProfileV5)
 		}
-	} else if r.SchemaVersion != SchemaVersion || r.Experiment != nil {
-		bad("schemaVersion must be %q", SchemaVersion)
+	} else if r.SchemaVersion != SchemaVersion && !v5 || r.Experiment != nil {
+		bad("schemaVersion must be %q or %q", SchemaVersion, ProfileV5)
+	}
+	if v5 {
+		validateV5(r, bad)
+	} else if r.EngineVersion != nil || len(r.MutationMetadata) != 0 || len(r.CommandDigests) != 0 {
+		bad("%s fields are only valid in %s", ProfileV5, ProfileV5)
 	}
 	if !runIDPattern.MatchString(r.RunID) {
 		bad("runId must be 128-bit lowercase hex")
@@ -294,11 +306,15 @@ func Marshal(r Report) ([]byte, error) {
 	if err := Validate(r); err != nil {
 		return nil, fmt.Errorf("invalid evidence report: %w", err)
 	}
+	var v any = r
+	if r.SchemaVersion == ProfileV5 {
+		v = normalizeV5(r)
+	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(r); err != nil {
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
