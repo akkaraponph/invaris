@@ -5,9 +5,9 @@
 1. Create a topic branch from `staging` in the repository or in your fork. Use the `panda-feature/` prefix for feature branches.
 2. Run the local checks below and open a pull request targeting `staging`.
 3. Keep the pull request up to date with its base branch. Resolve review conversations and pass local checks before merging.
-4. To promote tested changes, open a pull request from `staging` to `main`. Hotfix pull requests can target `main` and must pass the same checks.
+4. To promote tested changes, open a pull request from `staging` to `main`. Hotfix pull requests can target `main` and must pass the same local checks.
 
-The Release checks workflow runs for pull requests targeting `staging` or `main` and again for every push to `main`, including the merge commit of each pull request. GitHub requires `Go checks (ubuntu-latest)`, `Go checks (macos-latest)`, and `dependency-cruiser` on `main`. The [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) blocks direct pushes, force pushes, and deletion on both branches. Approvals are optional.
+The Release checks workflow runs only on pushes to `main`, including merge commits. Pull requests, staging pushes and tags do not start builds. Run the local checks before merging, then verify `Go checks (ubuntu-latest)`, `Go checks (macos-latest)`, and `dependency-cruiser` on the resulting main commit before publishing a release. These are post-merge checks, so PRs must not require them as pre-merge status checks. The [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) still requires pull requests and blocks force pushes and deletion on both branches. Approvals are optional.
 
 ## Local checks
 

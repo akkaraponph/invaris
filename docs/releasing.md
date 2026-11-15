@@ -19,7 +19,7 @@ Verification checks every archive's SHA-256, exact member list, regular file typ
 
 ## Review CI artifacts before publishing
 
-The Release checks workflow runs for PRs to `staging` and `main`, and pushes to `main`. Both Go jobs package all four platforms and verify installation on their native platform. The Dependency-Cruiser job runs the adapter and real integration fixtures. Every job must pass for the intended release revision.
+The Release checks workflow runs only on pushes to `main`, including merge commits. PRs and staging pushes do not start builds; use the local checks before merging. Both Go jobs package all four platforms and verify installation on their native platform. The Dependency-Cruiser job runs the adapter and real integration fixtures. Every job must pass for the intended main release revision.
 
 On a successful run, download one `release-<runner-os>-<commit-sha>` artifact from the run's **Artifacts** section. Each artifact contains all four archives and `SHA256SUMS`; use a single artifact's complete set, since independently built archive checksums can differ. They are retained for 14 days. Verify the downloaded set from a checkout of that commit:
 
@@ -27,12 +27,12 @@ On a successful run, download one `release-<runner-os>-<commit-sha>` artifact fr
 python3 scripts/verify-release.py v0.3.0 /absolute/path/to/downloaded-artifact
 ```
 
-Artifact checksums detect changed bytes, not a compromised build or a substituted manifest. These artifacts are review builds; they are not a published release.
+Artifact checksums detect changed bytes, not a compromised build or a substituted manifest. These artifacts come from main builds; they are not a published release.
 
 ## Publication gates
 
-1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). Staging currently needs the released mainline baseline as well as the 0.3.0 changes; preserve that history.
-2. Require Linux, macOS and Dependency-Cruiser CI to pass on the final main commit, including the post-merge run. Review any changes since the candidate artifacts were built.
+1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). Preserve the released mainline history when updating staging.
+2. Require Linux, macOS and Dependency-Cruiser CI to pass on the final main commit after merging. Review any changes since the candidate artifacts were built.
 3. Build and verify from that exact clean main commit, or use one complete artifact set from its successful workflow. Recheck the four archives, `SHA256SUMS`, license and stamped version. Do not reuse candidate artifacts if the source changed.
 4. After explicit publication authorization, create `v0.3.0` at the tested main commit and publish a GitHub release with the [prepared notes](releases/0.3.0.md), all four archives and `SHA256SUMS`. Never move an already published tag to different code.
 5. Download an archive and manifest through the [installation guide](installation.md), verify its checksum, and run the examples with the installed executables. Check that the release, source-tag and changelog links resolve and that GitHub Pages shows 0.3.0.
