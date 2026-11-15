@@ -36,6 +36,6 @@ A [campaign](campaigns.md) references existing mutation and challenge harnesses 
 
 Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
 
-The release workflow runs only on pushes to `main`, including merge commits, on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
+CI runs on pull requests to `staging` and `main` and on pushes to `main`, on Linux and macOS using the Go version in `go.mod`, and rehearses packaging on every run. Pushing a version tag runs the same checks, builds and natively verifies the archives, and publishes the GitHub release. See the [CI workflow](../.github/workflows/ci.yml), the [release workflow](../.github/workflows/release.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and the [release guide](releasing.md).
 
 The [portable v1alpha5 profile](evidence-schema.md#portable-profile-v1alpha5) withholds paths, arguments, output and free text, and adds command digests, reproduction identities for built-in edits and campaign effectiveness rows. Isolation, caching, semantic (AST) operators and equivalent-mutant detection are future work; baseline reuse was declined. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).
