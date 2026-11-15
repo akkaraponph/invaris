@@ -24,7 +24,7 @@ python3 -m venv /tmp/invaris-schema-venv
 /tmp/invaris-schema-venv/bin/python scripts/validate-schemas.py
 ```
 
-`smoke.sh` sets `GOTOOLCHAIN=local`, so the Go on `PATH` must itself be 1.27.4 or later. The compatibility goldens in `cmd/invaris/testdata/compat` pin the default report shapes; refresh them with `go test ./cmd/invaris -run TestCompatibilityGoldens -update-compat` only for a deliberate contract change, and review the diff. Text and compact output goldens are in `cmd/invaris/testdata/format` (`-update-format`).
+`smoke.sh` sets `GOTOOLCHAIN=local`, so the Go on `PATH` must itself be 1.27.4 or later. The compatibility goldens in `cmd/invaris/testdata/compat` pin the default report shapes; refresh them with `go test ./cmd/invaris -run TestCompatibilityGoldens -update-compat` only for a deliberate contract change, and review the diff. The invalid mutation fixture normalizes only the known Bash/dash syntax diagnostic strings; its status, exit code and other output remain pinned. Text and compact output goldens are in `cmd/invaris/testdata/format` (`-update-format`).
 
 Release archives link their version into the engine, so `engineVersion` reports it. Build all four platform archives, verify checksums and run the installed native binaries with Python 3.11 or later:
 

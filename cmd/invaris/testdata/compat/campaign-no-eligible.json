@@ -193,7 +193,7 @@
               "finishedAt": "<time>",
               "exitCode": 1,
               "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}\n",
-              "stderr": "sh: line 4: unexpected EOF while looking for matching `''\nsh: line 7: syntax error: unexpected end of file\n",
+              "stderr": "<shell-syntax-error>\n",
               "truncated": false,
               "diagnostics": [
                 {

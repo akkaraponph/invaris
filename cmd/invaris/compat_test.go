@@ -17,7 +17,8 @@ import (
 // invocations that existed before v0.3.0. Only values that vary between runs
 // or machines are normalized (run IDs, timestamps, durations, the temporary
 // root, resolved executable paths and their hashes, and a stamped engine
-// version); statuses, reasons, nulls, score units and order are kept. Refresh
+// version, plus the invalid fixture's shell syntax diagnostic); statuses,
+// reasons, nulls, score units and order are kept. Refresh
 // them only for a deliberate contract change: go test ./cmd/invaris -run
 // TestCompatibilityGoldens -update-compat
 var updateCompat = flag.Bool("update-compat", false, "rewrite cmd/invaris/testdata/compat goldens")
@@ -365,6 +366,14 @@ func normalizeValue(key string, v any, roots []string) any {
 			return "<time>"
 		case "engineVersion":
 			return "<engineVersion>"
+		case "stderr":
+			// Bash (macOS sh) and dash (Ubuntu sh) describe the same invalid
+			// fixture differently. Keep empty and unrelated diagnostics exact.
+			switch x {
+			case "sh: line 4: unexpected EOF while looking for matching `''\nsh: line 7: syntax error: unexpected end of file\n",
+				"sh: 7: Syntax error: Unterminated quoted string\n":
+				return "<shell-syntax-error>\n"
+			}
 		}
 		for _, r := range roots {
 			x = strings.ReplaceAll(x, r, "<root>")
@@ -377,6 +386,24 @@ func normalizeValue(key string, v any, roots []string) any {
 		return x
 	}
 	return v
+}
+
+func TestNormalizeShellSyntaxDiagnostic(t *testing.T) {
+	mac := "sh: line 4: unexpected EOF while looking for matching `''\nsh: line 7: syntax error: unexpected end of file\n"
+	linux := "sh: 7: Syntax error: Unterminated quoted string\n"
+	for _, diagnostic := range []string{mac, linux} {
+		if got := normalizeValue("stderr", diagnostic, nil); got != "<shell-syntax-error>\n" {
+			t.Fatalf("shell diagnostic was not normalized: %q", got)
+		}
+	}
+	for _, tc := range []struct{ key, value string }{
+		{"stderr", ""}, {"stderr", "permission denied\n"}, {"stdout", linux},
+		{"stderr", linux + "unexpected additional error\n"},
+	} {
+		if got := normalizeValue(tc.key, tc.value, nil); got != tc.value {
+			t.Fatalf("unrelated %s changed: %q -> %q", tc.key, tc.value, got)
+		}
+	}
 }
 
 func firstDifference(want, got []byte) string {
