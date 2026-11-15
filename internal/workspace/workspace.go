@@ -14,6 +14,7 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -49,6 +50,18 @@ type Mutation struct {
 // Prepare copies source into a new temporary directory. On any failure the
 // partial copy is removed (and a removal failure is reported with the error).
 func Prepare(source string) (*Workspace, error) {
+	return PrepareContext(context.Background(), source)
+}
+
+// PrepareContext is Prepare that stops when ctx ends. The context is checked
+// before every entry and between bounded chunks of every file, so a canceled
+// copy stops promptly and its partial workspace is removed; the returned
+// error wraps ctx.Err(). Cancellation of an already-prepared workspace is the
+// caller's concern (Close still removes it).
+func PrepareContext(ctx context.Context, source string) (*Workspace, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("prepare workspace: %w", err)
+	}
 	src, err := filepath.EvalSymlinks(source)
 	if err != nil {
 		return nil, fmt.Errorf("resolve source: %w", err)
@@ -76,7 +89,7 @@ func Prepare(source string) (*Workspace, error) {
 	}
 	w.Root = root
 	count := 0
-	if err := copyTree(src, root, &count); err != nil {
+	if err := copyTree(ctx, src, root, &count); err != nil {
 		return fail(fmt.Errorf("copy workspace: %w", err))
 	}
 	return w, nil
@@ -84,7 +97,7 @@ func Prepare(source string) (*Workspace, error) {
 
 // copyTree does not follow symbolic links: a link is refused, which keeps a
 // copy from escaping into (or exposing) files outside the checkout.
-func copyTree(src, dst string, count *int) error {
+func copyTree(ctx context.Context, src, dst string, count *int) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
@@ -92,6 +105,9 @@ func copyTree(src, dst string, count *int) error {
 	for _, entry := range entries {
 		if entry.Name() == ".git" || entry.Name() == ".invaris" {
 			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 		if *count++; *count > MaxEntries {
 			return fmt.Errorf("workspace exceeds %d entries", MaxEntries)
@@ -108,13 +124,13 @@ func copyTree(src, dst string, count *int) error {
 			if err := os.Mkdir(to, 0o700); err != nil {
 				return err
 			}
-			if err := copyTree(from, to, count); err != nil {
+			if err := copyTree(ctx, from, to, count); err != nil {
 				return err
 			}
 		case !info.Mode().IsRegular() || info.Size() > MaxFileBytes:
 			return fmt.Errorf("unsupported or oversized file %s", from)
 		default:
-			if err := copyFile(from, to, info.Mode().Perm()); err != nil {
+			if err := copyFile(ctx, from, to, info.Mode().Perm()); err != nil {
 				return err
 			}
 		}
@@ -122,7 +138,26 @@ func copyTree(src, dst string, count *int) error {
 	return nil
 }
 
-func copyFile(from, to string, perm os.FileMode) error {
+// copyChunk bounds how much is copied between context checks.
+const copyChunk = 1 << 20
+
+// ctxReader returns ctx.Err() before each read once ctx has ended.
+type ctxReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (c ctxReader) Read(p []byte) (int, error) {
+	if err := c.ctx.Err(); err != nil {
+		return 0, err
+	}
+	if len(p) > copyChunk {
+		p = p[:copyChunk]
+	}
+	return c.r.Read(p)
+}
+
+func copyFile(ctx context.Context, from, to string, perm os.FileMode) error {
 	in, err := os.Open(from)
 	if err != nil {
 		return err
@@ -134,7 +169,7 @@ func copyFile(from, to string, perm os.FileMode) error {
 		return err
 	}
 	// Read one byte past the limit so a file that grew since Stat is refused.
-	n, err := io.Copy(out, io.LimitReader(in, MaxFileBytes+1))
+	n, err := io.Copy(out, ctxReader{ctx, io.LimitReader(in, MaxFileBytes+1)})
 	if err == nil && n > MaxFileBytes {
 		err = fmt.Errorf("oversized file %s", from)
 	}
@@ -189,31 +224,29 @@ func ValidPath(name string) bool {
 // compared before and after the write, and any difference other than the one
 // declared file is an error.
 func Replace(root, path, before, after string) (Mutation, error) {
+	return ReplaceExpecting(root, path, before, after, "")
+}
+
+// ReplaceExpecting is Replace with an optional precondition: when preimage is
+// non-empty it must equal the lowercase hex SHA-256 of the whole target file
+// as found at call time, or nothing is written. This pins the experiment to
+// the exact content it was authored against. The digest identifies content;
+// it is not an attestation of who produced it.
+func ReplaceExpecting(root, path, before, after, preimage string) (Mutation, error) {
 	var m Mutation
-	if !ValidPath(path) {
-		return m, fmt.Errorf("unsafe mutation path %q", path)
-	}
 	if before == "" || before == after {
 		return m, errors.New("mutation must replace a non-empty marker with different text")
 	}
-	canonical, err := filepath.EvalSymlinks(root)
-	if err != nil || canonical != root {
-		return m, errors.New("workspace root is not canonical")
-	}
-	target := filepath.Join(root, filepath.FromSlash(path))
-	if resolved, err := filepath.EvalSymlinks(target); err != nil || resolved != target {
-		return m, errors.New("mutation target unavailable or redirected")
-	}
-	info, err := os.Lstat(target)
-	if err != nil || !info.Mode().IsRegular() || info.Size() > MaxFileBytes {
-		return m, errors.New("mutation target is not a bounded regular file")
-	}
-	if info.Mode().Perm()&0o200 == 0 {
-		return m, errors.New("mutation target is not writable")
-	}
-	data, err := os.ReadFile(target)
+	target, info, err := resolveTarget(root, path)
 	if err != nil {
 		return m, err
+	}
+	data, err := readBounded(target)
+	if err != nil {
+		return m, err
+	}
+	if preimage != "" && hashBytes(data) != preimage {
+		return m, errors.New("target content does not match the declared preimage digest")
 	}
 	marker := []byte(before)
 	first := bytes.Index(data, marker)
@@ -244,6 +277,58 @@ func Replace(root, path, before, after string) (Mutation, error) {
 		return Mutation{}, errors.New("recorded hashes disagree with the workspace manifest")
 	}
 	return m, nil
+}
+
+// resolveTarget validates a mutation target at call time: a canonical
+// relative path under a canonical root that resolves to itself without
+// symbolic links, naming a bounded, owner-writable regular file. Every
+// engine read or write of a target goes through it.
+func resolveTarget(root, path string) (string, os.FileInfo, error) {
+	if !ValidPath(path) {
+		return "", nil, fmt.Errorf("unsafe mutation path %q", path)
+	}
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil || canonical != root {
+		return "", nil, errors.New("workspace root is not canonical")
+	}
+	target := filepath.Join(root, filepath.FromSlash(path))
+	if resolved, err := filepath.EvalSymlinks(target); err != nil || resolved != target {
+		return "", nil, errors.New("mutation target unavailable or redirected")
+	}
+	info, err := os.Lstat(target)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > MaxFileBytes {
+		return "", nil, errors.New("mutation target is not a bounded regular file")
+	}
+	if info.Mode().Perm()&0o200 == 0 {
+		return "", nil, errors.New("mutation target is not writable")
+	}
+	return target, info, nil
+}
+
+// readBounded reads at most MaxFileBytes, refusing a file that grew past it.
+func readBounded(name string) ([]byte, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, MaxFileBytes+1))
+	if err == nil && len(data) > MaxFileBytes {
+		err = errors.New("mutation target is not a bounded regular file")
+	}
+	return data, err
+}
+
+// ReadTarget returns the bytes of the mutation target at path under root,
+// after the same call-time validation ReplaceExpecting applies. Built-in
+// operators plan their edit from these bytes; ReplaceExpecting re-validates
+// the target and pins the preimage when it writes.
+func ReadTarget(root, path string) ([]byte, error) {
+	target, _, err := resolveTarget(root, path)
+	if err != nil {
+		return nil, err
+	}
+	return readBounded(target)
 }
 
 // Rename installs a new inode so a hard link made by a trusted command
@@ -343,4 +428,37 @@ func Diff(a, b map[string]Entry) []string {
 func hashBytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])
+}
+
+// ManifestDigest returns a deterministic SHA-256 over a manifest: every path in
+// sorted order with its kind, mode, content hash and link target. Equal digests
+// mean equal manifests; the digest identifies content and is not attestation.
+func ManifestDigest(m map[string]Entry) string {
+	paths := make([]string, 0, len(m))
+	for p := range m {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	h := sha256.New()
+	for _, p := range paths {
+		e := m[p]
+		fmt.Fprintf(h, "%d:%s\x00%s\x00%o\x00%s\x00%s\x00", len(p), p, e.Kind, e.Mode, e.SHA256, e.Link)
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// Subtree returns the entries of m below dir, with paths relative to dir, as
+// Snapshot would record them for a copy of that directory. Dir "." returns m.
+func Subtree(m map[string]Entry, dir string) map[string]Entry {
+	if dir == "." {
+		return m
+	}
+	prefix := dir + "/"
+	out := map[string]Entry{}
+	for p, e := range m {
+		if rest, ok := strings.CutPrefix(p, prefix); ok {
+			out[rest] = e
+		}
+	}
+	return out
 }

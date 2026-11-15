@@ -46,6 +46,7 @@ func evidenceMetadata(ctx context.Context, spec Specification, root, action stri
 		FinishedAt:    finished,
 		DurationMs:    finished.Sub(started).Milliseconds(),
 		GitRevision:   gitRevision(ctx, root),
+		GitDirty:      gitDirty(ctx, root),
 		Compatibility: evidence.Compatibility{Status: "native", InputVersion: spec.Version, Warnings: []string{}},
 	}
 	if spec.ConfigDigest != "" {
@@ -57,7 +58,7 @@ func evidenceMetadata(ctx context.Context, spec Specification, root, action stri
 
 func buildEvidence(ctx context.Context, spec Specification, root, action string, legacy Report) evidence.Report {
 	r := evidenceMetadata(ctx, spec, root, action, legacy.StartedAt, legacy.FinishedAt)
-	legacyInput := spec.Version != versionV2
+	legacyInput := spec.Version == versionV1
 	if legacyInput {
 		r.Compatibility.Status = "legacy"
 		r.Compatibility.Warnings = []string{"v1alpha1 harness: trusted-local execution with weak marker evidence permitted for compatibility; migrate to invaris.dev/v1alpha2 for explicit gates"}
@@ -196,8 +197,8 @@ func hasChallenge(m map[string]Challenge, id string) bool { _, ok := m[id]; retu
 // guards, challenge evaluates proofs. An action whose applied gate requires
 // nothing (and has no steps) is refused as empty work. Without a configured
 // gate every declared guard (run/check) or challenge (challenge) is required.
-// v1alpha1 inputs permit weak evidence for compatibility; v1alpha2 does not
-// unless its gate says so.
+// v1alpha1 inputs permit weak evidence for compatibility; v1alpha2 and
+// v1alpha4 do not unless their gate says so.
 func effectiveGate(spec Specification, action string) domain.Gate {
 	if spec.Gate != nil {
 		g := *spec.Gate
@@ -208,7 +209,9 @@ func effectiveGate(spec Specification, action string) domain.Gate {
 		}
 		return g
 	}
-	g := domain.Gate{Precedence: domain.FailureFirst, AllowWeakEvidence: spec.Version != versionV2}
+	// Only v1alpha1 permits weak evidence by default; v1alpha2 and v1alpha4
+	// require strong evidence unless the configured gate says otherwise.
+	g := domain.Gate{Precedence: domain.FailureFirst, AllowWeakEvidence: spec.Version == versionV1}
 	if action == "challenge" {
 		for _, c := range spec.Challenges {
 			g.RequiredProofs = append(g.RequiredProofs, c.ID)
@@ -276,6 +279,9 @@ func diagnostics(res Result) []domain.Diagnostic {
 
 func toCheck(res Result, cmd Command) domain.Check {
 	c := domain.Check{ID: res.ID, PolicyID: cmd.PolicyID, ProviderID: commandProvider, Status: checkStatus(res.Status), ExitCode: res.ExitCode, Diagnostics: diagnostics(res)}
+	if c.Status != domain.Pass && c.Status != domain.Fail {
+		c.Reason = resultReason(res)
+	}
 	if res.Inspection != nil {
 		n := res.Inspection.Inspected
 		c.Inspected = &n
@@ -285,6 +291,22 @@ func toCheck(res Result, cmd Command) domain.Check {
 		}
 	}
 	return c
+}
+
+// resultReason maps a command result that could not be evaluated to a reason:
+// rejected evidence from a completed assessment, then the runner failure,
+// otherwise unusable evidence.
+func resultReason(res Result) string {
+	if res.reason != "" {
+		return res.reason // set when the command exited but its evidence was rejected
+	}
+	if res.commandErr != nil {
+		return commandFailure(res.commandErr)
+	}
+	if res.Status == "REFUSE" {
+		return domain.ReasonMalformedEvidence
+	}
+	return domain.ReasonExecutionFailed
 }
 
 func toProof(res Result, ch Challenge, guard Command) domain.Proof {
@@ -311,6 +333,13 @@ func toProof(res Result, ch Challenge, guard Command) domain.Proof {
 		p.Status = domain.Inconclusive
 	}
 	p.Detail = res.Detail
+	if p.Status == domain.Inconclusive {
+		p.Reason = res.reason
+		if p.Reason == "" {
+			p.Reason = domain.ReasonExecutionFailed
+		}
+		p.ReasonCategory = domain.ReasonCategory(p.Reason)
+	}
 	return p
 }
 
@@ -335,6 +364,18 @@ func observation(res Result, kind string, cmd Command, limit int) evidence.Obser
 	o.Truncated = o.Truncated || cut1 || cut2
 	if d := diagnostics(res); d != nil {
 		o.Diagnostics = d
+	}
+	o.EnvAllowlist = append([]string{}, res.EnvNames...)
+	if res.ExecPath != "" {
+		o.Executable = &evidence.Executable{Path: res.ExecPath}
+		if res.ExecSHA256 != "" {
+			sum := res.ExecSHA256
+			o.Executable.SHA256 = &sum
+		}
+	}
+	if res.ExecPath != "" || res.TimeoutSeconds != 0 {
+		t := res.TimeoutSeconds
+		o.TimeoutSeconds = &t
 	}
 	return o
 }
@@ -380,6 +421,17 @@ func gitRevision(ctx context.Context, root string) *string {
 	return &rev
 }
 
+// gitDirty reports whether the target has uncommitted or untracked changes,
+// using a bounded read-only `git status`. Unavailable means null.
+func gitDirty(ctx context.Context, root string) *bool {
+	out := runner.Run(ctx, root, runner.Command{Program: "git", Args: []string{"status", "--porcelain", "--untracked-files=all", "--", "."}, Timeout: 5 * time.Second})
+	if out.Err != nil || out.Truncated && out.Stdout == "" {
+		return nil
+	}
+	dirty := strings.TrimSpace(out.Stdout) != "" || out.Truncated
+	return &dirty
+}
+
 // providerCheck converts a provider guard result. A guard that never ran has no
 // provider check; it is reported as NOT_RUN against its adapter.
 func providerCheck(res Result, g ProviderGuard) domain.Check {
@@ -395,6 +447,7 @@ func providerObservation(res Result, g ProviderGuard, spec Specification, limit 
 	decl, _ := adapterByID(spec, g.AdapterID)
 	o := observation(res, "guard", Command{Program: decl.Program, Args: decl.Args}, limit)
 	o.Scope = append([]string{}, g.Scope...)
+	o.EnvAllowlist = append([]string{}, decl.EnvAllowlist...)
 	o.Provider = evidence.Provider{Name: g.AdapterID}
 	if id := res.Provider; id != nil {
 		o.Provider = identityProvider(*id)
@@ -417,7 +470,7 @@ func identityProvider(id adapter.Identity) evidence.Provider {
 func discoveryObservation(d Discovery) evidence.Observation {
 	started, finished := d.StartedAt, d.FinishedAt
 	o := evidence.Observation{ID: "discover:" + d.AdapterID, Kind: "discover", Program: d.Program, Args: append([]string{}, d.Args...),
-		Provider: evidence.Provider{Name: d.AdapterID}, Scope: []string{}, StartedAt: &started, FinishedAt: &finished, Diagnostics: []domain.Diagnostic{}}
+		Provider: evidence.Provider{Name: d.AdapterID}, Scope: []string{}, StartedAt: &started, FinishedAt: &finished, Diagnostics: []domain.Diagnostic{}, EnvAllowlist: []string{}}
 	if d.Provider != nil {
 		o.Provider = identityProvider(*d.Provider)
 	}

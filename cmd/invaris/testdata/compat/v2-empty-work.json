@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "<runId>",
+  "action": "check",
+  "target": "<root>",
+  "harness": "compat",
+  "configDigest": "sha256:e9b98aa60f46a7cfa63a54976b36061d91b4d3c78980793704ca6f70b985a9bc",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha2",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "guards",
+      "kind": "engine",
+      "status": "REFUSE",
+      "startedAt": null,
+      "finishedAt": null
+    }
+  ],
+  "steps": [],
+  "checks": [
+    {
+      "id": "guards",
+      "policyId": "",
+      "providerId": "invaris-command",
+      "status": "REFUSE",
+      "inspected": null,
+      "findings": [],
+      "diagnostics": [
+        {
+          "code": "ENGINE_REFUSE",
+          "message": "no executable work configured"
+        }
+      ],
+      "exitCode": null
+    }
+  ],
+  "proofs": [],
+  "observations": [],
+  "targetCount": 0,
+  "decision": "REFUSE",
+  "diagnostics": [
+    {
+      "code": "ENGINE_REFUSE",
+      "message": "guards: no executable work configured"
+    }
+  ],
+  "artifacts": []
+}

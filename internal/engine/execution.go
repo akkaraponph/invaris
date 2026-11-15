@@ -2,9 +2,14 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/akkaraponph/invaris/internal/runner"
@@ -109,6 +114,9 @@ func execute(ctx context.Context, root string, c Command) Result {
 	if c.PolicyID == "" {
 		r.Output += out.Stderr
 	}
+	r.ExecPath, r.ExecSHA256 = executableIdentity(root, out.Executable)
+	r.TimeoutSeconds = int(effectiveTimeout(c).Seconds())
+	r.EnvNames = append([]string{}, c.EnvAllowlist...)
 	var exit *exec.ExitError
 	switch {
 	case out.Err == nil:
@@ -136,4 +144,41 @@ func aggregate(current, next string) string {
 		return aggregate(current, "REFUSE")
 	}
 	return "PASS"
+}
+
+func effectiveTimeout(c Command) time.Duration {
+	if c.TimeoutSeconds <= 0 {
+		return runner.DefaultTimeout
+	}
+	return time.Duration(c.TimeoutSeconds) * time.Second
+}
+
+const maxExecutableBytes = 256 << 20
+
+// executableIdentity returns the program path as resolved and the SHA-256 of
+// the file it names, read right after the run while the workspace still
+// exists. The hash is empty when the file cannot be read or is oversized: an
+// unknown value, never a guess. It identifies the file's bytes only; it says
+// nothing about the tool's version, its libraries or what it did.
+func executableIdentity(root, program string) (string, string) {
+	if program == "" {
+		return "", ""
+	}
+	path := program
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(root, path)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return program, ""
+	}
+	defer f.Close()
+	if info, err := f.Stat(); err != nil || !info.Mode().IsRegular() || info.Size() > maxExecutableBytes {
+		return program, ""
+	}
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return program, ""
+	}
+	return program, hex.EncodeToString(h.Sum(nil))
 }

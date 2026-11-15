@@ -1,0 +1,28 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "go-project-accept",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {
+      "id": "mutation-killed",
+      "kind": "mutation",
+      "harness": "mutation-killed.json",
+      "experimentId": "go-mutation-killed",
+      "repeat": 1
+    },
+    {
+      "id": "guardrail-proven",
+      "kind": "guardrail",
+      "harness": "guardrail.json",
+      "challengeId": "inject-net-http",
+      "repeat": 1
+    }
+  ],
+  "acceptance": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

@@ -45,6 +45,7 @@ type guardV2 struct {
 	EnvAllowlist   []string        `json:"envAllowlist,omitempty"`
 	TimeoutSeconds int             `json:"timeoutSeconds,omitempty"`
 	PolicyID       string          `json:"policyId,omitempty"`
+	MinInspected   int             `json:"minInspected,omitempty"`
 	AdapterID      string          `json:"adapterId,omitempty"`
 	Scope          []string        `json:"scope,omitempty"`
 	Options        json.RawMessage `json:"options,omitempty"`
@@ -91,6 +92,12 @@ func decodeV2(raw []byte) (Specification, error) {
 	if err := d.Decode(&extra); err != io.EOF {
 		return Specification{}, errors.New("harness must contain exactly one JSON object")
 	}
+	return buildV2(in)
+}
+
+// buildV2 converts the v1alpha2 wire form (also used by v1alpha4 after its
+// challenges are converted) to the internal specification.
+func buildV2(in specV2) (Specification, error) {
 	s := Specification{
 		FailFast: in.FailFast, AlwaysRunGuards: in.AlwaysRunGuards, Version: in.Version, Name: in.Name,
 		Steps: in.Steps, Challenges: in.Challenges, NetworkPolicy: in.NetworkPolicy, TrustMode: in.TrustMode,
@@ -118,10 +125,10 @@ func decodeV2(raw []byte) (Specification, error) {
 			if g.Scope != nil || g.Options != nil {
 				return s, fmt.Errorf("guard %q mixes command and provider fields", g.ID)
 			}
-			s.Guards = append(s.Guards, Command{ID: g.ID, Program: g.Program, Args: g.Args, EnvAllowlist: g.EnvAllowlist, TimeoutSeconds: g.TimeoutSeconds, PolicyID: g.PolicyID})
+			s.Guards = append(s.Guards, Command{ID: g.ID, Program: g.Program, Args: g.Args, EnvAllowlist: g.EnvAllowlist, TimeoutSeconds: g.TimeoutSeconds, PolicyID: g.PolicyID, MinInspected: g.MinInspected})
 			continue
 		}
-		if g.Program != "" || g.Args != nil || g.EnvAllowlist != nil || g.TimeoutSeconds != 0 {
+		if g.Program != "" || g.Args != nil || g.EnvAllowlist != nil || g.TimeoutSeconds != 0 || g.MinInspected != 0 {
 			return s, fmt.Errorf("guard %q mixes command and provider fields", g.ID)
 		}
 		s.ProviderGuards = append(s.ProviderGuards, ProviderGuard{ID: g.ID, AdapterID: g.AdapterID, PolicyID: g.PolicyID, Scope: g.Scope, Options: g.Options})

@@ -1,0 +1,8 @@
+Invaris challenge: format
+  c  guard=slow  target=source.txt
+    expected=marker (weak evidence)  strength=weak
+    baseline=REFUSE  observed=n/a  proof=INCONCLUSIVE  reason=timeout
+    evidence=c:baseline  duration=<ms>
+    detail: baseline guard did not pass: REFUSE
+    stage baseline FAILED: baseline guard did not pass: REFUSE
+Decision: REFUSE  proofs=1 proven=0 unproven=0 inconclusive=1 not_run=0

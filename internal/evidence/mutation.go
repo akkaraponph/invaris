@@ -21,6 +21,8 @@ type MutationExperiment struct {
 	TestIDs             []string               `json:"testIds"`
 	Verdict             domain.MutationVerdict `json:"verdict"`
 	Reason              string                 `json:"reason"`
+	ReasonCategory      string                 `json:"reasonCategory"`
+	SourceSnapshot      *domain.SourceSnapshot `json:"sourceSnapshot"`
 	Mutation            *domain.Mutation       `json:"mutation"`
 	Stages              []domain.Stage         `json:"stages"`
 	Baseline            *MutationCommandResult `json:"baseline"`
@@ -47,6 +49,14 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 	if r.Decision != domain.MutationDecision(e.Verdict) {
 		bad("mutation decision disagrees with verdict")
 	}
+	validateMutationExperiment(e, r.Observations, r.ConfigDigest != nil, bad)
+}
+
+// validateMutationExperiment checks one experiment record against the
+// observations it references, in order. It is shared by mutate reports and
+// campaign attempts. hasConfigDigest says whether the harness that defined
+// the experiment is identified by a digest; a completed verdict requires it.
+func validateMutationExperiment(e *MutationExperiment, observations []Observation, hasConfigDigest bool, bad func(string, ...any)) {
 	for _, id := range []string{e.ID, e.MutationID, e.TestCommandID, e.ValidationCommandID} {
 		if id == "" || strings.TrimSpace(id) != id {
 			bad("invalid experiment, mutation or command ID")
@@ -66,6 +76,12 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 		seenIDs[id] = true
 	}
 
+	if domain.ReasonCategory(e.Reason) == "" || e.ReasonCategory != domain.ReasonCategory(e.Reason) {
+		bad("unknown mutation reason %q or mismatched category %q", e.Reason, e.ReasonCategory)
+	}
+	if s := e.SourceSnapshot; s != nil && (!hashPattern.MatchString(s.SHA256) || s.Files < 0) {
+		bad("invalid source snapshot")
+	}
 	order := []string{"prepare", "baseline", "mutate", "validation", "tests"}
 	stages := make(map[string]string, len(e.Stages))
 	for i, s := range e.Stages {
@@ -104,11 +120,11 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 			}
 			return -1
 		}
-		if n >= len(r.Observations) || stages[kind] == "" {
+		if n >= len(observations) || stages[kind] == "" {
 			bad("%s command result requires a stage and observation", kind)
 			return -1
 		}
-		o := r.Observations[n]
+		o := observations[n]
 		n++
 		switch kind {
 		case "baseline":
@@ -153,7 +169,7 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 	baseline := exitFor("baseline", e.Baseline)
 	validity := exitFor("validation", e.Validation)
 	tests := exitFor("tests", e.Tests)
-	if n != len(r.Observations) || stages["baseline"] == domain.StageOK && baseline != 0 ||
+	if n != len(observations) || stages["baseline"] == domain.StageOK && baseline != 0 ||
 		stages["tests"] != "" && validity != 0 {
 		bad("unexpected observation, unhealthy baseline or test of an invalid mutant")
 	}
@@ -190,7 +206,7 @@ func validateMutationReport(r Report, bad func(string, ...any)) {
 			bad("inconsistent inconclusive reason")
 		}
 	case domain.MutationKilled, domain.MutationSurvived, domain.MutationInvalid:
-		if r.ConfigDigest == nil || stages["cleanup"] != domain.StageOK || stages["validation"] != domain.StageOK {
+		if !hasConfigDigest || stages["cleanup"] != domain.StageOK || stages["validation"] != domain.StageOK {
 			bad("completed mutation verdict requires config digest, validation and verified cleanup")
 		}
 		switch e.Verdict {

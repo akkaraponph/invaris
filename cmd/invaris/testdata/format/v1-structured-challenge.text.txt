@@ -1,0 +1,8 @@
+Invaris challenge: "structured fixture"
+  input invaris.dev/v1alpha1 (legacy compatibility)
+  detect-marker  guard=fixture-guard  target=source.txt
+    expected=no-forbidden-marker/source.txt  strength=strong
+    observed finding policy=no-forbidden-marker rule=no-forbidden-marker path=source.txt
+    baseline=PASS  observed=FAIL  proof=PROVEN  reason=guard_detected
+    evidence=detect-marker:challenged  duration=<ms>
+Decision: ACCEPT  proofs=1 proven=1 unproven=0 inconclusive=0 not_run=0

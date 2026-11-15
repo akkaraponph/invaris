@@ -1,0 +1,53 @@
+{
+  "version": "invaris.dev/v1alpha3",
+  "name": "go-project",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": [
+    "internal/discount/discount.go"
+  ],
+  "experiment": {
+    "id": "go-mutation-invalid",
+    "mutation": {
+      "id": "type-error",
+      "operator": "replace",
+      "path": "internal/discount/discount.go",
+      "before": "percent <= 0",
+      "after": "percent <= \"0\""
+    },
+    "validation": {
+      "id": "build",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "validity"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ],
+      "timeoutSeconds": 120
+    },
+    "test": {
+      "id": "go-tests",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "tests",
+        "TestFullPrice",
+        "TestHalfOff"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ],
+      "timeoutSeconds": 120
+    },
+    "testIds": [
+      "TestFullPrice",
+      "TestHalfOff"
+    ]
+  }
+}

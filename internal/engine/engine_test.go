@@ -93,7 +93,10 @@ func TestChallengeBaselineRunsInCopy(t *testing.T) {
 	}
 	spec := Specification{Version: "invaris.dev/v1alpha1", Name: "copy", Guards: []Command{{ID: "g", Program: "sh", Args: []string{"-c", "echo side-effect > baseline-side-effect; if grep -q bad source; then echo marker; exit 1; fi"}}}, Challenges: []Challenge{{ID: "c", Guard: "g", File: "source", Before: "safe", After: "bad", ExpectedOutput: "marker"}}}
 	got := Run(context.Background(), spec, dir, "challenge")
-	if got.Status != "PASS" || !strings.Contains(got.Results[0].Detail, "weak evidence") {
+	// The baseline ran in the copy and left a file there: the proof is not
+	// certified, and the source is untouched.
+	if got.Status != "INCONCLUSIVE" || got.Results[0].Proof.Reason != "workspace_changed" ||
+		got.Results[0].Proof.ReasonCategory != "evidence" {
 		t.Fatalf("unexpected report: %+v", got)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "baseline-side-effect")); !os.IsNotExist(err) {

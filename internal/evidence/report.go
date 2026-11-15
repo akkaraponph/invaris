@@ -53,6 +53,18 @@ type Observation struct {
 	Stderr      string              `json:"stderr"`
 	Truncated   bool                `json:"truncated"`
 	Diagnostics []domain.Diagnostic `json:"diagnostics"`
+	// Execution provenance. Executable is null when the program never
+	// resolved; its sha256 is null when the file could not be read. Neither
+	// is a tool version, which is unknown unless a provider reports it.
+	Executable     *Executable `json:"executable"`
+	TimeoutSeconds *int        `json:"timeoutSeconds"`
+	EnvAllowlist   []string    `json:"envAllowlist"`
+}
+
+// Executable identifies the resolved program of an observation.
+type Executable struct {
+	Path   string  `json:"path"`
+	SHA256 *string `json:"sha256"`
 }
 
 // Event is one lifecycle entry in configuration order.
@@ -73,13 +85,17 @@ type Artifact struct {
 }
 
 type Report struct {
-	SchemaVersion string              `json:"schemaVersion"`
-	RunID         string              `json:"runId"`
-	Action        string              `json:"action"`
-	Target        string              `json:"target"`
-	Harness       string              `json:"harness"`
-	ConfigDigest  *string             `json:"configDigest"`
-	GitRevision   *string             `json:"gitRevision"`
+	SchemaVersion string  `json:"schemaVersion"`
+	RunID         string  `json:"runId"`
+	Action        string  `json:"action"`
+	Target        string  `json:"target"`
+	Harness       string  `json:"harness"`
+	ConfigDigest  *string `json:"configDigest"`
+	GitRevision   *string `json:"gitRevision"`
+	// GitDirty is true when the target's working tree has uncommitted or
+	// untracked changes, false when clean and null when unknown. A Git
+	// revision alone does not identify the files copied into an experiment.
+	GitDirty      *bool               `json:"gitDirty"`
 	Environment   Environment         `json:"environment"`
 	StartedAt     time.Time           `json:"startedAt"`
 	FinishedAt    time.Time           `json:"finishedAt"`
@@ -97,6 +113,12 @@ type Report struct {
 	Diagnostics   []domain.Diagnostic `json:"diagnostics"`
 	Artifacts     []Artifact          `json:"artifacts"`
 	Experiment    *MutationExperiment `json:"experiment,omitempty"`
+
+	// ProfileV5 additions. They are serialized only in ProfileV5 reports,
+	// where they are required; older versions never carry them.
+	EngineVersion    *string            `json:"-"`
+	MutationMetadata []MutationMetadata `json:"-"`
+	CommandDigests   []CommandDigest    `json:"-"`
 }
 
 var (
@@ -113,12 +135,18 @@ var (
 func Validate(r Report) error {
 	var problems []error
 	bad := func(format string, args ...any) { problems = append(problems, fmt.Errorf(format, args...)) }
+	v5 := r.SchemaVersion == ProfileV5
 	if r.Action == "mutate" {
-		if r.SchemaVersion != MutationSchemaVersion {
-			bad("mutate requires schemaVersion %q", MutationSchemaVersion)
+		if r.SchemaVersion != MutationSchemaVersion && !v5 {
+			bad("mutate requires schemaVersion %q or %q", MutationSchemaVersion, ProfileV5)
 		}
-	} else if r.SchemaVersion != SchemaVersion || r.Experiment != nil {
-		bad("schemaVersion must be %q", SchemaVersion)
+	} else if r.SchemaVersion != SchemaVersion && !v5 || r.Experiment != nil {
+		bad("schemaVersion must be %q or %q", SchemaVersion, ProfileV5)
+	}
+	if v5 {
+		validateV5(r, bad)
+	} else if r.EngineVersion != nil || len(r.MutationMetadata) != 0 || len(r.CommandDigests) != 0 {
+		bad("%s fields are only valid in %s", ProfileV5, ProfileV5)
 	}
 	if !runIDPattern.MatchString(r.RunID) {
 		bad("runId must be 128-bit lowercase hex")
@@ -156,6 +184,7 @@ func Validate(r Report) error {
 				validateCheck(*c, bad)
 			}
 		}
+		validateReason(p, bad)
 		validateProofRecord(p, bad)
 	}
 	for _, a := range r.Artifacts {
@@ -235,22 +264,8 @@ func validateAccepted(r Report, bad func(string, ...any)) {
 		}
 	}
 	for _, p := range r.Proofs {
-		if p.Status != domain.Proven {
-			continue
-		}
-		if p.Baseline == nil || p.Baseline.Status != domain.Pass {
-			bad("proven %q requires a passing baseline", p.ID)
-		}
-		if p.Challenged == nil || p.Challenged.Status != domain.Fail {
-			bad("proven %q requires a failing challenged check", p.ID)
-		}
-		if p.FaultID == "" || p.Target == "" {
-			bad("proven %q requires a fault and target", p.ID)
-		}
-		if p.EvidenceStrength == domain.StrengthStrong && p.Challenged != nil {
-			if f := p.Challenged.Findings; len(f) != 1 || f[0].PolicyID != p.PolicyID || f[0].Path != p.Target {
-				bad("strong proof %q requires exactly one finding for its policy at its target", p.ID)
-			}
+		if p.Status == domain.Proven {
+			validateProvenEvidence(p, bad)
 		}
 	}
 	for _, a := range r.Artifacts {
@@ -263,6 +278,26 @@ func validateAccepted(r Report, bad func(string, ...any)) {
 	}
 }
 
+// validateProvenEvidence checks what a PROVEN proof must show about its
+// checks: a passing baseline, a failing challenged check, a fault and target,
+// and for strong evidence exactly one finding for its policy at its target.
+func validateProvenEvidence(p domain.Proof, bad func(string, ...any)) {
+	if p.Baseline == nil || p.Baseline.Status != domain.Pass {
+		bad("proven %q requires a passing baseline", p.ID)
+	}
+	if p.Challenged == nil || p.Challenged.Status != domain.Fail {
+		bad("proven %q requires a failing challenged check", p.ID)
+	}
+	if p.FaultID == "" || p.Target == "" {
+		bad("proven %q requires a fault and target", p.ID)
+	}
+	if p.EvidenceStrength == domain.StrengthStrong && p.Challenged != nil {
+		if f := p.Challenged.Findings; len(f) != 1 || f[0].PolicyID != p.PolicyID || f[0].Path != p.Target {
+			bad("strong proof %q requires exactly one finding for its policy at its target", p.ID)
+		}
+	}
+}
+
 // Marshal serializes a validated report. Equal reports marshal to identical
 // bytes: field order is fixed, there are no maps, and absent lists are
 // normalized to empty arrays. An invalid report is an error, not output.
@@ -271,11 +306,15 @@ func Marshal(r Report) ([]byte, error) {
 	if err := Validate(r); err != nil {
 		return nil, fmt.Errorf("invalid evidence report: %w", err)
 	}
+	var v any = r
+	if r.SchemaVersion == ProfileV5 {
+		v = normalizeV5(r)
+	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(r); err != nil {
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -313,22 +352,31 @@ func normalize(r Report) Report {
 	}
 	proofs := make([]domain.Proof, len(r.Proofs))
 	for i, p := range r.Proofs {
-		if p.Baseline != nil {
-			c := normalizeCheck(*p.Baseline)
-			p.Baseline = &c
-		}
-		if p.Challenged != nil {
-			c := normalizeCheck(*p.Challenged)
-			p.Challenged = &c
-		}
-		if p.Stages == nil {
-			p.Stages = []domain.Stage{}
-		}
-		proofs[i] = p
+		proofs[i] = normalizeProof(p)
 	}
 	r.Proofs = proofs
-	observations := make([]Observation, len(r.Observations))
-	for i, o := range r.Observations {
+	r.Observations = normalizeObservations(r.Observations)
+	return r
+}
+
+func normalizeProof(p domain.Proof) domain.Proof {
+	if p.Baseline != nil {
+		c := normalizeCheck(*p.Baseline)
+		p.Baseline = &c
+	}
+	if p.Challenged != nil {
+		c := normalizeCheck(*p.Challenged)
+		p.Challenged = &c
+	}
+	if p.Stages == nil {
+		p.Stages = []domain.Stage{}
+	}
+	return p
+}
+
+func normalizeObservations(in []Observation) []Observation {
+	out := make([]Observation, len(in))
+	for i, o := range in {
 		if o.Args == nil {
 			o.Args = []string{}
 		}
@@ -338,10 +386,9 @@ func normalize(r Report) Report {
 		if o.Diagnostics == nil {
 			o.Diagnostics = []domain.Diagnostic{}
 		}
-		observations[i] = o
+		out[i] = o
 	}
-	r.Observations = observations
-	return r
+	return out
 }
 
 func normalizeChecks(in []domain.Check) []domain.Check {
@@ -360,4 +407,32 @@ func normalizeCheck(c domain.Check) domain.Check {
 		c.Diagnostics = []domain.Diagnostic{}
 	}
 	return c
+}
+
+// validateReason requires every attempted proof to carry a known reason whose
+// category is the one the vocabulary assigns. A proof that never ran has none.
+func validateReason(p domain.Proof, bad func(string, ...any)) {
+	if p.Status == domain.ProofNotRun {
+		return
+	}
+	if p.Reason == "" || domain.ReasonCategory(p.Reason) == "" || p.ReasonCategory != domain.ReasonCategory(p.Reason) {
+		bad("proof %q has an unknown reason %q or mismatched category %q", p.ID, p.Reason, p.ReasonCategory)
+	}
+	switch p.Status {
+	case domain.Proven:
+		if p.Reason != domain.ReasonGuardDetected && p.Reason != domain.ReasonMarkerMatched {
+			bad("proof %q is PROVEN with reason %q", p.ID, p.Reason)
+		}
+	case domain.Unproven:
+		if p.Reason != domain.ReasonGuardPassed && p.Reason != domain.ReasonMarkerMissing {
+			bad("proof %q is UNPROVEN with reason %q", p.ID, p.Reason)
+		}
+	case domain.Inconclusive:
+		if domain.ReasonCategory(p.Reason) == domain.CategoryResult {
+			bad("proof %q is INCONCLUSIVE with a completed-assessment reason %q", p.ID, p.Reason)
+		}
+	}
+	if s := p.SourceSnapshot; s != nil && (!hashPattern.MatchString(s.SHA256) || s.Files < 0) {
+		bad("proof %q has an invalid source snapshot", p.ID)
+	}
 }

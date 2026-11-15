@@ -1,0 +1,50 @@
+{
+  "version": "invaris.dev/v1alpha3",
+  "name": "go-project-sequence",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": [
+    "internal/discount/discount.go"
+  ],
+  "experiment": {
+    "id": "go-mutation-sequence",
+    "mutation": {
+      "id": "percent-divisor",
+      "operator": "replace",
+      "path": "internal/discount/discount.go",
+      "before": "cents*percent/100",
+      "after": "cents*percent/10",
+      "preimageSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718"
+    },
+    "validation": {
+      "id": "build",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "validity"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ],
+      "timeoutSeconds": 120
+    },
+    "test": {
+      "id": "sequence-test",
+      "program": "sh",
+      "args": [
+        "tools/sequence/test.sh"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME",
+        "INVARIS_FIXTURE_STATE"
+      ],
+      "timeoutSeconds": 30
+    },
+    "testIds": [
+      "sequence"
+    ]
+  }
+}

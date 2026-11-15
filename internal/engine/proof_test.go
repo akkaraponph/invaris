@@ -406,11 +406,11 @@ func TestProofSymlinkSwapAfterBaseline(t *testing.T) {
 				return c
 			}}
 			got := prove(context.Background(), source, challengeFor("src/a.txt"), strongExpect, ev.eval, workspace.Prepare, (*workspace.Workspace).Close)
-			if got.Status != domain.Inconclusive || got.Mutation != nil || !strings.Contains(stageNames(got), "mutate!") {
+			if got.Status != domain.Inconclusive || got.Mutation != nil || !strings.Contains(stageNames(got), "baseline!") {
 				t.Fatalf("status %s stages %s detail %s", got.Status, stageNames(got), got.Detail)
 			}
-			if !strings.Contains(got.Detail, "redirected") {
-				t.Errorf("detail %q should name the redirection", got.Detail)
+			if got.Reason != domain.ReasonWorkspaceChanged || !strings.Contains(got.Detail, "changed the workspace") {
+				t.Errorf("reason %q detail %q should report the workspace change", got.Reason, got.Detail)
 			}
 			for _, p := range []string{sentinel, filepath.Join(filepath.Dir(sentinel), "a.txt")} {
 				if b, err := os.ReadFile(p); err == nil && string(b) != "SAFE\n" {
@@ -523,7 +523,7 @@ func TestChallengeSymlinkSwapEndToEnd(t *testing.T) {
 	// The baseline command, run in the copy, redirects the target outside it.
 	spec := realProofSpec(t, dir, "rm source.txt && ln -s '"+sentinel+"' source.txt; if grep -q BAD source.txt; then echo BAD; exit 1; fi")
 	got := Run(context.Background(), spec, dir, "challenge")
-	if got.Status != "INCONCLUSIVE" || got.Results[0].Status != "INCONCLUSIVE" || !strings.Contains(got.Results[0].Detail, "redirected") {
+	if got.Status != "INCONCLUSIVE" || got.Results[0].Status != "INCONCLUSIVE" || !strings.Contains(got.Results[0].Detail, "changed the workspace") {
 		t.Fatalf("%+v", got)
 	}
 	if b, _ := os.ReadFile(sentinel); string(b) != "SAFE" {

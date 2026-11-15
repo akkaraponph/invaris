@@ -24,6 +24,9 @@ type Replacement struct {
 	Path     string `json:"path"`
 	Before   string `json:"before"`
 	After    string `json:"after"`
+	// PreimageSHA256 optionally pins the whole target file's lowercase hex
+	// SHA-256 before replacement; a mismatch rejects the mutation.
+	PreimageSHA256 string `json:"preimageSha256,omitempty"`
 }
 
 // Use the executable fields of Adapter on the wire. These commands do not
@@ -89,6 +92,9 @@ func (s Specification) validateMutation() error {
 	if err := validatePath(m.Path); err != nil {
 		return err
 	}
+	if d := m.PreimageSHA256; d != "" && (len(d) != 64 || strings.Trim(d, "0123456789abcdef") != "") {
+		return errors.New("preimageSha256 must be 64 lowercase hex characters")
+	}
 	if !slices.Contains(s.WritablePaths, m.Path) {
 		return errors.New("mutation target is outside writablePaths")
 	}
@@ -114,7 +120,7 @@ func (s Specification) SupportsAction(action string) bool {
 	case "mutate":
 		return s.Version == versionV3
 	case "run", "check", "challenge":
-		return s.Version == versionV1 || s.Version == versionV2
+		return s.Version == versionV1 || s.Version == versionV2 || s.Version == versionV4
 	default:
 		return false
 	}

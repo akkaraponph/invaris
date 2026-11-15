@@ -1,0 +1,5 @@
+Invaris check: example-guardrail-proof
+  input invaris.dev/v1alpha1 (legacy compatibility)
+  guard no-forbidden-import  status=PASS  policy=none  inspected=n/a  findings=0  exit=0
+    evidence=no-forbidden-import  duration=<ms>
+Decision: ACCEPT  checks=1 pass=1 fail=0 refuse=0 not_run=0

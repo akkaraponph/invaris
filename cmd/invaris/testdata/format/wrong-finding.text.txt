@@ -1,0 +1,8 @@
+Invaris challenge: format
+  c  guard=g  target=source.txt
+    expected=p/source.txt  strength=strong
+    observed finding policy=p rule=p path=other.txt
+    baseline=PASS  observed=FAIL  proof=INCONCLUSIVE  reason=finding_mismatch
+    evidence=c:challenged  duration=<ms>
+    detail: finding does not match the expected policy, rule and mutated path
+Decision: REFUSE  proofs=1 proven=0 unproven=0 inconclusive=1 not_run=0

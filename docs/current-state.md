@@ -1,11 +1,41 @@
 # Current implementation
 
-The release slice supports `run`, `check`, and `challenge` for trusted local harnesses. It reads `invaris.dev/v1alpha1` and `invaris.dev/v1alpha2`, emits typed `invaris.evidence/v1alpha2` JSON, and can publish an exact copy to a new report path. The CLI retains separate check outcomes even when a gate must choose one exit status.
+Invaris runs trusted local commands in sequence. It supports five verification actions and two authoring commands:
 
-The CLI also supports `mutate` with a [v1alpha3 harness](harness-spec.md#single-mutant-harness). It evaluates one explicit replacement, requires completed validity and test evidence, and emits a separate mutation verdict in the v1alpha3 report. The offline fixtures cover killed, surviving, and invalid mutants.
+| Action | Harness version | Report version | Purpose |
+| --- | --- | --- | --- |
+| `run` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Run steps and guards |
+| `check` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Run guards |
+| `challenge` | v1alpha1, v1alpha2 or v1alpha4 | v1alpha2 (v1alpha5 for v1alpha4 or on request) | Test whether a guard detects a declared violation or built-in operator edit |
+| `mutate` | v1alpha3 | v1alpha3 (v1alpha5 on request) | Test whether selected tests detect one declared code change |
+| `campaign` | campaign v1alpha1 | v1alpha4 (v1alpha5 with a v1alpha4 harness or on request) | Run several mutation and challenge experiments in sequence, with repeats, scores and an acceptance policy |
+| `init` | writes v1alpha2 | none | Detect project markers and create a starter harness without running project code |
+| `migrate` | v1alpha1 to v1alpha2 | none | Upgrade a harness with the same behavior, keeping a backup |
 
-Required providers are discovered before dispatch. Strong proofs record a passing baseline, a single controlled replacement and its hashes, matching challenged evidence, and verified cleanup. The legacy harness accepts weak marker proofs for compatibility.
+`check`, `challenge` and `campaign` can print `--format text` or `compact` summaries; JSON is the default.
 
-The generic command bridge and Python protocol example are covered by offline fixtures. Dependency-Cruiser 18.7.2 is the verified real analyzer. See [provider support](provider-support.md) for its platform and language coverage. The release workflow builds and tests pull requests targeting `main` on Linux and macOS with the Go version in `go.mod`. See [GitHub Actions](https://github.com/akkaraponph/invaris/actions) for hosted results and the [contribution guide](../CONTRIBUTING.md) for merge requirements.
+Harness versions use the `invaris.dev/` prefix, campaign files use `invaris.campaign/`, and reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
 
-Execution is trusted-local and serial. The report has an artifact field and the library supports exclusive artifact persistence. The CLI does not produce additional artifact files. See the [threat model](threat-model.md) and [roadmap](roadmap.md) for the release boundary and follow-up priorities.
+## Experiments and results
+
+A challenge runs a passing baseline, applies one replacement, and checks for the expected finding. Strong proofs match the policy, native rule, and target path. Legacy harnesses can accept weaker proofs based on output markers.
+
+A mutation experiment runs the selected tests on the original code, applies one replacement, checks validity, and runs the same tests on a valid mutant. Offline fixtures demonstrate `KILLED`, `SURVIVED`, and `INVALID` results.
+
+Both actions check workspace integrity between stages and verify cleanup before reporting a conclusive result. Commands must write caches and build products outside the disposable workspace. Reports include reasons, categories, source snapshot digests, Git state, and command settings. See [reasons](evidence-schema.md#reasons-and-categories) and [recorded inputs](evidence-schema.md#reproducibility-provenance).
+
+A v1alpha4 challenge can name a [built-in operator](mutation-operators.md) (trailing whitespace, CRLF injection or a synthetic secret line) instead of literal `before` and `after` text; it requires a structured guard and a `preimageSha256`. Use `preimageSha256` to require an exact target file before a mutation. Use `minInspected` to require a minimum reported inspection count from a structured command guard. The engine still trusts tools to report their work truthfully.
+
+Reports record whole-file digests for each edit. To inspect the edit later, retain the harness and original target bytes as described in [inspecting the actual edit](evidence-schema.md#inspecting-the-actual-edit). The CLI currently writes reports without additional artifact files.
+
+## Campaigns
+
+A [campaign](campaigns.md) references existing mutation and challenge harnesses anywhere under its directory, copies that directory once into a frozen snapshot, and runs each selected experiment up to five times from fresh copies of its harness's directory. The report keeps every attempt, marks disagreeing repeats as `MIXED`, computes a mutation score and a separate guardrail proof rate over consistent results only, records optional tool versions, and evaluates a typed acceptance policy. Incomplete evidence gives `REFUSE`. `--only` runs a subset and records the reduced scope, `--parallel N` runs attempts concurrently, and `--format text` prints a summary. The [Go project example](../examples/go-project/README.md) includes six outcomes and a deterministic mixed-result fixture.
+
+## Providers and verification
+
+Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
+
+The release workflow tests pull requests targeting `staging` and `main`, and each push to `main` after a merge, on Linux and macOS using the Go version in `go.mod`. See the [workflow](../.github/workflows/ci.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and [contribution guide](../CONTRIBUTING.md).
+
+The [portable v1alpha5 profile](evidence-schema.md#portable-profile-v1alpha5) withholds paths, arguments, output and free text, and adds command digests, reproduction identities for built-in edits and campaign effectiveness rows. Isolation, caching, semantic (AST) operators and equivalent-mutant detection are future work; baseline reuse was declined. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).

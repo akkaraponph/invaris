@@ -49,6 +49,7 @@
         "args": {"type": "array", "items": {"type": "string"}},
         "envAllowlist": {"type": "array", "items": {"$ref": "#/$defs/envName"}},
         "timeoutSeconds": {"$ref": "#/$defs/timeout"},
+        "minInspected": {"type": "integer", "minimum": 1},
         "policyId": {"type": "string", "minLength": 1}
       }
     },

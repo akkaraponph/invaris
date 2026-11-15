@@ -6,8 +6,28 @@ Set a guard's `policyId` to opt into structured inspection. The executable recei
 {"version":"invaris.inspection/v1alpha1","policyId":"no-forbidden-marker","inspected":1,"findings":[]}
 ```
 
-Exit 0 requires an empty findings array. Exit 1 requires at least one finding. Each finding has a matching `policyId` and a relative `path`. An invalid response, an inconsistent exit code, or zero inspected targets refuses the check. A challenge runs the baseline and the challenged check with the same guard in one disposable copy of the checkout, so scope and evaluator cannot differ. It requires a clean baseline that inspected at least one target and, after the engine replaces the declared marker (exactly one occurrence) in the declared file, exactly one finding for the guard's policy and rule at that path. Zero, several or misplaced findings and tool failures are inconclusive; a passing challenged check is unproven. The copy is removed and verified absent before the proof is final, and a cleanup failure prevents `PROVEN`. The source checkout, including uncommitted files, is only read. See [evidence-schema.md](evidence-schema.md#proof-stages-and-cleanup) and [threat-model.md](threat-model.md).
+## Exit codes and findings
 
-This contract trusts the declared command to report its inspection truthfully. It supports one policy per command. For external provider discovery and tool-specific integration, see [provider support](provider-support.md). Run `go run ./cmd/invaris challenge examples/structured/invaris.json` for the offline fixture.
+- Exit 0 requires an empty `findings` array.
+- Exit 1 requires at least one finding.
+- Each finding needs the matching `policyId` and a relative `path`.
+- Invalid JSON, inconsistent exits, and zero inspected targets yield `REFUSE`.
 
-The forbidden-dependency fixture declares `dependencies.txt` as the exact provider scope. The engine checks returned finding paths against that scope and matches the challenged finding to the mutated target. A clean inspection count is the provider’s claim and carries no per-file coverage inventory.
+## Challenge results
+
+The engine runs the baseline and challenged check with the same guard in one disposable copy. A strong proof requires:
+
+1. A passing baseline that inspected at least one target.
+2. One replacement of the declared marker in the declared file.
+3. Exactly one finding for the expected policy and rule at that path.
+4. Removal of the copy and confirmation that it is absent.
+
+A challenged pass yields `UNPROVEN`. Missing, extra, or misplaced findings, tool failures, and cleanup failures yield `INCONCLUSIVE`. The engine reads the source checkout, including uncommitted files, to create the copy. See [proof stages](evidence-schema.md#proof-stages-and-cleanup) and the [threat model](threat-model.md).
+
+## Inspection count and trust
+
+Optionally, set `minInspected` on the guard (see [declared inspection floor](harness-spec.md#declared-inspection-floor)) to refuse a report whose inspected count is below a number you chose independently of the guard. Zero inspected targets is always refused, with or without it. Legacy guards that rely on an `expectedOutput` marker are weak evidence and are separate from this structured contract.
+
+This contract trusts the declared command to report its inspection truthfully. It supports one policy per command. For external provider discovery, see the [adapter protocol](adapter-protocol.md). For a tool-specific integration, see the [Dependency-Cruiser example](dependency-cruiser-example.md). Run `go run ./cmd/invaris challenge examples/structured/invaris.json` for the offline fixture.
+
+The [forbidden-dependency fixture](../examples/forbidden-dependency) declares `dependencies.txt` as the exact provider scope. The engine checks returned finding paths against that scope and matches the challenged finding to the mutated target. A clean inspection count is the provider’s claim and carries no per-file coverage inventory.

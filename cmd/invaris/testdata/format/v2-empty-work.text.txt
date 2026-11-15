@@ -1,0 +1,5 @@
+Invaris check: compat
+  guard guards  status=REFUSE  policy=none  inspected=n/a  findings=0  exit=n/a
+    evidence=n/a  duration=n/a
+    ENGINE_REFUSE: no executable work configured
+Decision: REFUSE  checks=1 pass=0 fail=0 refuse=1 not_run=0

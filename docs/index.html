@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Invaris runs local workflows, checks system invariants, and tests whether guards detect controlled violations.">
-  <title>Invaris — The Guardian of System Invariants</title>
+  <title>Invaris: Run checks and test what they catch</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="pages.css">
 </head>
@@ -21,20 +21,28 @@
   <main>
     <section class="hero" aria-labelledby="title">
       <div>
-        <h1 id="title"><span>Invaris</span>The Guardian of System Invariants</h1>
-        <p>Run a local workflow, verify the conditions that must hold, test whether a guard catches a deliberate violation, and measure whether selected tests detect a code change.</p>
+        <h1 id="title"><span>Invaris</span>Run checks. Test what they catch.</h1>
+        <p>Define project checks in a JSON harness. Run them, introduce one deliberate file change, and see whether a guard or selected tests detect it. Read the result in a JSON report.</p>
         <a class="button" href="#quick-start">Run the example</a>
       </div>
       <img class="hero-cover" src="assets/docs-cover-1600x700.svg" width="1600" height="700"
-           alt="Invaris: Verify the rules. Trust the execution.">
+           alt="Invaris project cover">
     </section>
 
     <section aria-labelledby="workflow">
-      <h2 id="workflow">From execution to evidence</h2>
+      <h2 id="workflow">Choose an action</h2>
       <dl class="commands">
         <div>
+          <dt><code>init</code></dt>
+          <dd>Detect project markers and create a starter <code>invaris.json</code> without running project code or overwriting files.</dd>
+        </div>
+        <div>
+          <dt><code>migrate</code></dt>
+          <dd>Upgrade a v1alpha1 harness to v1alpha2 with the same commands and gate, keeping an exact backup.</dd>
+        </div>
+        <div>
           <dt><code>run</code></dt>
-          <dd>Execute the configured steps in order. Stop on the first failed step and still run the guards.</dd>
+          <dd>Run the configured steps in order, then run guards. By default, steps stop at the first failure.</dd>
         </div>
         <div>
           <dt><code>check</code></dt>
@@ -42,26 +50,36 @@
         </div>
         <div>
           <dt><code>challenge</code></dt>
-          <dd>Establish a passing baseline in a disposable copy, inject a configured file mutation, and check that the selected guard reports the expected evidence.</dd>
+          <dd>Run a guard in a disposable copy, apply one declared change, and check for the expected finding.</dd>
         </div>
         <div>
           <dt><code>mutate</code></dt>
-          <dd>Run selected tests against a clean baseline and one explicitly validated replacement in a disposable copy.</dd>
+          <dd>Run selected tests on the original code and on one validated code change in a disposable copy.</dd>
+        </div>
+        <div>
+          <dt><code>campaign</code></dt>
+          <dd>Run several challenges and mutations from one frozen copy, repeat them, and decide on the whole set with an acceptance policy.</dd>
         </div>
       </dl>
     </section>
 
     <section aria-labelledby="quick-start">
       <h2 id="quick-start">Quick start</h2>
-      <p>Use Go 1.27.4 or later and a POSIX shell. The bundled example guards against a forbidden marker in a text file.</p>
+      <p>Version 0.3.0 is prepared for release. Until its tag is published, use the source commands below or the checked PR artifacts in the <a href="https://github.com/akkaraponph/invaris/blob/main/docs/releasing.md">release guide</a>. Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.3.0">v0.3.0 release</a>. The <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
+      <p>To run from source, use Go 1.27.4 or later and a POSIX shell. This example checks for a forbidden marker in a text file:</p>
       <pre><code>git clone https://github.com/akkaraponph/invaris.git
 cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>The CLI writes an <code>invaris.evidence/v1alpha2</code> JSON report to standard output for <code>run</code>, <code>check</code>, and <code>challenge</code>. The bundled challenge reports <code>PROVEN</code> when the clean baseline passes and the mutated guard fails with the expected output marker. The structured example also matches the configured policy ID and file path. Each challenge runs in a disposable copy that is removed and checked before the proof is final; a cleanup failure, a failing baseline or a finding at the wrong rule or path is never reported as <code>PROVEN</code>, and the report records the mutation digests and proof stages.</p>
+      <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. Add <code>--format text</code> or <code>--format compact</code> after <code>check</code> or <code>challenge</code> for a <a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md#output-formats">readable summary</a>; the exit code and any <code>--report</code> file stay the same. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
+      <p>Challenges verify workspace integrity and cleanup before finalizing a proof. Reports record the change's digests, stages, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reasons-and-categories">outcome reason</a>, and <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reproducibility-provenance">input identifiers</a>.</p>
+      <p>To challenge guards without writing <code>before</code> and <code>after</code> strings, a v1alpha4 harness can name a <a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">built-in operator</a>. The example emits portable <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#portable-profile-v1alpha5">v1alpha5 evidence</a>:</p>
+      <pre><code>cd examples/operators &amp;&amp; go run ../../cmd/invaris challenge --format text</code></pre>
+      <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
-      <p>The mutation example returns <code>KILLED</code> and writes a v1alpha3 report with the baseline, validity, and selected test outcomes.</p>
+      <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
+      <p>The <code>campaign</code> action runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a>.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
@@ -72,18 +90,27 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
     <section aria-labelledby="reference">
       <h2 id="reference">Reference</h2>
       <ul class="reference">
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, and evidence v1alpha2 to v1alpha5 contracts</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Provider support</a> <span>Install and try the Dependency-Cruiser example</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/ecosystem.md">Related projects</a> <span>Open-source verification and guardrail tools</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/go-project">Go project example</a> <span>Go tests, an import guard, and report examples</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/operators">Operator example</a> <span>Challenge three offline guards with built-in operators</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#010">Changelog</a> <span>Version 0.1.0</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#030">Changelog</a> <span>Version 0.3.0</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/releasing.md">Release preparation</a> <span>Versioned archives, checksums, installation checks and rollback</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Planned providers, isolation, and CLI features</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Report verification, isolation, and future tooling</span></li>
       </ul>
     </section>
 

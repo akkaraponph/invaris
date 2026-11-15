@@ -4,6 +4,7 @@
   "guards": [{
     "id": "fixture-guard",
     "policyId": "no-forbidden-marker",
+    "minInspected": 1,
     "program": "sh",
     "args": ["guard.sh"]
   }],

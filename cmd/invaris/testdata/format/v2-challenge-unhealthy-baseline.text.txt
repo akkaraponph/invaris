@@ -1,0 +1,8 @@
+Invaris challenge: structured-v1alpha2
+  detect-marker  guard=fixture-guard  target=source.txt
+    expected=no-forbidden-marker/source.txt  strength=strong
+    baseline=FAIL  observed=n/a  proof=INCONCLUSIVE  reason=unhealthy_baseline
+    evidence=detect-marker:baseline  duration=<ms>
+    detail: baseline guard did not pass: FAIL
+    stage baseline FAILED: baseline guard did not pass: FAIL
+Decision: REFUSE  proofs=1 proven=0 unproven=0 inconclusive=1 not_run=0

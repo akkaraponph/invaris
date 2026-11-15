@@ -1,0 +1,2 @@
+INCONCLUSIVE detect-marker guard=fixture-guard target=source.txt reason=unhealthy_baseline
+REFUSE proofs=1

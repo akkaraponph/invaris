@@ -1,0 +1,40 @@
+{
+  "version": "invaris.dev/v1alpha2",
+  "name": "go-project-guardrail-unproven",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": [
+    "internal/discount/format.go"
+  ],
+  "guards": [
+    {
+      "id": "import-guard",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/importguard",
+        "-policy",
+        "no-network-imports",
+        "-forbid",
+        "net,net/http",
+        "internal"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ],
+      "timeoutSeconds": 120,
+      "policyId": "no-network-imports",
+      "minInspected": 2
+    }
+  ],
+  "challenges": [
+    {
+      "id": "inject-os-exec",
+      "guard": "import-guard",
+      "file": "internal/discount/format.go",
+      "before": "import \"strconv\"",
+      "after": "import (\n\t\"strconv\"\n\t_ \"os/exec\"\n)"
+    }
+  ]
+}

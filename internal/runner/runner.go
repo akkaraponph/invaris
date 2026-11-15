@@ -47,7 +47,9 @@ type Command struct {
 // untruncated output; it wraps the context error on cancellation or timeout,
 // is an *exec.ExitError for a nonzero exit, and is ErrOutputLimit on truncation.
 type Result struct {
-	Stdout, Stderr        string
+	Stdout, Stderr string
+	// Executable is the resolved program path; empty when it did not resolve.
+	Executable            string
 	ExitCode              *int
 	StartedAt, FinishedAt time.Time
 	Truncated             bool
@@ -74,6 +76,7 @@ func RunInput(ctx context.Context, root string, command Command, stdin []byte) (
 		result.Err = err
 		return result
 	}
+	result.Executable = program
 	timeout := command.Timeout
 	if timeout <= 0 {
 		timeout = DefaultTimeout
