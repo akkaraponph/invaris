@@ -179,7 +179,7 @@ The offline verification suite targets Linux and macOS with a POSIX shell and Go
 
 See [Campaigns](campaigns.md) for behavior and examples.
 
-`campaign` emits [`invaris.evidence/v1alpha4`](../schemas/evidence-v1alpha4.schema.json) through the same stdout and optional `--report` path. `--format text` changes stdout only; the report file is always JSON. Serialization follows the rules above: fixed field order, explicit `null`, `[]` for empty lists, declaration order for experiments and attempt order within them.
+`campaign` emits [`invaris.evidence/v1alpha4`](../schemas/evidence-v1alpha4.schema.json) through the same stdout and optional `--report` path. `--format text` and `--format compact` change stdout only; the report file is always JSON. Serialization follows the rules above: fixed field order, explicit `null`, `[]` for empty lists, declaration order for experiments and attempt order within them.
 
 | Field | Meaning |
 | --- | --- |

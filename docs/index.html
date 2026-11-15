@@ -72,7 +72,7 @@ cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
+      <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. Add <code>--format text</code> or <code>--format compact</code> after <code>check</code> or <code>challenge</code> for a <a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md#output-formats">readable summary</a>; the exit code and any <code>--report</code> file stay the same. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
       <p>Challenges verify workspace integrity and cleanup before finalizing a proof. Reports record the change's digests, stages, <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reasons-and-categories">outcome reason</a>, and <a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md#reproducibility-provenance">input identifiers</a>.</p>
       <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>

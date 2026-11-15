@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/akkaraponph/invaris/internal/domain"
@@ -48,19 +49,17 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) >= 1 && args[0] == "campaign" {
 		return runCampaignCLI(ctx, reportPath, args[1:], stdout, stderr)
 	}
-	if len(args) < 1 || len(args) > 2 {
-		fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|check|challenge|mutate> [harness.json]")
-		fmt.Fprintln(stderr, "       "+campaignUsage)
-		return 2
+	if len(args) < 1 {
+		return usageError(stderr, "missing action")
 	}
 	action := args[0]
 	if action != "run" && action != "check" && action != "challenge" && action != "mutate" {
 		fmt.Fprintln(stderr, "unsupported action:", action)
 		return 2
 	}
-	file := "invaris.json"
-	if len(args) == 2 {
-		file = args[1]
+	format, file, err := actionArgs(action, args[1:])
+	if err != nil {
+		return usageError(stderr, err.Error())
 	}
 	absolute, err := filepath.Abs(file)
 	if err != nil {
@@ -95,6 +94,12 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
+	if format != formatJSON {
+		if data, err = formatReport(report, format); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 2
+		}
+	}
 	if _, err := stdout.Write(data); err != nil {
 		fmt.Fprintln(stderr, "write stdout:", err)
 		return 2
@@ -106,4 +111,60 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 2
+}
+
+func usageError(stderr io.Writer, problem string) int {
+	fmt.Fprintln(stderr, problem)
+	fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|mutate> [harness.json]")
+	fmt.Fprintln(stderr, "       invaris [--report new-file.json] <check|challenge> [--format json|text|compact] [harness.json]")
+	fmt.Fprintln(stderr, "       "+campaignUsage)
+	fmt.Fprintln(stderr, "       "+initUsage)
+	fmt.Fprintln(stderr, "       "+migrateUsage)
+	return 2
+}
+
+// actionArgs parses the arguments after run, check, challenge or mutate:
+// optional flags first, then at most one harness file. Only arguments that
+// start with "--" are flags, so a harness file name that starts with a single
+// "-" keeps working as before. Problems are reported before anything runs.
+func actionArgs(action string, args []string) (format, file string, err error) {
+	format, file = formatJSON, "invaris.json"
+	seen := map[string]bool{}
+	seenFile := false
+	value := func(i int, flag string) (string, error) {
+		if seen[flag] {
+			return "", fmt.Errorf("%s is repeated", flag)
+		}
+		seen[flag] = true
+		if i+1 >= len(args) || args[i+1] == "" {
+			return "", fmt.Errorf("%s requires a value", flag)
+		}
+		return args[i+1], nil
+	}
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case seenFile:
+			if strings.HasPrefix(arg, "--") {
+				return "", "", fmt.Errorf("flags must come before the harness file: %s", arg)
+			}
+			return "", "", fmt.Errorf("unexpected argument: %s", arg)
+		case arg == "--format":
+			if action == "run" || action == "mutate" {
+				return "", "", fmt.Errorf("--format is not available for %s; its output is JSON only", action)
+			}
+			if format, err = value(i, arg); err != nil {
+				return "", "", err
+			}
+			i++
+			if !validFormat(format) {
+				return "", "", fmt.Errorf("unsupported format: %s", format)
+			}
+		case strings.HasPrefix(arg, "--"):
+			return "", "", fmt.Errorf("unknown flag: %s", arg)
+		default:
+			file, seenFile = arg, true
+		}
+	}
+	return format, file, nil
 }

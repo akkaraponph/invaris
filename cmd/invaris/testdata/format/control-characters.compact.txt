@@ -1,0 +1,2 @@
+FAIL "g\x1b[0m" findings=0
+REJECT checks=1

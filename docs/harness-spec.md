@@ -24,6 +24,17 @@ The existing v1alpha1 examples remain valid; [`invaris migrate`](authoring.md#up
 
 For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to true. When `failFast` is false, later steps are attempted after a failed step. When `alwaysRunGuards` is false, guards are skipped after a step failure. Skipped steps and guards appear as `NOT_RUN` with a reason; a skipped guard cannot produce a passing action. Cancellation also records unstarted work as `NOT_RUN`.
 
+## Output formats
+
+```sh
+invaris [--report new-file.json] check [--format json|text|compact] [harness.json]
+invaris [--report new-file.json] challenge [--format json|text|compact] [harness.json]
+```
+
+The default is `json` on every terminal and in CI. `text` prints each guard (status, policy, inspected count, findings, exit, evidence ID, duration and diagnostics) or each proof (guard, target, expected policy and path or `marker (weak evidence)`, observed findings, baseline and challenged status, verdict, reason, evidence ID, duration and failed stages), then `Decision:` with counts. `compact` prints one line per guard or proof and a final decision line, with no JSON. Flags go after the action and before the optional harness file; each may appear once. An unknown flag or format, a repeated or empty flag, a flag after the harness file, or an extra argument exits `2` before anything runs. `run` and `mutate` print JSON only and reject `--format`.
+
+Text and compact output are rendered from the validated, redacted report after any `--report` file is published; they never recompute a decision, and the exit code is the report's. The `--report` file is always the JSON report. Output has no color or other terminal control sequences: control characters in names, IDs and messages are escaped, values with spaces or `=` are quoted, diagnostic messages are cut at 160 bytes with `... (truncated)`, and IDs are never truncated. A missing measurement prints `n/a`.
+
 ## v1alpha2 additions
 
 `invaris.dev/v1alpha2` keeps the command, guard, challenge and scheduling fields above and makes trust and gating explicit. Its published schema is [`schemas/harness-v1alpha2.schema.json`](../schemas/harness-v1alpha2.schema.json) (Draft 2020-12); the schema checks shape, and the Go loader additionally enforces duplicate keys, ID uniqueness, gate references, path safety and size limits. Unknown, duplicate and null fields are rejected exactly as in v1alpha1.

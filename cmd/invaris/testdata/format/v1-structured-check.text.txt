@@ -1,0 +1,5 @@
+Invaris check: "structured fixture"
+  input invaris.dev/v1alpha1 (legacy compatibility)
+  guard fixture-guard  status=PASS  policy=no-forbidden-marker  inspected=1  findings=0  exit=0
+    evidence=fixture-guard  duration=<ms>
+Decision: ACCEPT  checks=1 pass=1 fail=0 refuse=0 not_run=0
