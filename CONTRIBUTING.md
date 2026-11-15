@@ -7,7 +7,7 @@
 3. Keep the pull request up to date with its base branch. Resolve review conversations and pass local checks before merging.
 4. To promote tested changes, open a pull request from `staging` to `main`. Hotfix pull requests can target `main` and must pass the same checks.
 
-The Release checks workflow runs only for pull requests targeting `main`. GitHub requires `Go checks (ubuntu-latest)`, `Go checks (macos-latest)`, and `dependency-cruiser` on `main`. The [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) blocks direct pushes, force pushes, and deletion on both branches. Approvals are optional.
+The Release checks workflow runs for pull requests targeting `main` and again for every push to `main`, including the merge commit of each pull request. GitHub requires `Go checks (ubuntu-latest)`, `Go checks (macos-latest)`, and `dependency-cruiser` on `main`. The [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) blocks direct pushes, force pushes, and deletion on both branches. Approvals are optional.
 
 ## Local checks
 
