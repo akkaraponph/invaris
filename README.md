@@ -6,11 +6,11 @@ Invaris is an experimental Go CLI that runs project checks and tests whether tho
 
 Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
-Version [0.2.0](CHANGELOG.md#020).
+Version [0.3.0](CHANGELOG.md#030), prepared for release. Until the tag is published, build from source or use the checked PR artifacts described in the [release guide](docs/releasing.md).
 
 ## Install the CLI
 
-Download the archive for your system from the [v0.2.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
+Download the archive for your system from the [v0.3.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
 See the [installation and terminal guide](docs/installation.md) for commands to:
 
