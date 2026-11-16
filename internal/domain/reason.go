@@ -1,5 +1,10 @@
 package domain
 
+import (
+	"maps"
+	"slices"
+)
+
 // Machine-readable reasons shared by proofs (`challenge`) and mutation
 // experiments (`mutate`). A reason says why a verdict or an INCONCLUSIVE
 // outcome was reached; the category says whose problem it is. The verdict
@@ -64,3 +69,6 @@ var reasonCategory = map[string]string{
 
 // ReasonCategory returns the category of a known reason, or "" for an unknown one.
 func ReasonCategory(reason string) string { return reasonCategory[reason] }
+
+// Reasons returns every known reason, sorted ascending.
+func Reasons() []string { return slices.Sorted(maps.Keys(reasonCategory)) }
