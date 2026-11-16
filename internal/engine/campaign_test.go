@@ -597,3 +597,51 @@ func TestCampaignParallelCancellation(t *testing.T) {
 		t.Fatalf("executions %v", counts)
 	}
 }
+
+func TestCampaignWorkspaceConfigurations(t *testing.T) {
+	for _, changed := range []string{"", "campaign.json", "mut.json", "guard.json"} {
+		t.Run("changed-"+changed, func(t *testing.T) {
+			dir := campaignProject(t, campaignJSON(t, validEntries, allRequirements()))
+			metadata := filepath.Join(dir, ".invaris")
+			if err := os.Mkdir(metadata, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"campaign.json", "mut.json", "guard.json"} {
+				if err := os.Rename(filepath.Join(dir, name), filepath.Join(metadata, name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			c, err := LoadCampaign(filepath.Join(metadata, "campaign.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if changed != "" {
+				f, err := os.OpenFile(filepath.Join(metadata, changed), os.O_APPEND|os.O_WRONLY, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, err = f.WriteString("\n")
+				f.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			r := RunCampaign(context.Background(), c, []bool{true, true}, nil, 2)
+			if err := evidence.ValidateCampaign(r); err != nil {
+				t.Fatal(err)
+			}
+			want := domain.Accept
+			if changed != "" {
+				want = domain.RefuseDecision
+			}
+			if r.Decision != want {
+				t.Fatalf("decision %s, want %s: %+v", r.Decision, want, r.Diagnostics)
+			}
+			for _, x := range r.Experiments {
+				if x.Root != "." || !strings.HasPrefix(x.Harness, ".invaris/") {
+					t.Fatalf("workspace experiment: %+v", x)
+				}
+			}
+		})
+	}
+}

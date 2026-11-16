@@ -1,0 +1,238 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha3",
+  "runId": "760dd7e2e01f6139dd4786986271a5bf",
+  "action": "mutate",
+  "target": "/work/invaris/examples/go-project",
+  "harness": "go-project",
+  "configDigest": "sha256:4f8cd33ec7bdc91ad0491f6ac5aadf6861ab8a526f93e33e35fc5c9f27aee1ec",
+  "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:45:44.644466Z",
+  "finishedAt": "2026-11-16T02:45:46.664032Z",
+  "durationMs": 2019,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha3",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [],
+  "steps": [],
+  "checks": [],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "go-mutation-survived:baseline",
+      "kind": "baseline",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "tests",
+        "TestFullPrice",
+        "TestHalfOff"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:44.647935Z",
+      "finishedAt": "2026-11-16T02:45:45.713164Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    },
+    {
+      "id": "go-mutation-survived:validation",
+      "kind": "validation",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "validity"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:45.726233Z",
+      "finishedAt": "2026-11-16T02:45:46.093221Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"VALID\"}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    },
+    {
+      "id": "go-mutation-survived:tests",
+      "kind": "tests",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "tests",
+        "TestFullPrice",
+        "TestHalfOff"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:46.100421Z",
+      "finishedAt": "2026-11-16T02:45:46.651057Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    }
+  ],
+  "targetCount": null,
+  "decision": "REJECT",
+  "diagnostics": [],
+  "artifacts": [],
+  "experiment": {
+    "id": "go-mutation-survived",
+    "mutationId": "clamp-result",
+    "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+    "operator": "replace",
+    "target": "internal/discount/discount.go",
+    "testCommandId": "go-tests",
+    "validationCommandId": "build",
+    "testIds": [
+      "TestFullPrice",
+      "TestHalfOff"
+    ],
+    "verdict": "SURVIVED",
+    "reason": "all_tests_passed",
+    "reasonCategory": "result",
+    "sourceSnapshot": {
+      "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+      "files": 26
+    },
+    "mutation": {
+      "path": "internal/discount/discount.go",
+      "beforeSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718",
+      "afterSha256": "470a81502df03085d974a05da3c0cfb6e182a4cc62d8022b46b8f7987405905b"
+    },
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "OK",
+        "durationMs": 2,
+        "detail": ""
+      },
+      {
+        "name": "baseline",
+        "status": "OK",
+        "durationMs": 1075,
+        "detail": ""
+      },
+      {
+        "name": "mutate",
+        "status": "OK",
+        "durationMs": 2,
+        "detail": ""
+      },
+      {
+        "name": "validation",
+        "status": "OK",
+        "durationMs": 374,
+        "detail": ""
+      },
+      {
+        "name": "tests",
+        "status": "OK",
+        "durationMs": 561,
+        "detail": ""
+      },
+      {
+        "name": "cleanup",
+        "status": "OK",
+        "durationMs": 1,
+        "detail": ""
+      }
+    ],
+    "baseline": {
+      "observationId": "go-mutation-survived:baseline",
+      "tests": [
+        {
+          "id": "TestFullPrice",
+          "status": "PASS"
+        },
+        {
+          "id": "TestHalfOff",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    },
+    "validation": {
+      "observationId": "go-mutation-survived:validation",
+      "tests": null,
+      "validity": "VALID"
+    },
+    "tests": {
+      "observationId": "go-mutation-survived:tests",
+      "tests": [
+        {
+          "id": "TestFullPrice",
+          "status": "PASS"
+        },
+        {
+          "id": "TestHalfOff",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    }
+  }
+}

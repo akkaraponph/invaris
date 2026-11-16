@@ -41,7 +41,7 @@ func TestCanceledPrepareIsInconclusiveAndClean(t *testing.T) {
 	p := prove(ctx, root, challengeFor("src/a.txt"), strongExpect, func(context.Context, string) domain.Check {
 		calls++
 		return domain.Check{Status: domain.Pass}
-	}, prepareFunc(ctx), (*workspace.Workspace).Close)
+	}, prepareFunc(ctx, workspace.Options{}), (*workspace.Workspace).Close)
 	if p.Status != domain.Inconclusive || p.Reason != domain.ReasonCanceled || p.ReasonCategory != domain.CategoryInfrastructure || calls != 0 {
 		t.Fatalf("proof %+v, evaluator calls %d", p, calls)
 	}

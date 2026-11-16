@@ -28,7 +28,7 @@ func runMutationEvidence(ctx context.Context, spec Specification, root string) e
 			{Code: "INVALID_MUTATION_HARNESS", Message: message},
 		}}
 	}
-	experiment, observations := runMutation(ctx, spec, root, prepareFunc(ctx), (*workspace.Workspace).Close)
+	experiment, observations := runMutation(ctx, spec, root, prepareFunc(ctx, spec.Workspace), (*workspace.Workspace).Close)
 	r := evidenceMetadata(ctx, spec, root, "mutate", started, time.Now().UTC())
 	r.SchemaVersion = evidence.MutationSchemaVersion
 	experiment.EngineVersion = engineVersion()
@@ -82,7 +82,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		return
 	}
 	record("prepare", start, "", nil)
-	guard, statErr := newIntegrity(ws.Root)
+	guard, statErr := newIntegrity(ws.Root, ws.Options)
 	workspaceRoot := guard.info
 	defer func() {
 		start := time.Now()
@@ -163,7 +163,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		return
 	}
 	e.Mutation = &domain.Mutation{Path: applied.Path, BeforeSHA256: applied.BeforeSHA256, AfterSHA256: applied.AfterSHA256}
-	mutated, err := workspace.Snapshot(ws.Root)
+	mutated, err := guard.snapshot()
 	if err != nil {
 		record("mutate", start, "workspace_changed", err)
 		return
@@ -174,7 +174,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	expected.SHA256 = applied.AfterSHA256
 	before[m.Path] = expected
 	if len(workspace.Diff(before, mutated)) != 0 {
-		record("mutate", start, "workspace_changed", errors.New("unexpected manifest after replacement"))
+		record("mutate", start, "workspace_changed", errors.New("unexpected manifest after replacement: "+workspace.DescribeChanges(before, mutated, changeListLimit)))
 		return
 	}
 	record("mutate", start, "", nil)
@@ -217,10 +217,11 @@ func engineVersion() *string {
 	return nil
 }
 
-// prepareFunc binds ctx to the workspace copier, so ending the context stops
-// a copy in progress and removes the partial workspace.
-func prepareFunc(ctx context.Context) func(string) (*workspace.Workspace, error) {
-	return func(source string) (*workspace.Workspace, error) { return workspace.PrepareContext(ctx, source) }
+// prepareFunc binds ctx and the harness's workspace options to the copier,
+// so ending the context stops a copy in progress and removes the partial
+// workspace.
+func prepareFunc(ctx context.Context, opts workspace.Options) func(string) (*workspace.Workspace, error) {
+	return func(source string) (*workspace.Workspace, error) { return workspace.PrepareWith(ctx, source, opts) }
 }
 
 // prepareFailure is the reason for a workspace that could not be prepared:

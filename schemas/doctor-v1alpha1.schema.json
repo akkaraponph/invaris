@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/doctor-v1alpha1.schema.json",
+  "title": "Invaris doctor v1alpha1",
+  "description": "The output of `invaris doctor --format json`: a bounded inspection of one harness's setup. doctor executes no harness command, so every check has `executed: false`; a `pass` describes the setup that was inspected, not the behavior of any command. When the harness does not load, the only checks are `harness.load` (fail) and `inspection` (skipped). The summary counts the checks by status.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "harness", "harnessVersion", "checks", "summary"],
+  "properties": {
+    "version": { "const": "invaris.doctor/v1alpha1" },
+    "harness": { "type": "string", "minLength": 1 },
+    "harnessVersion": { "type": ["string", "null"] },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "executed", "message"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["pass", "fail", "warn", "skipped"] },
+          "executed": { "const": false },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "warn", "skipped"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "harnessVersion": { "type": "null" } }, "required": ["harnessVersion"] },
+      "then": {
+        "properties": {
+          "checks": {
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "properties": { "id": { "enum": ["harness.load", "inspection"] } } }
+          }
+        }
+      }
+    }
+  ]
+}

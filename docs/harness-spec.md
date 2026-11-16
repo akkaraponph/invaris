@@ -1,5 +1,9 @@
 # Harness configuration
 
+## Configuration location
+
+The CLI defaults to `.invaris/invaris.json`, falling back to `invaris.json` in the current directory only when the workspace file is absent. An explicit path overrides discovery. For a harness directly inside `.invaris`, references to the “harness directory” below mean its parent project directory: all commands and project paths use that root. Other harness locations continue to use their containing directory. `invaris init` creates the workspace configuration; see [authoring](authoring.md#workspace-layout).
+
 A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports, or [`invaris.dev/v1alpha4`](#v1alpha4-built-in-operators) with built-in operators, which emits v1alpha5. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md). To create a starter harness, see [`invaris init`](authoring.md#create-a-harness-with-init).
 
 ## Common fields and validation
@@ -151,6 +155,30 @@ Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"
 
 Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.
 
+## Workspace options
+
+`mutate` and `challenge` run in a disposable copy of the harness directory. By default the copier refuses symbolic links and stops at 2000 entries, so a Node project with `node_modules` cannot be copied as is. A v1alpha3 mutation harness and a v1alpha4 challenge harness accept an optional `workspace` block, with every path relative to the harness directory:
+
+```json
+"workspace": {
+  "dependencies": ["node_modules"],
+  "exclude": [".next", "coverage"],
+  "maxEntries": 10000
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `dependencies` | Top-level directory names that are not copied. Each one is linked beside the copy, in its parent directory, and points at the same directory in the source. Resolvers that walk up the tree, such as Node and Vite, find it; the copy holds no link of its own, and a cache a tool creates at `node_modules/.vite` inside the copy stays in the copy. Each dependency must exist as a directory. |
+| `exclude` | Canonical relative paths that are not copied and are left out of every snapshot. Anything a command creates or changes at or below them is not a `workspace_changed`. Use this for build output and tool caches, never for sources a test reads. |
+| `maxEntries` | Entry bound for the copy and its snapshots, from 1 to 200000. The default is 2000. |
+
+A mutation target or challenge file cannot sit in an excluded path or a dependency. Dependencies and exclusions are outside the integrity check: a command can change them, or write through a dependency link into the source, without the run noticing. This trades part of the integrity guarantee for the ability to run the project, so keep the lists narrow. The harness digest in every report pins these options.
+
+When a stage changes the workspace, the stage detail lists up to 20 changed paths, marked `+` (added), `-` (removed) or `~` (changed). For example, `workspace manifest changed: +node_modules/.vite/deps` points straight at the cache to exclude.
+
+In a campaign, the snapshot leaves out every harness's exclusions and dependencies, each taken relative to its harness directory, and uses the largest `maxEntries`. Attempts link dependencies from the original harness directory, because the snapshot does not contain them.
+
 ## Campaign file
 
 See [Campaigns](campaigns.md) for behavior and examples.
@@ -172,7 +200,7 @@ Each experiment entry:
 | --- | --- |
 | `id` | Unique; 1 to 128 characters from `A-Z a-z 0-9 . _ -`, starting with a letter or digit. Used by `--only`. |
 | `kind` | `mutation` or `guardrail` |
-| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` or `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's directory. |
+| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` are rejected. A harness may be directly inside the project’s `.invaris` directory; deeper paths through `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's execution root (the parent project for `.invaris/invaris.json`). For a campaign inside `.invaris`, harness references are relative to `.invaris`. |
 | `experimentId` | For `mutation` only: the `experiment.id` of a v1alpha3 harness |
 | `challengeId` | For `guardrail` only: a challenge ID in a v1alpha2 harness whose guard declares a `policyId` (structured command guard or provider guard) |
 | `repeat` | Integer from 1 to 5 |

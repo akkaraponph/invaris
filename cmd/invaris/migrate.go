@@ -28,7 +28,7 @@ func runMigrateCLI(args []string, stdout, stderr io.Writer) int {
 	if len(f.args) > 1 {
 		return usage("more than one harness file")
 	}
-	file := "invaris.json"
+	file := configfile.DefaultPath("invaris.json")
 	if len(f.args) == 1 {
 		file = f.args[0]
 	}

@@ -2,8 +2,9 @@ name: Release
 
 # Pushing a tag vMAJOR.MINOR.PATCH that points at a commit on main runs the
 # full CI, builds the archives once, verifies them natively and publishes a
-# GitHub release with docs/releases/MAJOR.MINOR.PATCH.md as its notes. A tag
-# that fails any gate publishes nothing.
+# GitHub release with docs/releases/MAJOR.MINOR.PATCH.md as its notes.
+# Package verification finishes before either publication; the two registries
+# cannot be published atomically.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+']
@@ -73,3 +74,40 @@ jobs:
             --verify-tag \
             --title "Invaris $TAG" \
             --notes-file "docs/releases/${TAG#v}.md"
+
+  publish-npm:
+    name: Publish npm package
+    needs: [package, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+      - run: npm install --global npm@11.19.1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: ${{ runner.temp }}/dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.ref_name }}-npm
+          path: ${{ runner.temp }}/npm
+      - name: Verify and publish tested package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd "${RUNNER_TEMP}/npm"
+          sha256sum -c SHA256SUMS
+          cd "$GITHUB_WORKSPACE"
+          package="${RUNNER_TEMP}/npm/invaris-cli-${TAG#v}.tgz"
+          python scripts/verify-npm.py "$TAG" "${RUNNER_TEMP}/dist" "$package"
+          npm publish "$package" --access public --ignore-scripts

@@ -2,7 +2,33 @@
 
 The [v0.3.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
 
-The commands below target v0.3.0. During release preparation, its tag and download assets are not yet published; use a source build or the checked main-build artifacts in the [release guide](releasing.md). The previous published release remains [v0.2.0](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0).
+The commands below install [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0), the latest release.
+
+## npm installation after publication
+
+The npm package is planned for a future release and is not yet available. After publication it will require Node.js 22.14 or later and npm, on Linux or macOS with x64 or arm64; on Windows use WSL. The package includes both the CLI and command provider and does not download binaries during installation. No Go installation is needed.
+
+Run the latest published version in a project with a harness:
+
+```sh
+npx --package=invaris-cli@latest invaris check
+```
+
+For a project dependency, run the following in the project directory to install or update it:
+
+```sh
+npm install --save-dev invaris-cli@latest
+npx invaris check
+```
+
+For a global installation or update:
+
+```sh
+npm install --global invaris-cli@latest
+invaris check
+```
+
+`@latest` requests the latest npm release. npm manages updates; there is no `invaris update` action. To return to an earlier npm version, install that version explicitly (for example, `npm install --save-dev invaris-cli@X.Y.Z`, replacing `X.Y.Z` with a published version). npm updates do not replace separate archive installations. The provider is included and available to the CLI; harnesses must still allowlist `PATH` when required, as described below.
 
 ## Install into a specific folder
 

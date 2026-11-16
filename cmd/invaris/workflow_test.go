@@ -37,9 +37,9 @@ func TestWorkflowInitThenCheck(t *testing.T) {
 				t.Fatal("empty generic harness must refuse")
 			}
 			// The adopter adds a guard by hand.
-			raw, _ := os.ReadFile(filepath.Join(dir, "invaris.json"))
+			raw, _ := os.ReadFile(filepath.Join(dir, ".invaris", "invaris.json"))
 			edited := strings.Replace(string(raw), `"guards": []`, `"guards": [{"id": "readme", "program": "test", "args": ["-s", "README.md"]}]`, 1)
-			mustWrite(t, filepath.Join(dir, "invaris.json"), edited)
+			mustWrite(t, filepath.Join(dir, ".invaris", "invaris.json"), edited)
 			after := treeManifest(t, dir)
 			code, out, _ = runBinary(t, dir, nil, "check", "--format", "compact")
 			if code != 0 || !strings.HasPrefix(string(out), "PASS readme") {

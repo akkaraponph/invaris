@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/engine"
 	"github.com/akkaraponph/invaris/internal/evidence"
@@ -36,10 +37,23 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate") {
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor") {
 		if reportPath != "" {
-			fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
+			switch args[0] {
+			case "explain":
+				fmt.Fprintln(stderr, "--report is not valid for explain: it reads a report and writes none")
+			case "doctor":
+				fmt.Fprintln(stderr, "--report is not valid for doctor: it inspects setup and writes no report")
+			default:
+				fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
+			}
 			return 2
+		}
+		if args[0] == "explain" {
+			return runExplainCLI(args[1:], stdout, stderr)
+		}
+		if args[0] == "doctor" {
+			return runDoctorCLI(args[1:], stdout, stderr)
 		}
 		if args[0] == "init" {
 			return runInitCLI(args[1:], stdout, stderr)
@@ -86,9 +100,9 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	// required by a v1alpha4 harness.
 	var report evidence.Report
 	if v5 || engine.RequiresV5(spec) {
-		report = engine.RunEvidenceV5(ctx, spec, filepath.Dir(absolute), action)
+		report = engine.RunEvidenceV5(ctx, spec, configfile.ProjectRoot(absolute), action)
 	} else {
-		report = engine.RunEvidence(ctx, spec, filepath.Dir(absolute), action)
+		report = engine.RunEvidence(ctx, spec, configfile.ProjectRoot(absolute), action)
 	}
 	data, err := evidence.Marshal(report)
 	if err != nil {
@@ -127,6 +141,8 @@ func usageError(stderr io.Writer, problem string) int {
 	fmt.Fprintln(stderr, "       "+campaignUsage)
 	fmt.Fprintln(stderr, "       "+initUsage)
 	fmt.Fprintln(stderr, "       "+migrateUsage)
+	fmt.Fprintln(stderr, "       "+explainUsage)
+	fmt.Fprintln(stderr, "       "+doctorUsage)
 	return 2
 }
 
@@ -139,7 +155,7 @@ const evidenceV5Flag = "v1alpha5"
 // start with "--" are flags, so a harness file name that starts with a single
 // "-" keeps working as before. Problems are reported before anything runs.
 func actionArgs(action string, args []string) (format, file string, v5 bool, err error) {
-	format, file = formatJSON, "invaris.json"
+	format, file = formatJSON, configfile.DefaultPath("invaris.json")
 	seen := map[string]bool{}
 	seenFile := false
 	value := func(i int, flag string) (string, error) {
