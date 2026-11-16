@@ -149,7 +149,7 @@ Smaller observations, not counted as friction: `check` and `challenge` print the
 
 The same experiment was repeated with `invaris doctor` and `invaris explain`. The failing and clean runs below used the same harnesses, a fresh binary and the copy procedure from Run 0.
 
-### `doctor` on the unchanged checkout
+### `doctor` on a checkout with `node_modules` installed
 
 ```sh
 invaris doctor selfcheck.guardrail.json        # exit 1
