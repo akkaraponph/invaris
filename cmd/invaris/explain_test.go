@@ -33,7 +33,7 @@ func TestExplainTextNamesMissedAndNext(t *testing.T) {
 		"-> missed",
 		"reason: guard_passed (result)",
 		"meaning: " + g.Meaning,
-		"next: " + message(g.Next),
+		"next: " + escapeLine(g.Next),
 		"Limits\n",
 		"- unauthenticated: ",
 		"Explained offline from the report; nothing was run.\n",
@@ -162,5 +162,36 @@ func TestExplanationTextEscapesUserValues(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %s in:\n%s", want, out)
 		}
+	}
+}
+
+// A next step longer than the free-text width limit must still reach the
+// reader whole; it names the action to take.
+func TestExplainTextKeepsLongNextWhole(t *testing.T) {
+	g, ok := explain.GuidanceFor("workspace_prepare_failed")
+	if !ok || len(g.Next) <= messageLimit {
+		t.Fatalf("test needs a next step longer than %d bytes", messageLimit)
+	}
+	e := explain.Explanation{
+		Version: explain.ExplanationVersion,
+		Report:  explain.ReportInfo{SchemaVersion: "invaris.evidence/v1alpha5", Action: "challenge", RunID: "r", Decision: "REFUSE", Subject: "h"},
+		Items: []explain.Item{{ID: "c", Kind: "proof", Outcome: "INCONCLUSIVE", Class: "inconclusive",
+			Meaning: g.Meaning, Next: &g.Next}},
+		Limits: []explain.Limit{},
+	}
+	out := explanationText(e)
+	if !strings.Contains(out, "next: "+g.Next+"\n") || strings.Contains(out, "(truncated)") {
+		t.Fatalf("next step was shortened:\n%s", out)
+	}
+}
+
+func TestEscapeLineAndMessageAgree(t *testing.T) {
+	for _, s := range []string{`a\b`, "tab\there", "ctl\x1b[0m", "multi\nline", "plain"} {
+		if got, want := escapeLine(s), message(s); got != want {
+			t.Errorf("escapeLine(%q) = %q, message = %q", s, got, want)
+		}
+	}
+	if got := escapeLine(`a\b`); got != `a\\b` {
+		t.Errorf("backslash must be doubled, got %q", got)
 	}
 }

@@ -100,7 +100,9 @@ func readBounded(path string, limit int64) ([]byte, error) {
 }
 
 // explanationText renders an explanation for people. Every value that came
-// from the report is escaped with token or message.
+// from the report is escaped with token. Meanings, next steps and limits are
+// escaped but never shortened: a next step cut at a width limit would lose the
+// action it names.
 func explanationText(e explain.Explanation) string {
 	var b strings.Builder
 	line := func(format string, args ...any) { fmt.Fprintf(&b, format+"\n", args...) }
@@ -116,14 +118,14 @@ func explanationText(e explain.Explanation) string {
 			}
 			line("    reason: %s%s", token(*it.Reason), category)
 		}
-		line("    meaning: %s", message(it.Meaning))
+		line("    meaning: %s", escapeLine(it.Meaning))
 		if it.Next != nil {
-			line("    next: %s", message(*it.Next))
+			line("    next: %s", escapeLine(*it.Next))
 		}
 	}
 	line("Limits")
 	for _, l := range e.Limits {
-		line("  - %s: %s", l.Code, message(l.Message))
+		line("  - %s: %s", l.Code, escapeLine(l.Message))
 	}
 	line("Explained offline from the report; nothing was run.")
 	return b.String()
