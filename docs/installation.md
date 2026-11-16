@@ -6,7 +6,7 @@ The commands below install [v0.4.0](https://github.com/refactorroom/invaris/rele
 
 ## npm installation after publication
 
-The npm package is planned for a future release and is not yet available. After publication it will require Node.js 22.14 or later and npm, on Linux or macOS with x64 or arm64; on Windows use WSL. The package includes both the CLI and command provider and does not download binaries during installation. No Go installation is needed.
+The published [`invaris-cli` npm package](https://www.npmjs.com/package/invaris-cli) requires Node.js 22.14 or later and npm, on Linux or macOS with x64 or arm64; on Windows use WSL. The package includes both the CLI and command provider and does not download binaries during installation. No Go installation is needed.
 
 Run the latest published version in a project with a harness:
 

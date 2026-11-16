@@ -10,7 +10,7 @@ Version [0.4.0](CHANGELOG.md#040) is the latest release.
 
 ## Install the CLI
 
-An npm distribution is planned for a future release; it is not yet published. Once available, Node.js 22.14 or later will support `npx --package=invaris-cli@latest invaris` on Linux and macOS (including WSL). See the [npm installation instructions](docs/installation.md#npm-installation-after-publication) for installation and updates.
+The [`invaris-cli` npm package](https://www.npmjs.com/package/invaris-cli) is available for Node.js 22.14 or later on Linux and macOS (including WSL). Run `npx --package=invaris-cli@latest invaris check` in a project with a harness. See the [npm installation instructions](docs/installation.md#npm-installation-after-publication) for installation and updates.
 
 Download the archive for your system from the [v0.4.0 release](https://github.com/refactorroom/invaris/releases/tag/v0.4.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
