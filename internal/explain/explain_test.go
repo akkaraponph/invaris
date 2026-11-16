@@ -271,3 +271,29 @@ func TestExplainDirtyWorktree(t *testing.T) {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// A weak marker proof must raise weak-evidence even when its recorded strength
+// is blank or unrecognized, as the gate treats anything but "strong" as weak.
+func TestWeakEvidenceIsAnythingButStrong(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("testdata", "weak-challenge.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"weak", "", "bogus"} {
+		data := bytes.Replace(raw, []byte(`"evidenceStrength": "weak"`), []byte(`"evidenceStrength": "`+value+`"`), 1)
+		if value != "weak" && bytes.Equal(data, raw) {
+			t.Fatal("fixture has no evidenceStrength to change")
+		}
+		e, err := Explain(data)
+		if err != nil {
+			t.Fatalf("strength %q: %v", value, err)
+		}
+		found := false
+		for _, l := range e.Limits {
+			found = found || l.Code == "weak-evidence"
+		}
+		if !found {
+			t.Errorf("strength %q: weak-evidence limit missing: %v", value, e.Limits)
+		}
+	}
+}

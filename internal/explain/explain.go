@@ -268,7 +268,7 @@ func explainReport(r evidence.Report) (Explanation, error) {
 	}
 	var weak bool
 	for _, p := range r.Proofs {
-		weak = weak || p.EvidenceStrength == domain.StrengthWeak
+		weak = weak || weakProof(p)
 	}
 	e.Limits = limits(weak, r.SchemaVersion, r.Compatibility.Status == "legacy", r.GitDirty, r.Decision)
 	return e, nil
@@ -317,7 +317,7 @@ func explainCampaign(r evidence.CampaignReport) (Explanation, error) {
 			}
 		}
 		for _, a := range x.Attempts {
-			if a.Proof != nil && a.Proof.EvidenceStrength == domain.StrengthWeak {
+			if a.Proof != nil && weakProof(*a.Proof) {
 				weak = true
 			}
 		}
@@ -341,4 +341,12 @@ func limits(weak bool, version string, legacy bool, dirty *bool, decision domain
 	add(decision == domain.RefuseDecision, LimitIncomplete, "The evidence is incomplete or unsupported, so the decision is a refusal, not a rejection.")
 	add(true, LimitUnauthenticated, "The report is not authenticated: matching hashes show consistency, not who ran the check or how.")
 	return out
+}
+
+// weakProof reports whether a completed assessment rests on anything but
+// structured evidence. The decision logic treats every strength other than
+// "strong" as weak, so a missing or unknown value must not read as structured.
+func weakProof(p domain.Proof) bool {
+	completed := p.Status == domain.Proven || p.Status == domain.Unproven
+	return completed && p.EvidenceStrength != domain.StrengthStrong
 }
