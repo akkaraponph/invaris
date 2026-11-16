@@ -248,10 +248,8 @@ func ReplaceExpecting(root, path, before, after, preimage string) (Mutation, err
 	if preimage != "" && hashBytes(data) != preimage {
 		return m, errors.New("target content does not match the declared preimage digest")
 	}
-	marker := []byte(before)
-	first := bytes.Index(data, marker)
-	if first < 0 || bytes.Contains(data[first+1:], marker) {
-		return m, errors.New("before marker must occur exactly once")
+	if err := CheckMarker(data, before); err != nil {
+		return m, err
 	}
 	manifestBefore, err := Snapshot(root)
 	if err != nil {
@@ -277,6 +275,76 @@ func ReplaceExpecting(root, path, before, after, preimage string) (Mutation, err
 		return Mutation{}, errors.New("recorded hashes disagree with the workspace manifest")
 	}
 	return m, nil
+}
+
+// CheckMarker reports whether before is a usable marker in data: non-empty and
+// occurring exactly once. It is the occurrence rule ReplaceExpecting applies.
+func CheckMarker(data []byte, before string) error {
+	if before == "" {
+		return errors.New("mutation must replace a non-empty marker with different text")
+	}
+	marker := []byte(before)
+	first := bytes.Index(data, marker)
+	if first < 0 || bytes.Contains(data[first+1:], marker) {
+		return errors.New("before marker must occur exactly once")
+	}
+	return nil
+}
+
+// ResolveTarget applies the call-time target validation to path under root
+// and returns the resolved file path. It reads nothing and writes nothing.
+func ResolveTarget(root, path string) (string, error) {
+	target, _, err := resolveTarget(root, path)
+	return target, err
+}
+
+// CheckCopyable walks source read-only and reports the first reason
+// PrepareContext would refuse to copy it, applying the same rules as
+// copyTree. Paths in errors are relative to source. Nothing is created.
+func CheckCopyable(source string) error {
+	src, err := filepath.EvalSymlinks(source)
+	if err != nil {
+		return fmt.Errorf("resolve source: %w", err)
+	}
+	if info, err := os.Stat(src); err != nil || !info.IsDir() {
+		return errors.New("source is not a directory")
+	}
+	count := 0
+	return checkTree(src, "", &count)
+}
+
+func checkTree(dir, rel string, count *int) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.Name() == ".git" || entry.Name() == ".invaris" {
+			continue
+		}
+		if *count++; *count > MaxEntries {
+			return fmt.Errorf("workspace exceeds %d entries", MaxEntries)
+		}
+		name := entry.Name()
+		if rel != "" {
+			name = rel + "/" + name
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		switch {
+		case info.Mode()&os.ModeSymlink != 0:
+			return fmt.Errorf("symlink not permitted: %s", name)
+		case info.IsDir():
+			if err := checkTree(filepath.Join(dir, entry.Name()), name, count); err != nil {
+				return err
+			}
+		case !info.Mode().IsRegular() || info.Size() > MaxFileBytes:
+			return fmt.Errorf("unsupported or oversized file %s", name)
+		}
+	}
+	return nil
 }
 
 // resolveTarget validates a mutation target at call time: a canonical

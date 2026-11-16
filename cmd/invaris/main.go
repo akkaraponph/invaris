@@ -36,17 +36,23 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain") {
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor") {
 		if reportPath != "" {
-			if args[0] == "explain" {
+			switch args[0] {
+			case "explain":
 				fmt.Fprintln(stderr, "--report is not valid for explain: it reads a report and writes none")
-			} else {
+			case "doctor":
+				fmt.Fprintln(stderr, "--report is not valid for doctor: it inspects setup and writes no report")
+			default:
 				fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
 			}
 			return 2
 		}
 		if args[0] == "explain" {
 			return runExplainCLI(args[1:], stdout, stderr)
+		}
+		if args[0] == "doctor" {
+			return runDoctorCLI(args[1:], stdout, stderr)
 		}
 		if args[0] == "init" {
 			return runInitCLI(args[1:], stdout, stderr)
@@ -135,6 +141,7 @@ func usageError(stderr io.Writer, problem string) int {
 	fmt.Fprintln(stderr, "       "+initUsage)
 	fmt.Fprintln(stderr, "       "+migrateUsage)
 	fmt.Fprintln(stderr, "       "+explainUsage)
+	fmt.Fprintln(stderr, "       "+doctorUsage)
 	return 2
 }
 
