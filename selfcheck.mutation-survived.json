@@ -1,0 +1,57 @@
+{
+  "version": "invaris.dev/v1alpha3",
+  "name": "invaris-selfcheck",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": [
+    "internal/mutation/operators.go"
+  ],
+  "experiment": {
+    "id": "selfcheck-survived",
+    "mutation": {
+      "id": "survived-edit",
+      "operator": "replace",
+      "path": "internal/mutation/operators.go",
+      "before": "ineligible(\"empty file\")",
+      "after": "ineligible(\"empty input\")",
+      "preimageSha256": "d3487c2990379e4b5b6a31c52b924be8d57dbafdd0a80a644f81ac0d55f441c2"
+    },
+    "validation": {
+      "id": "vet",
+      "program": "sh",
+      "args": [
+        "-c",
+        "if go vet ./internal/mutation >&2; then echo '{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"VALID\"}'; else echo '{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}'; exit 1; fi"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME",
+        "GOTOOLCHAIN",
+        "GOPROXY",
+        "GOFLAGS"
+      ],
+      "timeoutSeconds": 300
+    },
+    "test": {
+      "id": "go-tests",
+      "program": "sh",
+      "args": [
+        "-c",
+        "out=$(go test -count=1 ./internal/mutation 2>&1); rc=$?; fails=0; tests=''; sep=''\nfor t in TestPlanGoldens TestPlanIneligibleInputs TestValidate; do\n  if printf '%s\\n' \"$out\" | grep -q -- \"--- FAIL: $t\"; then s=ASSERTION_FAILED; fails=1; else s=PASS; fi\n  tests=\"$tests$sep{\\\"id\\\":\\\"$t\\\",\\\"status\\\":\\\"$s\\\"}\"; sep=,\ndone\nif [ $rc -ne 0 ] && [ $fails -eq 0 ]; then printf '%s\\n' \"$out\" >&2; exit 2; fi\nprintf '{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[%s]}\\n' \"$tests\"\nexit $fails"
+      ],
+      "envAllowlist": [
+        "PATH",
+        "HOME",
+        "GOTOOLCHAIN",
+        "GOPROXY",
+        "GOFLAGS"
+      ],
+      "timeoutSeconds": 300
+    },
+    "testIds": [
+      "TestPlanGoldens",
+      "TestPlanIneligibleInputs",
+      "TestValidate"
+    ]
+  }
+}
