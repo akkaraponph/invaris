@@ -63,6 +63,27 @@ done
 count=$((count + 1))
 printf 'PASS challenge --format compact examples/operators\n'
 
+# explain reads a saved report offline and refuses a tampered one; doctor
+# inspects a harness's setup and executes nothing.
+(cd "$root/examples/operators" && "$tmp/invaris" --report "$tmp/explain-report.json" challenge) >/dev/null
+"$tmp/invaris" explain "$tmp/explain-report.json" >"$tmp/explained.txt"
+grep -q -- '-> detected' "$tmp/explained.txt"
+grep -qx 'Explained offline from the report; nothing was run.' "$tmp/explained.txt"
+"$tmp/invaris" explain --format json "$tmp/explain-report.json" | grep -q '"version": "invaris.explanation/v1alpha1"'
+sed 's/"decision": "ACCEPT"/"decision": "REJECT"/' "$tmp/explain-report.json" >"$tmp/tampered.json"
+status=0
+"$tmp/invaris" explain "$tmp/tampered.json" >/dev/null 2>&1 || status=$?
+test "$status" -eq 2
+rm "$tmp/explain-report.json" "$tmp/tampered.json" "$tmp/explained.txt"
+count=$((count + 1))
+printf 'PASS explain examples/operators (detected; tampered report refused)\n'
+"$tmp/invaris" doctor "$root/examples/structured/invaris.json" >"$tmp/doctor.txt"
+test "$(tail -n 1 "$tmp/doctor.txt")" = 'doctor executed no harness commands; results describe setup only.'
+grep -q '^Summary: .* 0 failed' "$tmp/doctor.txt"
+rm "$tmp/doctor.txt"
+count=$((count + 1))
+printf 'PASS doctor examples/structured/invaris.json\n'
+
 mutation() {
     cfg="$root/examples/mutation/$1.json"
     status=0
