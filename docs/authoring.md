@@ -2,6 +2,8 @@
 
 `invaris init` writes a starter harness and `invaris migrate` upgrades a v1alpha1 harness to v1alpha2. Neither command runs project code, guards or package scripts, and neither produces verification evidence, so `--report` is rejected for both. Both exit `0` on success and `2` on any usage, validation or filesystem error, with the message on stderr.
 
+After writing or editing a harness, run [`invaris doctor`](diagnostics.md) to find setup problems before a run.
+
 ## Create a harness with init
 
 ```sh

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0
+
+Not yet released.
+
+Making the first useful experiment approachable. Default inputs, flags, report versions and verification exit codes are unchanged; everything below is additive. Build with Go 1.27.4 or later.
+
+### Added
+
+- `invaris explain [--format text|json] REPORT` reads a saved report offline, validates it with the rules that wrote it, and says for each result whether the fault was `detected`, `missed`, `inconclusive`, `excluded` or not run, with the meaning and next step of its recorded reason and the limits of what the report shows. It runs nothing and refuses a tampered or unsupported report. See [diagnostics](docs/diagnostics.md).
+- `invaris doctor [--format text|json] [HARNESS]` inspects a harness's setup without running any of its commands: supported actions, whether the directory can be copied into a workspace, whether each program resolves in the PATH its command would use, allowlisted variables that are unset, targets, edit markers, built-in operator eligibility, pinned preimages and writable paths. Every check says it executed nothing. See [diagnostics](docs/diagnostics.md).
+- Schemas [`explanation-v1alpha1`](schemas/explanation-v1alpha1.schema.json) and [`doctor-v1alpha1`](schemas/doctor-v1alpha1.schema.json) for the JSON output of the two commands.
+- A [self-check experiment](docs/experiments/self-check.md) that runs a gofmt guard, a detected and a missed guardrail challenge, a killed and a surviving mutant and a campaign against this repository, with its friction log (`selfcheck.*.json`).
+
+### Compatibility notes
+
+- `explain` exits `0` or `2`. `doctor` exits `0` when no check failed, `1` when a setup check failed and `2` for usage errors or an unreadable harness file. For `doctor`, `1` means a setup problem, not a rejected verification.
+- Neither command accepts `--report`; they write no report. Their JSON is not evidence and carries no decision of its own.
+- `explain` reads reports from v1alpha2 to v1alpha5. The report versions, harness versions and verdict meanings are unchanged.
+
 ## 0.3.0
 
 Released 2026-11-15 as [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0).

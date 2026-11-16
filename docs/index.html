@@ -41,6 +41,14 @@
           <dd>Upgrade a v1alpha1 harness to v1alpha2 with the same commands and gate, keeping an exact backup.</dd>
         </div>
         <div>
+          <dt><code>doctor</code></dt>
+          <dd>Inspect a harness's setup without running any of its commands, and say which checks were not performed.</dd>
+        </div>
+        <div>
+          <dt><code>explain</code></dt>
+          <dd>Read a saved report offline and say whether each fault was detected, missed or inconclusive, and what the report cannot show.</dd>
+        </div>
+        <div>
           <dt><code>run</code></dt>
           <dd>Run the configured steps in order, then run guards. By default, steps stop at the first failure.</dd>
         </div>
@@ -92,12 +100,14 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <ul class="reference">
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/diagnostics.md">Diagnostics</a> <span>doctor and explain: setup inspection and offline report interpretation</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/experiments/self-check.md">Self-check experiment</a> <span>Invaris challenged on its own code, with the friction log</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, and evidence v1alpha2 to v1alpha5 contracts</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, evidence v1alpha2 to v1alpha5, explanation and doctor contracts</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
