@@ -6,7 +6,7 @@ Invaris is an experimental Go CLI that runs project checks and tests whether tho
 
 Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
-Version [0.3.0](CHANGELOG.md#030), prepared for release. Until the tag is published, build from source or use the checked main-build artifacts described in the [release guide](docs/releasing.md).
+Version [0.3.0](CHANGELOG.md#030) is the latest release.
 
 ## Install the CLI
 

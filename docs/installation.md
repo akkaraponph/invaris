@@ -2,7 +2,7 @@
 
 The [v0.3.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
 
-The commands below target v0.3.0. During release preparation, its tag and download assets are not yet published; use a source build or the checked main-build artifacts in the [release guide](releasing.md). The previous published release remains [v0.2.0](https://github.com/akkaraponph/invaris/releases/tag/v0.2.0).
+The commands below install [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0), the latest release.
 
 ## Install into a specific folder
 

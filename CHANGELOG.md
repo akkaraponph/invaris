@@ -2,7 +2,7 @@
 
 ## 0.3.0
 
-Prepared for release; publication follows the [release checklist](docs/releasing.md).
+Released 2026-11-15 as [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0).
 
 Developer experience and trustworthy mutation verification. Default inputs, flags, report versions and exit codes (`0` ACCEPT, `1` REJECT, `2` REFUSE or error) are unchanged; everything below is additive or opt-in. Build with Go 1.27.4 or later.
 

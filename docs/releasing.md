@@ -1,6 +1,6 @@
 # Prepare and publish a release
 
-Version 0.3.0 is prepared for release; pushing its tag starts the [automated release](#automated-release). The [release notes](releases/0.3.0.md) are ready for the eventual release description. The previous published version is v0.2.0.
+The latest published version is [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0), released 2026-11-15 by the [automated release](#automated-release) from its [release notes](releases/0.3.0.md). The examples below use v0.3.0; substitute the version you are preparing.
 
 ## Build and inspect archives
 
