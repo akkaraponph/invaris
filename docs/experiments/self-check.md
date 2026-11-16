@@ -41,7 +41,7 @@ go run ./internal/selfcheck/fmtguard -policy gofmt-clean cmd internal
 # {"version":"invaris.inspection/v1alpha1","policyId":"gofmt-clean","inspected":101,"findings":[]}  exit 0
 ```
 
-`minInspected` is 50, about half of the real count of 101, so deleting a few files does not trip it but losing the scan does. Each `preimageSha256` is `shasum -a 256` of the target at authoring time. The harness files record those digests: if either target changes, the challenge becomes `INCONCLUSIVE` (`mutation_rejected`) until the digest is updated.
+`minInspected` is 50, about half of the real count of 101, so deleting a few files does not trip it but losing the scan does. Each `preimageSha256` is `shasum -a 256` of the target at authoring time. The harness files record those digests. `internal/mutation/operators.go` is pinned by three of the four experiments (the trailing-whitespace challenge and both mutation harnesses) and `docs/releases/0.3.0.md` by the control; if a target changes, every experiment that pins it becomes `INCONCLUSIVE` (`mutation_rejected`) until its digest is updated, so update the digests together with the edit.
 
 ## Runs
 
@@ -122,7 +122,7 @@ Summary of actual results:
 | `mutate` survived | 1 | SURVIVED | 1 s |
 | `campaign` | 1 | REJECT, score 50%, proof rate 50% | 5 s |
 
-Reports are in the session scratch directory, not in the repository.
+The generated reports are not committed.
 
 ## Where help was needed
 
@@ -150,7 +150,7 @@ Smaller observations, not counted as friction: `check` and `challenge` print the
 - gofmt-clean is not a rule the maintainers of this repository assert is critical. It was chosen because the repository already satisfies it, the guard is a small program, and a trailing space is an unambiguous fault. This shows that the workflow runs on this repository, not that this repository's quality gate is strong.
 - The survivor is a message-text gap: no test checks the text of the "empty file" message, only that the error wraps `ErrIneligible`. It is a low-value demonstration of a `missed` outcome, not a claim of a serious hole in the tests, and nobody has decided that the message should be tested.
 - The control `secret-missed-control` is missed by construction: the gofmt guard never reads Markdown. It demonstrates how a miss is reported, not a weakness in the guard.
-- The runs used a copy of the checkout without `.git`, `node_modules` and `dist`, so reports do not carry a git revision for the mutation runs, and the working tree at the time included other uncommitted work.
+- The runs used a copy of the checkout without `.git`, `node_modules` and `dist`, so mutation reports do not carry a git revision.
 - The mutation harnesses use shell adapters rather than a Go evaluator; a vet failure of any kind is reported as `INVALID`, and a test run is classified by searching the text for `--- FAIL:`. They suit this experiment and are not a general adapter.
 - Wall times have one-second resolution and come from a single run each.
 - A second operator has not repeated this workflow. This is an open item: it still needs doing, by someone, on a different operator or a different project, before any claim that the workflow generalises.

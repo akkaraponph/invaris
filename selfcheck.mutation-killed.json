@@ -37,7 +37,7 @@
       "program": "sh",
       "args": [
         "-c",
-        "out=$(go test -count=1 ./internal/mutation 2>&1); rc=$?; fails=0; tests=''; sep=''\nfor t in TestPlanGoldens TestPlanIneligibleInputs TestValidate; do\n  if printf '%s\\n' \"$out\" | grep -q -- \"--- FAIL: $t\"; then s=ASSERTION_FAILED; fails=1; else s=PASS; fi\n  tests=\"$tests$sep{\\\"id\\\":\\\"$t\\\",\\\"status\\\":\\\"$s\\\"}\"; sep=,\ndone\nif [ $rc -ne 0 ] && [ $fails -eq 0 ]; then printf '%s\\n' \"$out\" >&2; exit 2; fi\nprintf '{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[%s]}\\n' \"$tests\"\nexit $fails"
+        "out=$(go test -count=1 ./internal/mutation 2>&1); rc=$?; fails=0; tests=''; sep=''\nfor t in TestPlanGoldens TestPlanIneligibleInputs TestValidate; do\n  if printf '%s\\n' \"$out\" | grep -Eq -- \"--- FAIL: $t( |/)\"; then s=ASSERTION_FAILED; fails=1; else s=PASS; fi\n  tests=\"$tests$sep{\\\"id\\\":\\\"$t\\\",\\\"status\\\":\\\"$s\\\"}\"; sep=,\ndone\nif [ $rc -ne 0 ] && [ $fails -eq 0 ]; then printf '%s\\n' \"$out\" >&2; exit 2; fi\nprintf '{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[%s]}\\n' \"$tests\"\nexit $fails"
       ],
       "envAllowlist": [
         "PATH",

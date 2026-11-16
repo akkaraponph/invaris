@@ -99,3 +99,50 @@ func TestSkippedDirectories(t *testing.T) {
 		t.Fatalf("inspected %d, want 1", res.Inspected)
 	}
 }
+
+func TestRootMustBeADirectory(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "a.go")
+	write(t, file, "package a\n")
+	if code, out, _ := invoke(t, "-policy", "p", file); code != 2 || out != "" {
+		t.Fatalf("file root: code=%d stdout=%q", code, out)
+	}
+	link := filepath.Join(dir, "link.go")
+	if err := os.Symlink(file, link); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	if code, out, _ := invoke(t, "-policy", "p", link); code != 2 || out != "" {
+		t.Fatalf("symlink to a file: code=%d stdout=%q", code, out)
+	}
+}
+
+func TestSymlinkedRootIsFollowed(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "real", "bad.go"), "package b \n")
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(filepath.Join(dir, "real"), link); err != nil {
+		t.Skip("symlinks unavailable")
+	}
+	code, out, _ := invoke(t, "-policy", "p", link)
+	if code != 1 {
+		t.Fatalf("exit %d, want 1 (the symlinked directory must be scanned)", code)
+	}
+	if res := decode(t, out); res.Inspected != 1 || len(res.Findings) != 1 {
+		t.Fatalf("unexpected result %+v", res)
+	}
+}
+
+func TestFindingsSortedAcrossRootsAndNonGoIgnored(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "e", "bad.go"), "package e \n")
+	write(t, filepath.Join(root, "d", "z.go"), "package d \n")
+	write(t, filepath.Join(root, "d", "notes.txt"), "not go \n")
+	code, out, _ := invoke(t, "-policy", "p", filepath.Join(root, "e"), filepath.Join(root, "d"))
+	if code != 1 {
+		t.Fatalf("exit %d, want 1", code)
+	}
+	res := decode(t, out)
+	if res.Inspected != 2 || len(res.Findings) != 2 || res.Findings[0].Path >= res.Findings[1].Path {
+		t.Fatalf("findings must be sorted and non-Go files ignored: %+v", res)
+	}
+}

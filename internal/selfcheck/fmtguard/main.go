@@ -6,7 +6,8 @@
 // It prints one invaris.inspection/v1alpha1 object. Exit 0 means no findings
 // and exit 1 means at least one. A file it cannot read or parse exits 2 and
 // prints no object, so an unreadable tree is never reported as clean.
-// `inspected` counts the .go files formatted. Directories named testdata,
+// `inspected` counts the .go files formatted; findings are sorted by path.
+// A ROOT must be a directory (a symlink to one is followed). Directories named testdata,
 // node_modules or vendor, and directories whose name starts with ".", are
 // skipped.
 package main
@@ -21,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -43,12 +45,26 @@ func skipDir(name string) bool {
 func scan(policy string, roots []string) (inspection, error) {
 	out := inspection{Version: "invaris.inspection/v1alpha1", PolicyID: policy, Findings: []finding{}}
 	for _, root := range roots {
-		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		// A root that is not a directory (a file, or a symlink to a file)
+		// would otherwise be reported as clean with nothing inspected.
+		info, err := os.Stat(root)
+		if err != nil {
+			return out, err
+		}
+		if !info.IsDir() {
+			return out, fmt.Errorf("%s is not a directory", filepath.ToSlash(root))
+		}
+		// A trailing separator makes WalkDir descend into a symlinked root.
+		walkRoot := root
+		if !strings.HasSuffix(walkRoot, string(filepath.Separator)) {
+			walkRoot += string(filepath.Separator)
+		}
+		err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() {
-				if path != root && skipDir(d.Name()) {
+				if path != walkRoot && skipDir(d.Name()) {
 					return filepath.SkipDir
 				}
 				return nil
@@ -74,6 +90,7 @@ func scan(policy string, roots []string) (inspection, error) {
 			return out, err
 		}
 	}
+	sort.Slice(out.Findings, func(i, j int) bool { return out.Findings[i].Path < out.Findings[j].Path })
 	return out, nil
 }
 
