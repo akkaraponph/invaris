@@ -1,19 +1,19 @@
 # Prepare and publish a release
 
-The latest published version is [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0), released 2026-11-15 by the [automated release](#automated-release) from its [release notes](releases/0.3.0.md). The examples below use v0.3.0; substitute the version you are preparing.
+The latest GitHub release is [v0.4.0](https://github.com/refactorroom/invaris/releases/tag/v0.4.0); see its [release notes](releases/0.4.0.md). The examples below use v0.4.0; substitute the version you are preparing.
 
 ## Build and inspect archives
 
 Use the Go version in `go.mod`, Python 3.11 or later, and Linux or macOS on amd64 or arm64. Run from the repository root:
 
 ```sh
-python3 scripts/package-release.py v0.3.0 --output dist/v0.3.0
-python3 scripts/verify-release.py v0.3.0 dist/v0.3.0
+python3 scripts/package-release.py v0.4.0 --output dist/v0.4.0
+python3 scripts/verify-release.py v0.4.0 dist/v0.4.0
 ```
 
 The destination must not exist. Packaging refuses to overwrite an earlier build; on failure, inspect the partial output and choose a new destination. `dist/` is ignored by Git. Build from the exact tested release commit with a clean worktree before publication.
 
-The directory contains four `invaris_0.3.0_<os>_<arch>.tar.gz` archives (`linux` and `darwin`, each on `amd64` and `arm64`) and `SHA256SUMS`. Every archive has only `invaris`, `invaris-command-provider`, `LICENSE` and a version-specific `README.md` at its root. Builds disable cgo and stamp `engineVersion` with `v0.3.0`.
+The directory contains four `invaris_0.4.0_<os>_<arch>.tar.gz` archives (`linux` and `darwin`, each on `amd64` and `arm64`) and `SHA256SUMS`. Every archive has only `invaris`, `invaris-command-provider`, `LICENSE` and a version-specific `README.md` at its root. Builds disable cgo and stamp `engineVersion` with `v0.4.0`.
 
 Verification checks every archive's SHA-256, exact member list, regular file types and executable permissions. It extracts the native archive into a new folder with a space in its name, then runs the installed CLI and provider, checks the stamped version, reads text and compact output, runs an operator campaign, initializes an empty project and rehearses migration with an exact backup. Other architecture binaries are cross-built and inspected, but are not executed on that runner.
 
@@ -48,8 +48,8 @@ If GitHub publication succeeds but npm fails, inspect the workflow and check whe
 
    ```sh
    git switch main && git pull --ff-only
-   git tag -a v0.3.0 -m "Invaris v0.3.0"
-   git push origin v0.3.0
+   git tag -a vX.Y.Z -m "Invaris vX.Y.Z"
+   git push origin vX.Y.Z
    ```
 
 4. Watch the Release workflow and complete the one-time npm bootstrap above if needed. Once both distributions are published, verify the npm package in a clean project, then download an archive and `SHA256SUMS` from the release page through the [installation guide](installation.md), verify the checksum and run the examples with the installed executables. Check that the release, source-tag and changelog links resolve and that GitHub Pages shows the new version.
