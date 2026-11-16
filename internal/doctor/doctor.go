@@ -13,9 +13,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/akkaraponph/invaris/internal/engine"
@@ -122,7 +124,7 @@ func Inspect(harnessPath string) Diagnosis {
 		spec, err = engine.Load(abs)
 	}
 	if err != nil {
-		i.add("harness.load", Fail, "%s", err)
+		i.add("harness.load", Fail, "%s", reason(err, filepath.Dir(abs)))
 		i.add("inspection", Skipped, "harness did not load")
 		return i.d
 	}
@@ -131,7 +133,9 @@ func Inspect(harnessPath string) Diagnosis {
 	i.add("harness.load", Pass, "loaded %s", spec.Version)
 
 	for _, action := range []string{"run", "check", "challenge", "mutate"} {
-		if spec.SupportsAction(action) {
+		if action == "challenge" && spec.SupportsAction(action) && len(spec.Challenges) == 0 {
+			i.add("action.challenge", Skipped, "no challenges declared")
+		} else if spec.SupportsAction(action) {
 			i.add("action."+action, Pass, "supported by %s", spec.Version)
 		} else {
 			i.add("action."+action, Skipped, "not supported by %s", spec.Version)
@@ -153,14 +157,14 @@ func Inspect(harnessPath string) Diagnosis {
 		edits = append(edits, edit{e.ID, e.Mutation.Path, e.Mutation.Before, e.Mutation.PreimageSHA256, nil})
 	}
 	for _, a := range spec.Adapters {
-		commands = append(commands, command{a.ID, a.Program, a.EnvAllowlist})
+		commands = append(commands, command{"adapter." + a.ID, a.Program, a.EnvAllowlist})
 	}
 	for _, c := range spec.Challenges {
 		edits = append(edits, edit{c.ID, c.File, c.Before, "", c.Builtin})
 	}
 
-	if len(commands)+len(edits)+len(spec.ProviderGuards) == 0 {
-		i.add("workspace.copy", Skipped, "no workspace is prepared")
+	if len(edits) == 0 {
+		i.add("workspace.copy", Skipped, "no challenge or experiment prepares a workspace")
 	} else if err := workspace.CheckCopyable(dir); err != nil {
 		i.add("workspace.copy", Fail, "harness directory cannot be copied into a workspace: %s (limits: %d entries, %d bytes per file)", err, workspace.MaxEntries, workspace.MaxFileBytes)
 	} else {
@@ -188,9 +192,13 @@ func Inspect(harnessPath string) Diagnosis {
 	data := make([][]byte, len(edits))
 	readable := make([]bool, len(edits))
 	for n, e := range edits {
+		if omitted(e.file) {
+			i.add("target."+e.id, Fail, "%s is inside .git or .invaris, which the workspace copy omits", e.file)
+			continue
+		}
 		var err error
 		if data[n], err = readTarget(root, e.file); err != nil {
-			i.add("target."+e.id, Fail, "%s: %s", e.file, err)
+			i.add("target."+e.id, Fail, "%s: %s", e.file, reason(err, root))
 			continue
 		}
 		readable[n] = true
@@ -201,9 +209,15 @@ func Inspect(harnessPath string) Diagnosis {
 	}
 
 	for _, p := range spec.WritablePaths {
-		if target, err := workspace.ResolveTarget(root, p); err != nil {
-			i.add("writable."+p, Fail, "%s", err)
-		} else {
+		target, err := workspace.ResolveTarget(root, p)
+		switch {
+		case len(edits) > 0 && omitted(p):
+			i.add("writable."+p, Fail, "%s is inside .git or .invaris, which the workspace copy omits", p)
+		case err != nil && !usedByEdit(edits, p):
+			i.add("writable."+p, Warn, "%s is listed in writablePaths but does not exist; no edit uses it", p)
+		case err != nil:
+			i.add("writable."+p, Fail, "%s", reason(err, root))
+		default:
 			i.add("writable."+p, Pass, "%s is a regular file", filepath.ToSlash(strings.TrimPrefix(target, root+string(filepath.Separator))))
 		}
 	}
@@ -214,15 +228,59 @@ func Inspect(harnessPath string) Diagnosis {
 	return i.d
 }
 
+// omitted reports whether the workspace copy drops p: copyTree skips .git and
+// .invaris at every level, and a target's first component names the top one.
+func omitted(p string) bool {
+	first, _, _ := strings.Cut(filepath.ToSlash(p), "/")
+	return first == ".git" || first == ".invaris"
+}
+
+func usedByEdit(edits []edit, p string) bool {
+	for _, e := range edits {
+		if e.file == p {
+			return true
+		}
+	}
+	return false
+}
+
+// reason renders err without leaking directory prefixes: a path error shows
+// its inner cause and the path relative to dir when inside it, else the base
+// name.
+func reason(err error, dir string) string {
+	var pe *fs.PathError
+	if !errors.As(err, &pe) {
+		return err.Error()
+	}
+	name := filepath.Base(pe.Path)
+	if rel, rerr := filepath.Rel(dir, pe.Path); rerr == nil && filepath.IsAbs(pe.Path) && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		name = filepath.ToSlash(rel)
+	}
+	return name + ": " + pe.Err.Error()
+}
+
+// escapes reports a relative program path a real run may resolve elsewhere.
+func escapes(program string) bool {
+	if filepath.IsAbs(program) {
+		return false
+	}
+	slash := strings.TrimPrefix(filepath.ToSlash(program), "./")
+	return slices.Contains(strings.Split(slash, "/"), "..") || strings.HasPrefix(slash, ".git/") || strings.HasPrefix(slash, ".invaris/")
+}
+
 func (i *inspector) program(c command, dir string) {
 	id := "program." + c.id
 	found, err := runner.Lookup(c.program, c.env, dir)
 	if err == nil {
+		if strings.ContainsAny(c.program, "/"+string(filepath.Separator)) && escapes(c.program) {
+			i.add(id, Warn, "a real run resolves %q inside the workspace copy or harness directory, which may differ from %s", c.program, found)
+			return
+		}
 		i.add(id, Pass, "%s", found)
 		return
 	}
 	if !errors.Is(err, exec.ErrNotFound) {
-		i.add(id, Fail, "%s", err)
+		i.add(id, Fail, "%s", reason(err, dir))
 		return
 	}
 	allowed := false
@@ -231,9 +289,9 @@ func (i *inspector) program(c command, dir string) {
 	}
 	path, set := os.LookupEnv("PATH")
 	if allowed && set {
-		i.add(id, Fail, "executable %q not found in the allowlisted PATH %s", c.program, path)
+		i.add(id, Fail, "not found in the allowlisted PATH %s: executable %q", path, c.program)
 	} else {
-		i.add(id, Fail, "executable %q not found: PATH is not allowlisted, so %s is searched", c.program, runner.DefaultPath)
+		i.add(id, Fail, "PATH is not allowlisted, so %s is searched: executable %q not found", runner.DefaultPath, c.program)
 	}
 }
 

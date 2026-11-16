@@ -286,7 +286,7 @@ func TestDoctorExecutesNothing(t *testing.T) {
 			noExecution(t, d)
 			if name == "adapter" {
 				requireStatus(t, d, "provider.prov", Skipped)
-				requireStatus(t, d, "program.prov", Pass)
+				requireStatus(t, d, "program.adapter.prov", Pass)
 			}
 			if d.Failed() {
 				t.Fatalf("%+v", d.Checks)
@@ -296,4 +296,136 @@ func TestDoctorExecutesNothing(t *testing.T) {
 			}
 		})
 	}
+}
+
+const challengeC = `{"id":"c","guard":"g","file":"source.txt","before":"SAFE","after":"BAD","expectedOutput":"BAD"}`
+
+func stepOnlyHarness(extra string) string {
+	return `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",` + extra + `
+"steps":[{"id":"s","program":"sh","args":[]}]}`
+}
+
+func TestDoctorWorkspaceCopyOnlyForEdits(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "real", "x", 0o644)
+	if err := os.Symlink("real", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	h := writeFile(t, dir, "steps.json", stepOnlyHarness(""), 0o644)
+	d := Inspect(h)
+	c := requireStatus(t, d, "workspace.copy", Skipped)
+	if c.Message != "no challenge or experiment prepares a workspace" || d.Failed() {
+		t.Fatalf("%s %+v", c.Message, d.Checks)
+	}
+	writeFile(t, dir, "source.txt", "SAFE\n", 0o644)
+	h = writeFile(t, dir, "chal.json", harnessV2(guardJSON("sh", "[]"), challengeC), 0o644)
+	c = requireStatus(t, Inspect(h), "workspace.copy", Fail)
+	if !strings.Contains(c.Message, "link") {
+		t.Fatal(c.Message)
+	}
+}
+
+func TestDoctorCheckIDsAreUnique(t *testing.T) {
+	t.Setenv("INVARIS_DOCTOR_SURELY_UNSET", "x")
+	os.Unsetenv("INVARIS_DOCTOR_SURELY_UNSET")
+	dir := t.TempDir()
+	h := writeFile(t, dir, "h.json", `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"policies":[{"id":"p"}],"adapters":[{"id":"x","program":"sh","args":[],"envAllowlist":["INVARIS_DOCTOR_SURELY_UNSET"]}],"requiredAdapters":["x"],
+"steps":[{"id":"x","program":"sh","args":[],"envAllowlist":["INVARIS_DOCTOR_SURELY_UNSET"]}],
+"guards":[{"id":"pg","adapterId":"x","policyId":"p","scope":["a.txt"]}]}`, 0o644)
+	d := Inspect(h)
+	seen := map[string]bool{}
+	for _, c := range d.Checks {
+		if seen[c.ID] {
+			t.Fatalf("duplicate id %s", c.ID)
+		}
+		seen[c.ID] = true
+	}
+	for _, id := range []string{"program.x", "program.adapter.x", "env.x.INVARIS_DOCTOR_SURELY_UNSET", "env.adapter.x.INVARIS_DOCTOR_SURELY_UNSET", "provider.x"} {
+		find(t, d, id)
+	}
+}
+
+func TestDoctorOmittedTargets(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, ".git/x", "SAFE\n", 0o644)
+	writeFile(t, dir, ".invaris/y", "SAFE\n", 0o644)
+	body := `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"writablePaths":[".git/x",".invaris/y"],"guards":[{"id":"g","program":"sh","args":[]}],"challenges":[
+{"id":"c","guard":"g","file":".git/x","before":"SAFE","after":"BAD","expectedOutput":"BAD"},
+{"id":"d","guard":"g","file":".invaris/y","before":"SAFE","after":"BAD","expectedOutput":"BAD"}]}`
+	d := Inspect(writeFile(t, dir, "h.json", body, 0o644))
+	for _, id := range []string{"target.c", "target.d", "writable..git/x", "writable..invaris/y"} {
+		c := requireStatus(t, d, id, Fail)
+		if !strings.Contains(c.Message, "is inside .git or .invaris, which the workspace copy omits") {
+			t.Fatalf("%s: %s", id, c.Message)
+		}
+	}
+}
+
+func TestDoctorRelativeProgramWarnings(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "ok", "#!/bin/sh\n", 0o755)
+	writeFile(t, dir, ".git/hook", "#!/bin/sh\n", 0o755)
+	writeFile(t, dir, "sub/x", "#!/bin/sh\n", 0o755)
+	for program, want := range map[string]string{
+		"./ok": Pass, ".git/hook": Warn, "./.git/hook": Warn, "sub/../ok": Warn, "./missing": Fail,
+	} {
+		h := writeFile(t, dir, "h.json", `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"steps":[{"id":"s","program":`+fmt.Sprintf("%q", program)+`,"args":[]}]}`, 0o644)
+		c := requireStatus(t, Inspect(h), "program.s", want)
+		if want == Warn && !strings.Contains(c.Message, "inside the workspace copy") {
+			t.Fatalf("%s: %s", program, c.Message)
+		}
+	}
+}
+
+func TestDoctorErrorsDoNotLeakDirectory(t *testing.T) {
+	dir := t.TempDir()
+	check := func(what, msg, reason string) {
+		t.Helper()
+		head := msg
+		if len(head) > 100 {
+			head = head[:100]
+		}
+		if !strings.Contains(head, reason) || strings.Contains(msg, dir) {
+			t.Fatalf("%s: %q", what, msg)
+		}
+	}
+	if os.Geteuid() != 0 {
+		h := writeFile(t, dir, "locked.json", stepOnlyHarness(""), 0o000)
+		check("unreadable", requireStatus(t, Inspect(h), "harness.load", Fail).Message, "permission denied")
+	}
+	h := writeFile(t, dir, "bad.json", "{not json", 0o644)
+	check("invalid", requireStatus(t, Inspect(h), "harness.load", Fail).Message, "invalid")
+	h = writeFile(t, dir, "prog.json", `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"steps":[{"id":"s","program":"./nope/x","args":[]}]}`, 0o644)
+	check("program", requireStatus(t, Inspect(h), "program.s", Fail).Message, "no such file")
+}
+
+func TestDoctorWritableWarnsWhenUnused(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "source.txt", "SAFE\n", 0o644)
+	h := writeFile(t, dir, "h.json", `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"writablePaths":["source.txt","extra.txt"],"guards":[{"id":"g","program":"sh","args":[]}],"challenges":[`+challengeC+`]}`, 0o644)
+	d := Inspect(h)
+	c := requireStatus(t, d, "writable.extra.txt", Warn)
+	if c.Message != "extra.txt is listed in writablePaths but does not exist; no edit uses it" || d.Failed() {
+		t.Fatalf("%s %+v", c.Message, d.Checks)
+	}
+	// an edit that targets a missing writable path still fails
+	h = writeFile(t, dir, "h3.json", `{"version":"invaris.dev/v1alpha2","name":"t","trustMode":"trusted-local","networkPolicy":"unrestricted",
+"writablePaths":["gone.txt"],"guards":[{"id":"g","program":"sh","args":[]}],"challenges":[`+strings.Replace(challengeC, "source.txt", "gone.txt", 1)+`]}`, 0o644)
+	requireStatus(t, Inspect(h), "writable.gone.txt", Fail)
+}
+
+func TestDoctorChallengeActionSkippedWithoutChallenges(t *testing.T) {
+	dir := t.TempDir()
+	d := Inspect(writeFile(t, dir, "h.json", stepOnlyHarness(""), 0o644))
+	c := requireStatus(t, d, "action.challenge", Skipped)
+	if c.Message != "no challenges declared" {
+		t.Fatal(c.Message)
+	}
+	requireStatus(t, d, "action.run", Pass)
+	requireStatus(t, d, "action.check", Pass)
 }

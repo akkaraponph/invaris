@@ -342,6 +342,16 @@ func checkTree(dir, rel string, count *int) error {
 			}
 		case !info.Mode().IsRegular() || info.Size() > MaxFileBytes:
 			return fmt.Errorf("unsupported or oversized file %s", name)
+		default:
+			f, err := os.Open(filepath.Join(dir, entry.Name()))
+			if err != nil {
+				var pe *fs.PathError
+				if errors.As(err, &pe) {
+					err = pe.Err
+				}
+				return fmt.Errorf("unreadable file %s: %w", name, err)
+			}
+			_ = f.Close()
 		}
 	}
 	return nil

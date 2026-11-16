@@ -133,3 +133,25 @@ func TestResolveTarget(t *testing.T) {
 		t.Fatal("symlink target must be refused")
 	}
 }
+
+func TestCheckCopyableMatchesPrepareForUnreadableFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every file")
+	}
+	dir := t.TempDir()
+	write(t, dir, "a/secret.txt", "x", 0o000)
+	err := CheckCopyable(dir)
+	w, prepErr := Prepare(dir)
+	if w != nil {
+		_ = w.Close()
+	}
+	if prepErr == nil {
+		t.Fatal("Prepare must refuse an unreadable file")
+	}
+	if err == nil {
+		t.Fatal("CheckCopyable must refuse an unreadable file")
+	}
+	if strings.Contains(err.Error(), dir) || !strings.Contains(err.Error(), "a/secret.txt") {
+		t.Fatalf("error must name the relative path only: %v", err)
+	}
+}

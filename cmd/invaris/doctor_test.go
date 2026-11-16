@@ -142,3 +142,18 @@ func TestUsageErrorListsDoctor(t *testing.T) {
 		t.Fatal(errb.String())
 	}
 }
+
+func TestDoctorUnreadableHarnessExits2(t *testing.T) {
+	if os.Geteuid() != 0 {
+		locked := doctorHarness(t, "sh")
+		if err := os.Chmod(locked, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		if code, out, errText := runDoctor(t, locked); code != 2 || out != "" || !strings.Contains(errText, "read harness:") {
+			t.Fatalf("unreadable: exit %d out %q err %q", code, out, errText)
+		}
+	}
+	if code, _, _ := runDoctor(t, t.TempDir()); code != 2 {
+		t.Fatalf("directory: exit %d", code)
+	}
+}

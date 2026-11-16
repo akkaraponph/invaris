@@ -65,7 +65,16 @@ func runDoctorCLI(args []string, stdout, stderr io.Writer) int {
 	} else if info.IsDir() {
 		fmt.Fprintln(stderr, "read harness:", file, "is a directory")
 		return 2
+	} else if !info.Mode().IsRegular() {
+		fmt.Fprintln(stderr, "read harness:", file, "is not a regular file")
+		return 2
 	}
+	f, err := os.Open(file)
+	if err != nil {
+		fmt.Fprintln(stderr, "read harness:", err)
+		return 2
+	}
+	f.Close()
 	d := doctor.Inspect(file)
 	var out []byte
 	if format == formatJSON {
