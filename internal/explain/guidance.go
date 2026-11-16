@@ -73,7 +73,7 @@ var guidance = map[string]Guidance{
 	},
 	domain.ReasonPrepareFailed: {
 		Meaning: "The workspace copy could not be prepared, so the experiment did not run.",
-		Next:    "Check disk space and read permissions on the project, then run again.",
+		Next:    "The copy refuses symbolic links, files over 10 MiB and more than 2000 entries, and the report withholds which one: remove or exclude such paths (an installed node_modules is typical), check disk space and permissions, then run again; `invaris doctor` is planned to check this.",
 	},
 	domain.ReasonTimeout: {
 		Meaning: "A step exceeded its time limit and was stopped, so the check did not finish.",
