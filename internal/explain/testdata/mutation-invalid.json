@@ -1,0 +1,189 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha3",
+  "runId": "821e646147e5c6d3f723f12b71335be6",
+  "action": "mutate",
+  "target": "/work/invaris/examples/go-project",
+  "harness": "go-project",
+  "configDigest": "sha256:7bd91e106b1b4d461319d3c39e54c51d4eff220a8338951cc1bf1cd9909ef74a",
+  "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:45:46.707784Z",
+  "finishedAt": "2026-11-16T02:45:47.958595Z",
+  "durationMs": 1250,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha3",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [],
+  "steps": [],
+  "checks": [],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "go-mutation-invalid:baseline",
+      "kind": "baseline",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "tests",
+        "TestFullPrice",
+        "TestHalfOff"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:46.711636Z",
+      "finishedAt": "2026-11-16T02:45:47.670195Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    },
+    {
+      "id": "go-mutation-invalid:validation",
+      "kind": "validation",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/goeval",
+        "validity"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:47.678939Z",
+      "finishedAt": "2026-11-16T02:45:47.950017Z",
+      "exitCode": 1,
+      "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}\n",
+      "stderr": "exit status 1\n",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    }
+  ],
+  "targetCount": null,
+  "decision": "REFUSE",
+  "diagnostics": [],
+  "artifacts": [],
+  "experiment": {
+    "id": "go-mutation-invalid",
+    "mutationId": "type-error",
+    "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+    "operator": "replace",
+    "target": "internal/discount/discount.go",
+    "testCommandId": "go-tests",
+    "validationCommandId": "build",
+    "testIds": [
+      "TestFullPrice",
+      "TestHalfOff"
+    ],
+    "verdict": "INVALID",
+    "reason": "mutant_invalid",
+    "reasonCategory": "result",
+    "sourceSnapshot": {
+      "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+      "files": 26
+    },
+    "mutation": {
+      "path": "internal/discount/discount.go",
+      "beforeSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718",
+      "afterSha256": "5294b3534d7935ea1bf53493f97201f4fb8e5af3892a7d51bf7f3912091462df"
+    },
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "OK",
+        "durationMs": 3,
+        "detail": ""
+      },
+      {
+        "name": "baseline",
+        "status": "OK",
+        "durationMs": 965,
+        "detail": ""
+      },
+      {
+        "name": "mutate",
+        "status": "OK",
+        "durationMs": 1,
+        "detail": ""
+      },
+      {
+        "name": "validation",
+        "status": "OK",
+        "durationMs": 278,
+        "detail": ""
+      },
+      {
+        "name": "cleanup",
+        "status": "OK",
+        "durationMs": 1,
+        "detail": ""
+      }
+    ],
+    "baseline": {
+      "observationId": "go-mutation-invalid:baseline",
+      "tests": [
+        {
+          "id": "TestFullPrice",
+          "status": "PASS"
+        },
+        {
+          "id": "TestHalfOff",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    },
+    "validation": {
+      "observationId": "go-mutation-invalid:validation",
+      "tests": null,
+      "validity": "INVALID"
+    },
+    "tests": null
+  }
+}

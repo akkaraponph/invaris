@@ -1,0 +1,1354 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha4",
+  "runId": "a05d07b02dbd7258f2034b725c4ee714",
+  "action": "campaign",
+  "campaign": "go-project-verification",
+  "campaignConfigDigest": "sha256:55073b4d5f5b5bc9c7ef0ad2bf3974cc370936c5e999442ea1313b292c7afad4",
+  "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+  "sourceIdentity": {
+    "snapshotSha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+    "files": 26,
+    "roots": [
+      {
+        "path": ".",
+        "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+        "files": 26
+      }
+    ],
+    "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+    "gitDirty": false,
+    "excluded": [
+      ".git",
+      ".invaris"
+    ]
+  },
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "selection": {
+    "mode": "all",
+    "only": [],
+    "selected": 6,
+    "filtered": 0
+  },
+  "parallelism": 1,
+  "startedAt": "2026-11-16T02:45:47.996134Z",
+  "finishedAt": "2026-11-16T02:45:55.225109Z",
+  "durationMs": 7228,
+  "stages": [
+    {
+      "name": "snapshot",
+      "status": "OK",
+      "durationMs": 3,
+      "detail": ""
+    },
+    {
+      "name": "cleanup",
+      "status": "OK",
+      "durationMs": 2,
+      "detail": ""
+    }
+  ],
+  "tools": [
+    {
+      "id": "tool:go",
+      "kind": "tool",
+      "program": "go",
+      "args": [
+        "version"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:48.017696Z",
+      "finishedAt": "2026-11-16T02:45:48.023955Z",
+      "exitCode": 0,
+      "stdout": "go version go1.27.1 darwin/arm64\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    }
+  ],
+  "experiments": [
+    {
+      "id": "mutation-killed",
+      "kind": "mutation",
+      "harness": "mutation-killed.json",
+      "root": ".",
+      "harnessDigest": "sha256:70a8990863e35ec21759504a83e0019bb4161e907d5ef76d67538c1924f5b28e",
+      "referenceId": "go-mutation-killed",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "mutation-killed#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "KILLED",
+          "reason": "assertion_failed",
+          "reasonCategory": "result",
+          "detail": "",
+          "startedAt": "2026-11-16T02:45:48.030638Z",
+          "finishedAt": "2026-11-16T02:45:49.866384Z",
+          "durationMs": 1835,
+          "mutation": {
+            "id": "go-mutation-killed",
+            "mutationId": "percent-divisor",
+            "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+            "operator": "replace",
+            "target": "internal/discount/discount.go",
+            "testCommandId": "go-tests",
+            "validationCommandId": "build",
+            "testIds": [
+              "TestFullPrice",
+              "TestHalfOff"
+            ],
+            "verdict": "KILLED",
+            "reason": "assertion_failed",
+            "reasonCategory": "result",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/discount.go",
+              "beforeSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718",
+              "afterSha256": "3ae20ab0897780661bbd03811156fe6108a2c4b042632daa5720a6be03a64a5c"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 1000,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              },
+              {
+                "name": "validation",
+                "status": "OK",
+                "durationMs": 302,
+                "detail": ""
+              },
+              {
+                "name": "tests",
+                "status": "OK",
+                "durationMs": 526,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "observationId": "go-mutation-killed:baseline",
+              "tests": [
+                {
+                  "id": "TestFullPrice",
+                  "status": "PASS"
+                },
+                {
+                  "id": "TestHalfOff",
+                  "status": "PASS"
+                }
+              ],
+              "validity": ""
+            },
+            "validation": {
+              "observationId": "go-mutation-killed:validation",
+              "tests": null,
+              "validity": "VALID"
+            },
+            "tests": {
+              "observationId": "go-mutation-killed:tests",
+              "tests": [
+                {
+                  "id": "TestFullPrice",
+                  "status": "PASS"
+                },
+                {
+                  "id": "TestHalfOff",
+                  "status": "ASSERTION_FAILED"
+                }
+              ],
+              "validity": ""
+            }
+          },
+          "proof": null,
+          "observations": [
+            {
+              "id": "go-mutation-killed:baseline",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "tests",
+                "TestFullPrice",
+                "TestHalfOff"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:48.033771Z",
+              "finishedAt": "2026-11-16T02:45:49.026193Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "go-mutation-killed:validation",
+              "kind": "validation",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "validity"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:49.035639Z",
+              "finishedAt": "2026-11-16T02:45:49.331118Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"VALID\"}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "go-mutation-killed:tests",
+              "kind": "tests",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "tests",
+                "TestFullPrice",
+                "TestHalfOff"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:49.338453Z",
+              "finishedAt": "2026-11-16T02:45:49.858028Z",
+              "exitCode": 1,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"ASSERTION_FAILED\"}]}\n",
+              "stderr": "exit status 1\n",
+              "truncated": false,
+              "diagnostics": [
+                {
+                  "code": "COMMAND_FAILED",
+                  "message": "exit status 1"
+                }
+              ],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "KILLED",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    },
+    {
+      "id": "mutation-survived",
+      "kind": "mutation",
+      "harness": "mutation-survived.json",
+      "root": ".",
+      "harnessDigest": "sha256:4f8cd33ec7bdc91ad0491f6ac5aadf6861ab8a526f93e33e35fc5c9f27aee1ec",
+      "referenceId": "go-mutation-survived",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "mutation-survived#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "SURVIVED",
+          "reason": "all_tests_passed",
+          "reasonCategory": "result",
+          "detail": "",
+          "startedAt": "2026-11-16T02:45:49.867207Z",
+          "finishedAt": "2026-11-16T02:45:51.902326Z",
+          "durationMs": 2035,
+          "mutation": {
+            "id": "go-mutation-survived",
+            "mutationId": "clamp-result",
+            "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+            "operator": "replace",
+            "target": "internal/discount/discount.go",
+            "testCommandId": "go-tests",
+            "validationCommandId": "build",
+            "testIds": [
+              "TestFullPrice",
+              "TestHalfOff"
+            ],
+            "verdict": "SURVIVED",
+            "reason": "all_tests_passed",
+            "reasonCategory": "result",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/discount.go",
+              "beforeSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718",
+              "afterSha256": "470a81502df03085d974a05da3c0cfb6e182a4cc62d8022b46b8f7987405905b"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 1114,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "validation",
+                "status": "OK",
+                "durationMs": 326,
+                "detail": ""
+              },
+              {
+                "name": "tests",
+                "status": "OK",
+                "durationMs": 587,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "observationId": "go-mutation-survived:baseline",
+              "tests": [
+                {
+                  "id": "TestFullPrice",
+                  "status": "PASS"
+                },
+                {
+                  "id": "TestHalfOff",
+                  "status": "PASS"
+                }
+              ],
+              "validity": ""
+            },
+            "validation": {
+              "observationId": "go-mutation-survived:validation",
+              "tests": null,
+              "validity": "VALID"
+            },
+            "tests": {
+              "observationId": "go-mutation-survived:tests",
+              "tests": [
+                {
+                  "id": "TestFullPrice",
+                  "status": "PASS"
+                },
+                {
+                  "id": "TestHalfOff",
+                  "status": "PASS"
+                }
+              ],
+              "validity": ""
+            }
+          },
+          "proof": null,
+          "observations": [
+            {
+              "id": "go-mutation-survived:baseline",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "tests",
+                "TestFullPrice",
+                "TestHalfOff"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:49.870217Z",
+              "finishedAt": "2026-11-16T02:45:50.975609Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "go-mutation-survived:validation",
+              "kind": "validation",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "validity"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:50.98697Z",
+              "finishedAt": "2026-11-16T02:45:51.305992Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"VALID\"}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "go-mutation-survived:tests",
+              "kind": "tests",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "tests",
+                "TestFullPrice",
+                "TestHalfOff"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:51.313074Z",
+              "finishedAt": "2026-11-16T02:45:51.892353Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "SURVIVED",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    },
+    {
+      "id": "mutation-invalid",
+      "kind": "mutation",
+      "harness": "mutation-invalid.json",
+      "root": ".",
+      "harnessDigest": "sha256:7bd91e106b1b4d461319d3c39e54c51d4eff220a8338951cc1bf1cd9909ef74a",
+      "referenceId": "go-mutation-invalid",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "mutation-invalid#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "INVALID",
+          "reason": "mutant_invalid",
+          "reasonCategory": "result",
+          "detail": "",
+          "startedAt": "2026-11-16T02:45:51.903201Z",
+          "finishedAt": "2026-11-16T02:45:53.230683Z",
+          "durationMs": 1327,
+          "mutation": {
+            "id": "go-mutation-invalid",
+            "mutationId": "type-error",
+            "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+            "operator": "replace",
+            "target": "internal/discount/discount.go",
+            "testCommandId": "go-tests",
+            "validationCommandId": "build",
+            "testIds": [
+              "TestFullPrice",
+              "TestHalfOff"
+            ],
+            "verdict": "INVALID",
+            "reason": "mutant_invalid",
+            "reasonCategory": "result",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/discount.go",
+              "beforeSha256": "5e1cc1dbbdeb114fa42be3cdf3b855d682e721b2d7c04368c9627fcb31a49718",
+              "afterSha256": "5294b3534d7935ea1bf53493f97201f4fb8e5af3892a7d51bf7f3912091462df"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 1012,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              },
+              {
+                "name": "validation",
+                "status": "OK",
+                "durationMs": 308,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "observationId": "go-mutation-invalid:baseline",
+              "tests": [
+                {
+                  "id": "TestFullPrice",
+                  "status": "PASS"
+                },
+                {
+                  "id": "TestHalfOff",
+                  "status": "PASS"
+                }
+              ],
+              "validity": ""
+            },
+            "validation": {
+              "observationId": "go-mutation-invalid:validation",
+              "tests": null,
+              "validity": "INVALID"
+            },
+            "tests": null
+          },
+          "proof": null,
+          "observations": [
+            {
+              "id": "go-mutation-invalid:baseline",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "tests",
+                "TestFullPrice",
+                "TestHalfOff"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:51.906666Z",
+              "finishedAt": "2026-11-16T02:45:52.912339Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"TestFullPrice\",\"status\":\"PASS\"},{\"id\":\"TestHalfOff\",\"status\":\"PASS\"}]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "go-mutation-invalid:validation",
+              "kind": "validation",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/goeval",
+                "validity"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:52.920947Z",
+              "finishedAt": "2026-11-16T02:45:53.22231Z",
+              "exitCode": 1,
+              "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}\n",
+              "stderr": "exit status 1\n",
+              "truncated": false,
+              "diagnostics": [
+                {
+                  "code": "COMMAND_FAILED",
+                  "message": "exit status 1"
+                }
+              ],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "INVALID",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    },
+    {
+      "id": "guardrail-proven",
+      "kind": "guardrail",
+      "harness": "guardrail.json",
+      "root": ".",
+      "harnessDigest": "sha256:cf2e0bf4a80e6d5085615cab7e6a455dbf957bc2dcf66c03403285a145f8b4a7",
+      "referenceId": "inject-net-http",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "guardrail-proven#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "PROVEN",
+          "reason": "guard_detected",
+          "reasonCategory": "result",
+          "detail": "guard reported the expected policy and rule at the mutated path",
+          "startedAt": "2026-11-16T02:45:53.231451Z",
+          "finishedAt": "2026-11-16T02:45:53.85294Z",
+          "durationMs": 621,
+          "mutation": null,
+          "proof": {
+            "id": "inject-net-http",
+            "policyId": "no-network-imports",
+            "guardId": "import-guard",
+            "target": "internal/discount/format.go",
+            "faultId": "fault-6694b3f7fc6f665e",
+            "evidenceStrength": "strong",
+            "status": "PROVEN",
+            "reason": "guard_detected",
+            "reasonCategory": "result",
+            "detail": "guard reported the expected policy and rule at the mutated path",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/format.go",
+              "beforeSha256": "890ff3a45e271a056090e77e1ef8c3e8cbdcaea35dcd525725fe026a8a8df3ea",
+              "afterSha256": "ff12e04697605bda7e9bf50acc6d00059e5557c792eeadd97509186cd04016f1"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 441,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              },
+              {
+                "name": "challenged",
+                "status": "OK",
+                "durationMs": 158,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "id": "inject-net-http:baseline",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "PASS",
+              "inspected": 2,
+              "findings": [],
+              "diagnostics": [],
+              "exitCode": 0
+            },
+            "challenged": {
+              "id": "inject-net-http:challenged",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "FAIL",
+              "inspected": 2,
+              "findings": [
+                {
+                  "policyId": "no-network-imports",
+                  "ruleId": "no-network-imports",
+                  "path": "internal/discount/format.go",
+                  "message": ""
+                }
+              ],
+              "diagnostics": [
+                {
+                  "code": "COMMAND_FAILED",
+                  "message": "exit status 1"
+                }
+              ],
+              "exitCode": 1
+            }
+          },
+          "observations": [
+            {
+              "id": "import-guard",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:53.2348Z",
+              "finishedAt": "2026-11-16T02:45:53.669216Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "import-guard",
+              "kind": "challenged",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:53.677704Z",
+              "finishedAt": "2026-11-16T02:45:53.829407Z",
+              "exitCode": 1,
+              "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[{\"policyId\":\"no-network-imports\",\"path\":\"internal/discount/format.go\"}]}\n",
+              "stderr": "exit status 1\n",
+              "truncated": false,
+              "diagnostics": [
+                {
+                  "code": "COMMAND_FAILED",
+                  "message": "exit status 1"
+                }
+              ],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "PROVEN",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    },
+    {
+      "id": "guardrail-unproven",
+      "kind": "guardrail",
+      "harness": "guardrail-unproven.json",
+      "root": ".",
+      "harnessDigest": "sha256:64691e923b666313da2b1f1af4808dddcd81500a07889bc348eeb59bf1fb2372",
+      "referenceId": "inject-os-exec",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "guardrail-unproven#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "UNPROVEN",
+          "reason": "guard_passed",
+          "reasonCategory": "result",
+          "detail": "guard passed after mutation",
+          "startedAt": "2026-11-16T02:45:53.853742Z",
+          "finishedAt": "2026-11-16T02:45:54.469888Z",
+          "durationMs": 616,
+          "mutation": null,
+          "proof": {
+            "id": "inject-os-exec",
+            "policyId": "no-network-imports",
+            "guardId": "import-guard",
+            "target": "internal/discount/format.go",
+            "faultId": "fault-ed9e82dd2ca42162",
+            "evidenceStrength": "strong",
+            "status": "UNPROVEN",
+            "reason": "guard_passed",
+            "reasonCategory": "result",
+            "detail": "guard passed after mutation",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/format.go",
+              "beforeSha256": "890ff3a45e271a056090e77e1ef8c3e8cbdcaea35dcd525725fe026a8a8df3ea",
+              "afterSha256": "7bf43551b8a63777f5b34262e300e1a55a8844ee4c2ae883356a7c3b0e60f57f"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 3,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 443,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              },
+              {
+                "name": "challenged",
+                "status": "OK",
+                "durationMs": 150,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "id": "inject-os-exec:baseline",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "PASS",
+              "inspected": 2,
+              "findings": [],
+              "diagnostics": [],
+              "exitCode": 0
+            },
+            "challenged": {
+              "id": "inject-os-exec:challenged",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "PASS",
+              "inspected": 2,
+              "findings": [],
+              "diagnostics": [],
+              "exitCode": 0
+            }
+          },
+          "observations": [
+            {
+              "id": "import-guard",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:53.857736Z",
+              "finishedAt": "2026-11-16T02:45:54.293316Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "import-guard",
+              "kind": "challenged",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:54.30252Z",
+              "finishedAt": "2026-11-16T02:45:54.444952Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": "UNPROVEN",
+      "stability": "CONSISTENT",
+      "stabilityReason": ""
+    },
+    {
+      "id": "guardrail-inconclusive",
+      "kind": "guardrail",
+      "harness": "guardrail-inconclusive.json",
+      "root": ".",
+      "harnessDigest": "sha256:cac069fa4d68f04fb2cd5e79ffd4adb030f0744a96351e9dd258d1a46d6d290b",
+      "referenceId": "inject-broken-import",
+      "repeat": 1,
+      "selection": "SELECTED",
+      "attempts": [
+        {
+          "id": "guardrail-inconclusive#1",
+          "index": 1,
+          "execution": "EXECUTED",
+          "verdict": "INCONCLUSIVE",
+          "reason": "malformed_evidence",
+          "reasonCategory": "evidence",
+          "detail": "guard could not execute after injection: REFUSE",
+          "startedAt": "2026-11-16T02:45:54.470736Z",
+          "finishedAt": "2026-11-16T02:45:55.222815Z",
+          "durationMs": 752,
+          "mutation": null,
+          "proof": {
+            "id": "inject-broken-import",
+            "policyId": "no-network-imports",
+            "guardId": "import-guard",
+            "target": "internal/discount/format.go",
+            "faultId": "fault-62b55523bc969d63",
+            "evidenceStrength": "strong",
+            "status": "INCONCLUSIVE",
+            "reason": "malformed_evidence",
+            "reasonCategory": "evidence",
+            "detail": "guard could not execute after injection: REFUSE",
+            "sourceSnapshot": {
+              "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+              "files": 26
+            },
+            "mutation": {
+              "path": "internal/discount/format.go",
+              "beforeSha256": "890ff3a45e271a056090e77e1ef8c3e8cbdcaea35dcd525725fe026a8a8df3ea",
+              "afterSha256": "e7693912b5993a619a3ada9be38d37ea7f712f9f80608508ab77ee54c2741f74"
+            },
+            "stages": [
+              {
+                "name": "prepare",
+                "status": "OK",
+                "durationMs": 2,
+                "detail": ""
+              },
+              {
+                "name": "baseline",
+                "status": "OK",
+                "durationMs": 530,
+                "detail": ""
+              },
+              {
+                "name": "mutate",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              },
+              {
+                "name": "challenged",
+                "status": "OK",
+                "durationMs": 188,
+                "detail": ""
+              },
+              {
+                "name": "cleanup",
+                "status": "OK",
+                "durationMs": 1,
+                "detail": ""
+              }
+            ],
+            "baseline": {
+              "id": "inject-broken-import:baseline",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "PASS",
+              "inspected": 2,
+              "findings": [],
+              "diagnostics": [],
+              "exitCode": 0
+            },
+            "challenged": {
+              "id": "inject-broken-import:challenged",
+              "policyId": "no-network-imports",
+              "providerId": "invaris-command",
+              "status": "REFUSE",
+              "inspected": null,
+              "findings": [],
+              "diagnostics": [
+                {
+                  "code": "REFUSED",
+                  "message": "invalid or incomplete inspection evidence"
+                }
+              ],
+              "exitCode": 1
+            }
+          },
+          "observations": [
+            {
+              "id": "import-guard",
+              "kind": "baseline",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:54.474084Z",
+              "finishedAt": "2026-11-16T02:45:54.993017Z",
+              "exitCode": 0,
+              "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+              "stderr": "",
+              "truncated": false,
+              "diagnostics": [],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            },
+            {
+              "id": "import-guard",
+              "kind": "challenged",
+              "program": "go",
+              "args": [
+                "run",
+                "./tools/importguard",
+                "-policy",
+                "no-network-imports",
+                "-forbid",
+                "net,net/http",
+                "internal"
+              ],
+              "provider": {
+                "name": "invaris-command",
+                "version": null,
+                "toolName": null,
+                "toolVersion": null
+              },
+              "scope": [],
+              "startedAt": "2026-11-16T02:45:55.005708Z",
+              "finishedAt": "2026-11-16T02:45:55.184349Z",
+              "exitCode": 1,
+              "stdout": "",
+              "stderr": "importguard: internal/discount/format.go:3:8: string literal not terminated\nexit status 2\n",
+              "truncated": false,
+              "diagnostics": [
+                {
+                  "code": "REFUSED",
+                  "message": "invalid or incomplete inspection evidence"
+                }
+              ],
+              "executable": {
+                "path": "/opt/homebrew/bin/go",
+                "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+              },
+              "timeoutSeconds": 120,
+              "envAllowlist": [
+                "PATH",
+                "HOME"
+              ]
+            }
+          ]
+        }
+      ],
+      "aggregateVerdict": null,
+      "stability": "INCOMPLETE",
+      "stabilityReason": "attempts without a conclusive verdict: 1"
+    }
+  ],
+  "mutationSummary": {
+    "killed": 1,
+    "survived": 1,
+    "invalid": 1,
+    "inconclusive": 0,
+    "mixed": 0,
+    "notExecuted": 0,
+    "filtered": 0,
+    "eligible": 2,
+    "excluded": 1,
+    "score": 0.5
+  },
+  "guardrailSummary": {
+    "proven": 1,
+    "unproven": 1,
+    "inconclusive": 1,
+    "mixed": 0,
+    "notExecuted": 0,
+    "filtered": 0,
+    "eligible": 2,
+    "excluded": 1,
+    "proofRate": 0.5
+  },
+  "acceptancePolicy": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true,
+    "requireNoInvalid": false,
+    "minMutationScore": null
+  },
+  "acceptanceEvaluation": {
+    "complete": true,
+    "requirements": [
+      {
+        "requirement": "requireNoSurvivors",
+        "status": "VIOLATED",
+        "experiments": [
+          "mutation-survived"
+        ]
+      },
+      {
+        "requirement": "requireAllGuardrailsProven",
+        "status": "VIOLATED",
+        "experiments": [
+          "guardrail-unproven"
+        ]
+      },
+      {
+        "requirement": "requireNoInconclusive",
+        "status": "UNSUPPORTED",
+        "experiments": [
+          "guardrail-inconclusive"
+        ]
+      },
+      {
+        "requirement": "requireNoMixed",
+        "status": "SATISFIED",
+        "experiments": []
+      }
+    ]
+  },
+  "decision": "REFUSE",
+  "diagnostics": [],
+  "artifacts": []
+}

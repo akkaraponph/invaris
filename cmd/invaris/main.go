@@ -36,10 +36,17 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate") {
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain") {
 		if reportPath != "" {
-			fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
+			if args[0] == "explain" {
+				fmt.Fprintln(stderr, "--report is not valid for explain: it reads a report and writes none")
+			} else {
+				fmt.Fprintf(stderr, "--report is not valid for %s: authoring output is not verification evidence\n", args[0])
+			}
 			return 2
+		}
+		if args[0] == "explain" {
+			return runExplainCLI(args[1:], stdout, stderr)
 		}
 		if args[0] == "init" {
 			return runInitCLI(args[1:], stdout, stderr)
@@ -127,6 +134,7 @@ func usageError(stderr io.Writer, problem string) int {
 	fmt.Fprintln(stderr, "       "+campaignUsage)
 	fmt.Fprintln(stderr, "       "+initUsage)
 	fmt.Fprintln(stderr, "       "+migrateUsage)
+	fmt.Fprintln(stderr, "       "+explainUsage)
 	return 2
 }
 

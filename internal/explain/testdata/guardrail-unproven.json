@@ -1,0 +1,207 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "7588bc0af7e6135857b0f6c57dee9a4d",
+  "action": "challenge",
+  "target": "/work/invaris/examples/go-project",
+  "harness": "go-project-guardrail-unproven",
+  "configDigest": "sha256:64691e923b666313da2b1f1af4808dddcd81500a07889bc348eeb59bf1fb2372",
+  "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:45:41.709193Z",
+  "finishedAt": "2026-11-16T02:45:42.571274Z",
+  "durationMs": 862,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha2",
+    "warnings": []
+  },
+  "policies": [
+    {
+      "id": "no-network-imports",
+      "allowEmpty": false
+    }
+  ],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [
+      "inject-os-exec"
+    ],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "inject-os-exec",
+      "kind": "challenge",
+      "status": "UNPROVEN",
+      "startedAt": "2026-11-16T02:45:41.709196Z",
+      "finishedAt": "2026-11-16T02:45:42.571273Z"
+    }
+  ],
+  "steps": [],
+  "checks": [],
+  "proofs": [
+    {
+      "id": "inject-os-exec",
+      "policyId": "no-network-imports",
+      "guardId": "import-guard",
+      "target": "internal/discount/format.go",
+      "faultId": "fault-ed9e82dd2ca42162",
+      "evidenceStrength": "strong",
+      "status": "UNPROVEN",
+      "reason": "guard_passed",
+      "reasonCategory": "result",
+      "detail": "guard passed after mutation",
+      "sourceSnapshot": {
+        "sha256": "274716ba3618f3a2c280e0cd26ce4fc30d17ffa263fe4ed4f1b7b74eee605dcc",
+        "files": 26
+      },
+      "mutation": {
+        "path": "internal/discount/format.go",
+        "beforeSha256": "890ff3a45e271a056090e77e1ef8c3e8cbdcaea35dcd525725fe026a8a8df3ea",
+        "afterSha256": "7bf43551b8a63777f5b34262e300e1a55a8844ee4c2ae883356a7c3b0e60f57f"
+      },
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 3,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "OK",
+          "durationMs": 685,
+          "detail": ""
+        },
+        {
+          "name": "mutate",
+          "status": "OK",
+          "durationMs": 1,
+          "detail": ""
+        },
+        {
+          "name": "challenged",
+          "status": "OK",
+          "durationMs": 168,
+          "detail": ""
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 1,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "inject-os-exec:baseline",
+        "policyId": "no-network-imports",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": 2,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      },
+      "challenged": {
+        "id": "inject-os-exec:challenged",
+        "policyId": "no-network-imports",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": 2,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      }
+    }
+  ],
+  "observations": [
+    {
+      "id": "import-guard",
+      "kind": "baseline",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/importguard",
+        "-policy",
+        "no-network-imports",
+        "-forbid",
+        "net,net/http",
+        "internal"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.713532Z",
+      "finishedAt": "2026-11-16T02:45:42.392244Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    },
+    {
+      "id": "import-guard",
+      "kind": "challenged",
+      "program": "go",
+      "args": [
+        "run",
+        "./tools/importguard",
+        "-policy",
+        "no-network-imports",
+        "-forbid",
+        "net,net/http",
+        "internal"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:42.401269Z",
+      "finishedAt": "2026-11-16T02:45:42.560795Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-network-imports\",\"inspected\":2,\"findings\":[]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/opt/homebrew/bin/go",
+        "sha256": "548608a910c46de32c65a3934f461b1787acf6ddd371044826068d8503b8509b"
+      },
+      "timeoutSeconds": 120,
+      "envAllowlist": [
+        "PATH",
+        "HOME"
+      ]
+    }
+  ],
+  "targetCount": 1,
+  "decision": "REJECT",
+  "diagnostics": [
+    {
+      "code": "PROOF_UNPROVEN",
+      "message": "inject-os-exec: guard passed after mutation"
+    }
+  ],
+  "artifacts": []
+}

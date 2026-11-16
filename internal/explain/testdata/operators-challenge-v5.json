@@ -1,0 +1,586 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha5",
+  "runId": "7f670394613de489d108f8a6c2f8b12c",
+  "action": "challenge",
+  "target": ".",
+  "harness": "builtin-operators",
+  "configDigest": "sha256:3554adeab721acec7d8322ea04ecfe492a5dba952039c22da86ef6cef5a8126a",
+  "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:45:41.631702Z",
+  "finishedAt": "2026-11-16T02:45:41.680204Z",
+  "durationMs": 48,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha4",
+    "warnings": []
+  },
+  "policies": [
+    {
+      "id": "trailing-whitespace",
+      "allowEmpty": false
+    },
+    {
+      "id": "line-endings",
+      "allowEmpty": false
+    },
+    {
+      "id": "synthetic-secret",
+      "allowEmpty": false
+    }
+  ],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [
+      "spacing",
+      "line-ending",
+      "leaked-token"
+    ],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "spacing",
+      "kind": "challenge",
+      "status": "PROVEN",
+      "startedAt": "2026-11-16T02:45:41.631707Z",
+      "finishedAt": "2026-11-16T02:45:41.648402Z"
+    },
+    {
+      "id": "line-ending",
+      "kind": "challenge",
+      "status": "PROVEN",
+      "startedAt": "2026-11-16T02:45:41.648405Z",
+      "finishedAt": "2026-11-16T02:45:41.664001Z"
+    },
+    {
+      "id": "leaked-token",
+      "kind": "challenge",
+      "status": "PROVEN",
+      "startedAt": "2026-11-16T02:45:41.664003Z",
+      "finishedAt": "2026-11-16T02:45:41.680202Z"
+    }
+  ],
+  "steps": [],
+  "checks": [],
+  "proofs": [
+    {
+      "id": "spacing",
+      "policyId": "trailing-whitespace",
+      "guardId": "whitespace",
+      "target": "notes.txt",
+      "faultId": "fault-350b6a592e252af1",
+      "evidenceStrength": "strong",
+      "status": "PROVEN",
+      "reason": "guard_detected",
+      "reasonCategory": "result",
+      "detail": "details withheld",
+      "sourceSnapshot": {
+        "sha256": "e441d3ca08a32261adaee44fac53dcc3c9b0f1f42dcbaad8cdf61cb83923a495",
+        "files": 7
+      },
+      "mutation": {
+        "path": "notes.txt",
+        "beforeSha256": "6a040607a71ed12071b8d4b3d618c63cffdcd55dcedec77c818ee8aca70d01b8",
+        "afterSha256": "aeebf3dfb22cb61009748297737dc9bcc3da22e8d8dc5ff6ba0762262f39f8cf"
+      },
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 1,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "mutate",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        },
+        {
+          "name": "challenged",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "spacing:baseline",
+        "policyId": "trailing-whitespace",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": 1,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      },
+      "challenged": {
+        "id": "spacing:challenged",
+        "policyId": "trailing-whitespace",
+        "providerId": "invaris-command",
+        "status": "FAIL",
+        "inspected": 1,
+        "findings": [
+          {
+            "policyId": "trailing-whitespace",
+            "ruleId": "trailing-whitespace",
+            "path": "notes.txt",
+            "message": ""
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "COMMAND_FAILED",
+            "message": "details withheld"
+          }
+        ],
+        "exitCode": 1
+      }
+    },
+    {
+      "id": "line-ending",
+      "policyId": "line-endings",
+      "guardId": "crlf",
+      "target": "lines.txt",
+      "faultId": "fault-2ffadbcf497842a3",
+      "evidenceStrength": "strong",
+      "status": "PROVEN",
+      "reason": "guard_detected",
+      "reasonCategory": "result",
+      "detail": "details withheld",
+      "sourceSnapshot": {
+        "sha256": "e441d3ca08a32261adaee44fac53dcc3c9b0f1f42dcbaad8cdf61cb83923a495",
+        "files": 7
+      },
+      "mutation": {
+        "path": "lines.txt",
+        "beforeSha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f",
+        "afterSha256": "7fb0df98f02f6cec71181a2ef29544a158e70157cc9bc6107c968d5ceb6aa45b"
+      },
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "OK",
+          "durationMs": 6,
+          "detail": ""
+        },
+        {
+          "name": "mutate",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        },
+        {
+          "name": "challenged",
+          "status": "OK",
+          "durationMs": 6,
+          "detail": ""
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "line-ending:baseline",
+        "policyId": "line-endings",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": 1,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      },
+      "challenged": {
+        "id": "line-ending:challenged",
+        "policyId": "line-endings",
+        "providerId": "invaris-command",
+        "status": "FAIL",
+        "inspected": 1,
+        "findings": [
+          {
+            "policyId": "line-endings",
+            "ruleId": "line-endings",
+            "path": "lines.txt",
+            "message": ""
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "COMMAND_FAILED",
+            "message": "details withheld"
+          }
+        ],
+        "exitCode": 1
+      }
+    },
+    {
+      "id": "leaked-token",
+      "policyId": "synthetic-secret",
+      "guardId": "secrets",
+      "target": "sample.env",
+      "faultId": "fault-64f60df43f708465",
+      "evidenceStrength": "strong",
+      "status": "PROVEN",
+      "reason": "guard_detected",
+      "reasonCategory": "result",
+      "detail": "details withheld",
+      "sourceSnapshot": {
+        "sha256": "e441d3ca08a32261adaee44fac53dcc3c9b0f1f42dcbaad8cdf61cb83923a495",
+        "files": 7
+      },
+      "mutation": {
+        "path": "sample.env",
+        "beforeSha256": "ada9adb927074e9652576205e7ed4611800a3554a1cf289723033b17dd302d70",
+        "afterSha256": "9c27a497c7cbcc1766d041ca87538b37a9ba52fd2cdd27c849d50c8738e5f7d0"
+      },
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 1,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "mutate",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        },
+        {
+          "name": "challenged",
+          "status": "OK",
+          "durationMs": 6,
+          "detail": ""
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 0,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "leaked-token:baseline",
+        "policyId": "synthetic-secret",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": 1,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      },
+      "challenged": {
+        "id": "leaked-token:challenged",
+        "policyId": "synthetic-secret",
+        "providerId": "invaris-command",
+        "status": "FAIL",
+        "inspected": 1,
+        "findings": [
+          {
+            "policyId": "synthetic-secret",
+            "ruleId": "synthetic-secret",
+            "path": "sample.env",
+            "message": ""
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "COMMAND_FAILED",
+            "message": "details withheld"
+          }
+        ],
+        "exitCode": 1
+      }
+    }
+  ],
+  "observations": [
+    {
+      "id": "whitespace",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.63313Z",
+      "finishedAt": "2026-11-16T02:45:41.640172Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "whitespace",
+      "kind": "challenged",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.641066Z",
+      "finishedAt": "2026-11-16T02:45:41.647745Z",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "details withheld"
+        }
+      ],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "crlf",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.649496Z",
+      "finishedAt": "2026-11-16T02:45:41.655921Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "crlf",
+      "kind": "challenged",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.656775Z",
+      "finishedAt": "2026-11-16T02:45:41.663438Z",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "details withheld"
+        }
+      ],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "secrets",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.665201Z",
+      "finishedAt": "2026-11-16T02:45:41.672093Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "secrets",
+      "kind": "challenged",
+      "program": "sh",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.672984Z",
+      "finishedAt": "2026-11-16T02:45:41.679597Z",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "details withheld"
+        }
+      ],
+      "executable": {
+        "path": "<withheld>",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 3,
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": [],
+  "engineVersion": "v0.3.1-0.20261116024432-6d698e15f0e3",
+  "mutationMetadata": [
+    {
+      "evidenceId": "spacing",
+      "operator": "trailing-whitespace",
+      "operatorVersion": "1",
+      "target": "notes.txt",
+      "preimageSha256": "6a040607a71ed12071b8d4b3d618c63cffdcd55dcedec77c818ee8aca70d01b8",
+      "application": "APPLIED",
+      "beforeSha256": "6a040607a71ed12071b8d4b3d618c63cffdcd55dcedec77c818ee8aca70d01b8",
+      "afterSha256": "aeebf3dfb22cb61009748297737dc9bcc3da22e8d8dc5ff6ba0762262f39f8cf",
+      "expected": {
+        "guardId": "whitespace",
+        "policyId": "trailing-whitespace",
+        "ruleId": "trailing-whitespace",
+        "path": "notes.txt"
+      },
+      "reproductionId": "sha256:216d7183a45ee97a43b59f4143cb75d607c258e6de35ac6b1a55982a07257d04"
+    },
+    {
+      "evidenceId": "line-ending",
+      "operator": "crlf-injection",
+      "operatorVersion": "1",
+      "target": "lines.txt",
+      "preimageSha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f",
+      "application": "APPLIED",
+      "beforeSha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f",
+      "afterSha256": "7fb0df98f02f6cec71181a2ef29544a158e70157cc9bc6107c968d5ceb6aa45b",
+      "expected": {
+        "guardId": "crlf",
+        "policyId": "line-endings",
+        "ruleId": "line-endings",
+        "path": "lines.txt"
+      },
+      "reproductionId": "sha256:ca020ea2113afccb36c17e8caa8340957f2a272ce2538c5d3af35fe2fd624ff5"
+    },
+    {
+      "evidenceId": "leaked-token",
+      "operator": "secret-leak-injection",
+      "operatorVersion": "1",
+      "target": "sample.env",
+      "preimageSha256": "ada9adb927074e9652576205e7ed4611800a3554a1cf289723033b17dd302d70",
+      "fixture": "invaris-test-token-v1",
+      "application": "APPLIED",
+      "beforeSha256": "ada9adb927074e9652576205e7ed4611800a3554a1cf289723033b17dd302d70",
+      "afterSha256": "9c27a497c7cbcc1766d041ca87538b37a9ba52fd2cdd27c849d50c8738e5f7d0",
+      "expected": {
+        "guardId": "secrets",
+        "policyId": "synthetic-secret",
+        "ruleId": "synthetic-secret",
+        "path": "sample.env"
+      },
+      "reproductionId": "sha256:39293bb426ba13c4e101aa185bff7138c3fd472b1202dae77aa8c89d9b59a09b"
+    }
+  ],
+  "commandDigests": [
+    {
+      "observationId": "whitespace",
+      "sha256": "sha256:26ce75ec67eb2806d1ea1aa5305a7a4f5432325462a8d93f29dc7eb1802561c5"
+    },
+    {
+      "observationId": "whitespace",
+      "sha256": "sha256:26ce75ec67eb2806d1ea1aa5305a7a4f5432325462a8d93f29dc7eb1802561c5"
+    },
+    {
+      "observationId": "crlf",
+      "sha256": "sha256:19ceceada8da075015f4b98a9a5738dad7bd3198e480f212084b77baab8130df"
+    },
+    {
+      "observationId": "crlf",
+      "sha256": "sha256:19ceceada8da075015f4b98a9a5738dad7bd3198e480f212084b77baab8130df"
+    },
+    {
+      "observationId": "secrets",
+      "sha256": "sha256:fe12fc669bee87dbc52a037c4293e6a99ebed01ad04d15c485642cb054ecc329"
+    },
+    {
+      "observationId": "secrets",
+      "sha256": "sha256:fe12fc669bee87dbc52a037c4293e6a99ebed01ad04d15c485642cb054ecc329"
+    }
+  ]
+}
