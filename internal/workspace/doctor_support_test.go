@@ -57,13 +57,13 @@ func TestCheckCopyableMatchesPrepare(t *testing.T) {
 			if err := os.Symlink("real", filepath.Join(dir, "adapters/x/node_modules/.bin/y")); err != nil {
 				t.Fatal(err)
 			}
-			return "symlink not permitted: adapters/x/node_modules/.bin/y"
+			return "symlink not permitted: adapters/x/node_modules/.bin/y" + symlinkHint
 		},
 		"too many entries": func(t *testing.T, dir string) string {
 			for i := 0; i < MaxEntries+1; i++ {
 				write(t, dir, "f"+strconv.Itoa(i), "", 0o644)
 			}
-			return "workspace exceeds 2000 entries"
+			return limitError(MaxEntries).Error()
 		},
 		"exactly the entry limit": func(t *testing.T, dir string) string {
 			for i := 0; i < MaxEntries; i++ {

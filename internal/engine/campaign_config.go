@@ -9,9 +9,11 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
 // CampaignVersion is the campaign input contract.
@@ -37,6 +39,10 @@ type Campaign struct {
 	// Tools are version commands run once in the snapshot before any attempt.
 	// Their output is recorded for provenance and never affects the decision.
 	Tools []Command
+	// Workspace narrows the campaign snapshot: every harness's excluded paths
+	// and dependencies, relative to the campaign root, and the largest entry
+	// bound any harness declares.
+	Workspace workspace.Options
 }
 
 // CampaignExperiment is one campaign entry with its loaded, validated harness.
@@ -166,6 +172,12 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 		}
 		x := CampaignExperiment{ID: e.ID, Kind: domain.ExperimentKind(e.Kind), Harness: e.Harness, Dir: path.Dir(e.Harness),
 			HarnessDigest: spec.ConfigDigest, Repeat: e.Repeat, Spec: spec}
+		// Attempts copy the campaign snapshot, which holds no dependencies,
+		// so they link dependencies from the original harness directory.
+		if len(spec.Workspace.Dependencies) > 0 {
+			x.Spec.Workspace.DependencySource = filepath.Join(root, filepath.FromSlash(x.Dir))
+		}
+		c.Workspace = mergeWorkspace(c.Workspace, x.Dir, spec.Workspace)
 		switch x.Kind {
 		case domain.KindMutation:
 			if e.ExperimentID == nil || e.ChallengeID != nil {
@@ -208,7 +220,28 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 	if c.Tools, err = campaignTools(in.Tools); err != nil {
 		return Campaign{}, err
 	}
+	if err := c.Workspace.Validate(); err != nil {
+		return Campaign{}, fmt.Errorf("combined workspace options: %w", err)
+	}
 	return c, nil
+}
+
+// mergeWorkspace adds one harness's workspace options, declared relative to
+// its directory dir, to the campaign snapshot options. Dependencies become
+// excluded paths: the snapshot copies none of them and links none.
+func mergeWorkspace(into workspace.Options, dir string, o workspace.Options) workspace.Options {
+	into.MaxEntries = max(into.MaxEntries, o.MaxEntries)
+	for _, list := range [][]string{o.Exclude, o.Dependencies} {
+		for _, p := range list {
+			if dir != "." {
+				p = dir + "/" + p
+			}
+			if !slices.Contains(into.Exclude, p) {
+				into.Exclude = append(into.Exclude, p)
+			}
+		}
+	}
+	return into
 }
 
 // campaignTools validates the version commands with the rules that apply to

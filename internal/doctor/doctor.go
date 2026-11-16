@@ -165,8 +165,8 @@ func Inspect(harnessPath string) Diagnosis {
 
 	if len(edits) == 0 {
 		i.add("workspace.copy", Skipped, "no challenge or experiment prepares a workspace")
-	} else if err := workspace.CheckCopyable(dir); err != nil {
-		i.add("workspace.copy", Fail, "harness directory cannot be copied into a workspace: %s (limits: %d entries, %d bytes per file)", err, workspace.MaxEntries, workspace.MaxFileBytes)
+	} else if err := workspace.CheckCopyableWith(dir, spec.Workspace); err != nil {
+		i.add("workspace.copy", Fail, "harness directory cannot be copied into a workspace: %s (limits: %d entries, %d bytes per file)", err, spec.Workspace.Limit(), workspace.MaxFileBytes)
 	} else {
 		i.add("workspace.copy", Pass, "the harness directory can be copied into a workspace")
 	}

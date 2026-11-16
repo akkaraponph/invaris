@@ -51,6 +51,7 @@ type specV4 struct {
 	Steps                []Command       `json:"steps,omitempty"`
 	Guards               []guardV2       `json:"guards,omitempty"`
 	Challenges           []challengeV4   `json:"challenges,omitempty"`
+	Workspace            *workspaceWire  `json:"workspace,omitempty"`
 }
 
 func decodeV4(raw []byte) (Specification, error) {
@@ -97,5 +98,10 @@ func decodeV4(raw []byte) (Specification, error) {
 	if s.Challenges == nil && in.Challenges != nil {
 		s.Challenges = []Challenge{}
 	}
-	return s, nil
+	s.Workspace = in.Workspace.options()
+	files := make([]string, 0, len(s.Challenges))
+	for _, c := range s.Challenges {
+		files = append(files, c.File)
+	}
+	return s, s.validateWorkspace(files...)
 }

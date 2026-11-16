@@ -151,6 +151,30 @@ Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"
 
 Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.
 
+## Workspace options
+
+`mutate` and `challenge` run in a disposable copy of the harness directory. By default the copier refuses symbolic links and stops at 2000 entries, so a Node project with `node_modules` cannot be copied as is. A v1alpha3 mutation harness and a v1alpha4 challenge harness accept an optional `workspace` block, with every path relative to the harness directory:
+
+```json
+"workspace": {
+  "dependencies": ["node_modules"],
+  "exclude": [".next", "coverage"],
+  "maxEntries": 10000
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `dependencies` | Top-level directory names that are not copied. Each one is linked beside the copy, in its parent directory, and points at the same directory in the source. Resolvers that walk up the tree, such as Node and Vite, find it; the copy holds no link of its own, and a cache a tool creates at `node_modules/.vite` inside the copy stays in the copy. Each dependency must exist as a directory. |
+| `exclude` | Canonical relative paths that are not copied and are left out of every snapshot. Anything a command creates or changes at or below them is not a `workspace_changed`. Use this for build output and tool caches, never for sources a test reads. |
+| `maxEntries` | Entry bound for the copy and its snapshots, from 1 to 200000. The default is 2000. |
+
+A mutation target or challenge file cannot sit in an excluded path or a dependency. Dependencies and exclusions are outside the integrity check: a command can change them, or write through a dependency link into the source, without the run noticing. This trades part of the integrity guarantee for the ability to run the project, so keep the lists narrow. The harness digest in every report pins these options.
+
+When a stage changes the workspace, the stage detail lists up to 20 changed paths, marked `+` (added), `-` (removed) or `~` (changed). For example, `workspace manifest changed: +node_modules/.vite/deps` points straight at the cache to exclude.
+
+In a campaign, the snapshot leaves out every harness's exclusions and dependencies, each taken relative to its harness directory, and uses the largest `maxEntries`. Attempts link dependencies from the original harness directory, because the snapshot does not contain them.
+
 ## Campaign file
 
 See [Campaigns](campaigns.md) for behavior and examples.

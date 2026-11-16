@@ -30,7 +30,7 @@ import (
 // has its own workspace; commands that share caches, ports or other external
 // state can affect each other, which a sequential run (1) avoids.
 func RunCampaign(ctx context.Context, c Campaign, selected []bool, only []string, parallel int) evidence.CampaignReport {
-	return runCampaign(ctx, c, selected, only, parallel, prepareFunc(ctx), (*workspace.Workspace).Close)
+	return runCampaign(ctx, c, selected, only, parallel, prepareFunc(ctx, c.Workspace), (*workspace.Workspace).Close)
 }
 
 // MaxParallel bounds --parallel.
@@ -97,7 +97,7 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 		diagnose("SNAPSHOT_FAILED", err.Error())
 		notStarted(prepareFailure(err), "the campaign snapshot could not be prepared")
 	} else {
-		digest, roots, err := freezeSnapshot(c, snap.Root, &r.SourceIdentity)
+		digest, roots, err := freezeSnapshot(c, snap.Root, c.Workspace, &r.SourceIdentity)
 		stage(evidence.StageSnapshot, start, err)
 		if err != nil {
 			diagnose("SNAPSHOT_FAILED", err.Error())
@@ -114,7 +114,7 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 		start = time.Now()
 		err = nil
 		if digest != "" { // no digest means the snapshot manifest was never read
-			if err = verifySnapshot(snap.Root, digest); err != nil {
+			if err = verifySnapshot(snap.Root, c.Workspace, digest); err != nil {
 				err = fmt.Errorf("snapshot changed before cleanup: %w", err)
 			}
 		}
@@ -140,8 +140,8 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 // directory an experiment evaluates, and checks that the campaign file and
 // every referenced harness inside the snapshot are the bytes that were loaded
 // and validated. It returns the whole-snapshot digest and the root digests.
-func freezeSnapshot(c Campaign, root string, id *evidence.SourceIdentity) (string, map[string]string, error) {
-	manifest, err := workspace.Snapshot(root)
+func freezeSnapshot(c Campaign, root string, opts workspace.Options, id *evidence.SourceIdentity) (string, map[string]string, error) {
+	manifest, err := workspace.SnapshotWith(root, opts)
 	if err != nil {
 		return "", nil, err
 	}
@@ -174,8 +174,8 @@ func freezeSnapshot(c Campaign, root string, id *evidence.SourceIdentity) (strin
 	return digest, roots, errors.Join(errs...)
 }
 
-func verifySnapshot(root, digest string) error {
-	manifest, err := workspace.Snapshot(root)
+func verifySnapshot(root string, opts workspace.Options, digest string) error {
+	manifest, err := workspace.SnapshotWith(root, opts)
 	if err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func runAttempts(ctx context.Context, c Campaign, selected []bool, parallel int,
 			case wasTainted:
 				a.Execution, a.Reason, a.Detail = domain.Refused, domain.ReasonWorkspaceChanged, "not started: the campaign snapshot changed earlier"
 			default:
-				if err := verifySnapshot(root, digest); err != nil {
+				if err := verifySnapshot(root, c.Workspace, digest); err != nil {
 					a.Execution, a.Reason, a.Detail = domain.Refused, domain.ReasonWorkspaceChanged, "not started: "+err.Error()
 					notes[k] = [2]string{"SNAPSHOT_CHANGED", a.ID + ": " + err.Error()}
 				} else {
@@ -332,7 +332,7 @@ func runAttempt(ctx context.Context, x CampaignExperiment, root, digest string, 
 	var snapshot *domain.SourceSnapshot
 	switch x.Kind {
 	case domain.KindMutation:
-		m, observations := runMutation(ctx, x.Spec, root, prepareFunc(ctx), (*workspace.Workspace).Close)
+		m, observations := runMutation(ctx, x.Spec, root, prepareFunc(ctx, x.Spec.Workspace), (*workspace.Workspace).Close)
 		m.EngineVersion = engineVersion()
 		a.Mutation, a.Observations = &m, observations
 		v := string(m.Verdict)

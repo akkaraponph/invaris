@@ -23,22 +23,123 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
 
 const (
-	// MaxEntries bounds the files and directories copied (and snapshotted).
+	// MaxEntries is the default bound on the files and directories copied
+	// (and snapshotted). Options.MaxEntries raises it up to MaxEntriesCeiling.
 	MaxEntries = 2000
+	// MaxEntriesCeiling is the largest Options.MaxEntries accepted.
+	MaxEntriesCeiling = 200000
 	// MaxFileBytes bounds each copied or mutated file.
 	MaxFileBytes = 10 << 20
+	// dependencyDir names the workspace root inside its container when
+	// dependencies are linked beside it.
+	dependencyDir = "workspace"
 )
+
+// Options narrows what is copied into, and compared within, a workspace. The
+// zero value is the default copier.
+//
+// Exclude lists canonical relative paths that are neither copied nor
+// snapshotted: anything at or below them is outside the integrity check, so
+// commands may create or change files there (build output, tool caches).
+//
+// Dependencies lists top-level directory names (such as node_modules) that
+// are not copied either. Each is linked, by a symbolic link, into the parent
+// of the workspace root, pointing at the same name in DependencySource, so
+// resolvers that walk up the directory tree (Node, Vite) find them while the
+// copy itself holds no link into the source. They are implicitly excluded.
+// Commands can still write through the link; like the rest of the workspace
+// this is not a sandbox.
+type Options struct {
+	MaxEntries   int
+	Exclude      []string
+	Dependencies []string
+	// DependencySource is the directory Dependencies are linked from. Empty
+	// means the directory being copied.
+	DependencySource string
+}
+
+// Validate reports the first unusable option.
+func (o Options) Validate() error {
+	if o.MaxEntries < 0 || o.MaxEntries > MaxEntriesCeiling {
+		return fmt.Errorf("workspace.maxEntries must be between 1 and %d", MaxEntriesCeiling)
+	}
+	seen := map[string]bool{}
+	for _, p := range o.Exclude {
+		if !ValidPath(p) {
+			return fmt.Errorf("workspace.exclude entry %q is not a canonical relative path", p)
+		}
+		if seen[p] {
+			return fmt.Errorf("workspace.exclude entry %q is duplicated", p)
+		}
+		seen[p] = true
+	}
+	for _, d := range o.Dependencies {
+		if !ValidPath(d) || strings.Contains(d, "/") || d == ".git" || d == ".invaris" {
+			return fmt.Errorf("workspace.dependencies entry %q must be a single top-level directory name", d)
+		}
+		if seen[d] {
+			return fmt.Errorf("workspace.dependencies entry %q is duplicated or also excluded", d)
+		}
+		seen[d] = true
+	}
+	return nil
+}
+
+// Limit is the effective entry bound.
+func (o Options) Limit() int {
+	if o.MaxEntries > 0 {
+		return o.MaxEntries
+	}
+	return MaxEntries
+}
+
+// Excludes reports whether the slash path rel is at or below an excluded
+// path or a dependency.
+func (o Options) Excludes(rel string) bool {
+	for _, list := range [][]string{o.Exclude, o.Dependencies} {
+		for _, x := range list {
+			if rel == x || strings.HasPrefix(rel, x+"/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Equal reports whether two option sets declare the same workspace.
+func (o Options) Equal(p Options) bool {
+	return o.Limit() == p.Limit() && slices.Equal(o.Exclude, p.Exclude) && slices.Equal(o.Dependencies, p.Dependencies)
+}
+
+// symlinkHint says how to keep a linked tree, such as node_modules, out of
+// the copy.
+const symlinkHint = " (declare its top-level directory in workspace.dependencies, or exclude it with workspace.exclude)"
+
+// limitError names the bound and how to change it.
+func limitError(limit int) error {
+	return fmt.Errorf("workspace exceeds %d entries (exclude generated directories with workspace.exclude or workspace.dependencies, or raise workspace.maxEntries)", limit)
+}
 
 // Workspace is a disposable copy of a source checkout. Root is canonical (no
 // symbolic links in the path) and is never the source.
 type Workspace struct {
-	Root   string
-	source string
+	Root    string
+	Options Options
+	source  string
+	// container is the temporary directory Close removes: Root itself, or
+	// Root's parent when dependencies are linked beside Root.
+	container string
+}
+
+// Snapshot records the workspace manifest under its options.
+func (w *Workspace) Snapshot() (map[string]Entry, error) {
+	return SnapshotWith(w.Root, w.Options)
 }
 
 // Mutation describes one replacement. FaultID is left empty by Replace: it is
@@ -59,6 +160,14 @@ func Prepare(source string) (*Workspace, error) {
 // error wraps ctx.Err(). Cancellation of an already-prepared workspace is the
 // caller's concern (Close still removes it).
 func PrepareContext(ctx context.Context, source string) (*Workspace, error) {
+	return PrepareWith(ctx, source, Options{})
+}
+
+// PrepareWith is PrepareContext under opts.
+func PrepareWith(ctx context.Context, source string, opts Options) (*Workspace, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
@@ -73,7 +182,7 @@ func PrepareContext(ctx context.Context, source string) (*Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	w := &Workspace{source: src}
+	w := &Workspace{source: src, Options: opts}
 	fail := func(err error) (*Workspace, error) {
 		if rerr := os.RemoveAll(tmp); rerr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial workspace: %w", rerr))
@@ -87,17 +196,51 @@ func PrepareContext(ctx context.Context, source string) (*Workspace, error) {
 	if root == src || strings.HasPrefix(root+string(filepath.Separator), src+string(filepath.Separator)) {
 		return fail(errors.New("temporary directory is inside the source checkout"))
 	}
+	w.container = root
+	if len(opts.Dependencies) > 0 {
+		from := opts.DependencySource
+		if from == "" {
+			from = src
+		}
+		if err := linkDependencies(from, root, opts.Dependencies); err != nil {
+			return fail(err)
+		}
+		root = filepath.Join(root, dependencyDir)
+		if err := os.Mkdir(root, 0o700); err != nil {
+			return fail(err)
+		}
+	}
 	w.Root = root
 	count := 0
-	if err := copyTree(ctx, src, root, &count); err != nil {
+	if err := copyTree(ctx, src, root, "", opts, &count); err != nil {
 		return fail(fmt.Errorf("copy workspace: %w", err))
 	}
 	return w, nil
 }
 
+// linkDependencies links each declared dependency directory of from into dir.
+// A dependency must exist in from as a directory (after resolving links).
+func linkDependencies(from, dir string, deps []string) error {
+	base, err := filepath.EvalSymlinks(from)
+	if err != nil {
+		return fmt.Errorf("resolve dependency source: %w", err)
+	}
+	for _, d := range deps {
+		target := filepath.Join(base, d)
+		info, err := os.Stat(target)
+		if err != nil || !info.IsDir() {
+			return fmt.Errorf("dependency %q is not a directory in %s", d, base)
+		}
+		if err := os.Symlink(target, filepath.Join(dir, d)); err != nil {
+			return fmt.Errorf("link dependency %q: %w", d, err)
+		}
+	}
+	return nil
+}
+
 // copyTree does not follow symbolic links: a link is refused, which keeps a
 // copy from escaping into (or exposing) files outside the checkout.
-func copyTree(ctx context.Context, src, dst string, count *int) error {
+func copyTree(ctx context.Context, src, dst, rel string, opts Options, count *int) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
@@ -106,11 +249,18 @@ func copyTree(ctx context.Context, src, dst string, count *int) error {
 		if entry.Name() == ".git" || entry.Name() == ".invaris" {
 			continue
 		}
+		name := entry.Name()
+		if rel != "" {
+			name = rel + "/" + name
+		}
+		if opts.Excludes(name) {
+			continue
+		}
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if *count++; *count > MaxEntries {
-			return fmt.Errorf("workspace exceeds %d entries", MaxEntries)
+		if *count++; *count > opts.Limit() {
+			return limitError(opts.Limit())
 		}
 		from, to := filepath.Join(src, entry.Name()), filepath.Join(dst, entry.Name())
 		info, err := entry.Info()
@@ -119,12 +269,12 @@ func copyTree(ctx context.Context, src, dst string, count *int) error {
 		}
 		switch {
 		case info.Mode()&os.ModeSymlink != 0:
-			return fmt.Errorf("symlink not permitted: %s", from)
+			return fmt.Errorf("symlink not permitted: %s%s", from, symlinkHint)
 		case info.IsDir():
 			if err := os.Mkdir(to, 0o700); err != nil {
 				return err
 			}
-			if err := copyTree(ctx, from, to, count); err != nil {
+			if err := copyTree(ctx, from, to, name, opts, count); err != nil {
 				return err
 			}
 		case !info.Mode().IsRegular() || info.Size() > MaxFileBytes:
@@ -191,13 +341,23 @@ func (w *Workspace) Close() error {
 	if w.Root == w.source || w.Root == string(filepath.Separator) {
 		return errors.New("refusing to remove the source checkout")
 	}
-	if err := os.RemoveAll(w.Root); err != nil {
+	dir := w.Root
+	if w.container != "" {
+		if w.container == w.source || w.container == string(filepath.Separator) {
+			return errors.New("refusing to remove the source checkout")
+		}
+		// RemoveAll removes the dependency links, not what they point to.
+		dir = w.container
+	}
+	if err := os.RemoveAll(dir); err != nil {
 		return fmt.Errorf("remove workspace: %w", err)
 	}
-	if _, err := os.Lstat(w.Root); err == nil {
-		return errors.New("workspace still exists after removal")
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("verify workspace removal: %w", err)
+	for _, p := range []string{w.Root, dir} {
+		if _, err := os.Lstat(p); err == nil {
+			return errors.New("workspace still exists after removal")
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("verify workspace removal: %w", err)
+		}
 	}
 	return nil
 }
@@ -302,6 +462,15 @@ func ResolveTarget(root, path string) (string, error) {
 // PrepareContext would refuse to copy it, applying the same rules as
 // copyTree. Paths in errors are relative to source. Nothing is created.
 func CheckCopyable(source string) error {
+	return CheckCopyableWith(source, Options{})
+}
+
+// CheckCopyableWith is CheckCopyable under opts, including that every
+// declared dependency exists as a directory.
+func CheckCopyableWith(source string, opts Options) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	src, err := filepath.EvalSymlinks(source)
 	if err != nil {
 		return fmt.Errorf("resolve source: %w", err)
@@ -309,11 +478,20 @@ func CheckCopyable(source string) error {
 	if info, err := os.Stat(src); err != nil || !info.IsDir() {
 		return errors.New("source is not a directory")
 	}
+	from := opts.DependencySource
+	if from == "" {
+		from = src
+	}
+	for _, d := range opts.Dependencies {
+		if info, err := os.Stat(filepath.Join(from, d)); err != nil || !info.IsDir() {
+			return fmt.Errorf("dependency %q is not a directory", d)
+		}
+	}
 	count := 0
-	return checkTree(src, "", &count)
+	return checkTree(src, "", opts, &count)
 }
 
-func checkTree(dir, rel string, count *int) error {
+func checkTree(dir, rel string, opts Options, count *int) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -322,12 +500,15 @@ func checkTree(dir, rel string, count *int) error {
 		if entry.Name() == ".git" || entry.Name() == ".invaris" {
 			continue
 		}
-		if *count++; *count > MaxEntries {
-			return fmt.Errorf("workspace exceeds %d entries", MaxEntries)
-		}
 		name := entry.Name()
 		if rel != "" {
 			name = rel + "/" + name
+		}
+		if opts.Excludes(name) {
+			continue
+		}
+		if *count++; *count > opts.Limit() {
+			return limitError(opts.Limit())
 		}
 		info, err := entry.Info()
 		if err != nil {
@@ -335,9 +516,9 @@ func checkTree(dir, rel string, count *int) error {
 		}
 		switch {
 		case info.Mode()&os.ModeSymlink != 0:
-			return fmt.Errorf("symlink not permitted: %s", name)
+			return fmt.Errorf("symlink not permitted: %s%s", name, symlinkHint)
 		case info.IsDir():
-			if err := checkTree(filepath.Join(dir, entry.Name()), name, count); err != nil {
+			if err := checkTree(filepath.Join(dir, entry.Name()), name, opts, count); err != nil {
 				return err
 			}
 		case !info.Mode().IsRegular() || info.Size() > MaxFileBytes:
@@ -439,6 +620,12 @@ type Entry struct {
 
 // Snapshot records every entry under root without following symbolic links.
 func Snapshot(root string) (map[string]Entry, error) {
+	return SnapshotWith(root, Options{})
+}
+
+// SnapshotWith is Snapshot under opts: excluded paths and dependencies are
+// skipped, and the entry bound is opts.Limit().
+func SnapshotWith(root string, opts Options) (map[string]Entry, error) {
 	out := map[string]Entry{}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -447,12 +634,18 @@ func Snapshot(root string) (map[string]Entry, error) {
 		if p == root {
 			return nil
 		}
-		if len(out) >= MaxEntries {
-			return fmt.Errorf("workspace exceeds %d entries", MaxEntries)
-		}
 		rel, err := filepath.Rel(root, p)
 		if err != nil {
 			return err
+		}
+		if opts.Excludes(filepath.ToSlash(rel)) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if len(out) >= opts.Limit() {
+			return limitError(opts.Limit())
 		}
 		info, err := d.Info()
 		if err != nil {
@@ -484,6 +677,30 @@ func Snapshot(root string) (map[string]Entry, error) {
 		return nil
 	})
 	return out, err
+}
+
+// DescribeChanges lists up to limit changed paths between manifests, for
+// error messages: "+path" added, "-path" removed, "~path" changed.
+func DescribeChanges(a, b map[string]Entry, limit int) string {
+	changed := Diff(a, b)
+	parts := make([]string, 0, min(len(changed), limit)+1)
+	for i, p := range changed {
+		if i == limit {
+			parts = append(parts, fmt.Sprintf("and %d more", len(changed)-limit))
+			break
+		}
+		_, inA := a[p]
+		_, inB := b[p]
+		switch {
+		case !inA:
+			parts = append(parts, "+"+p)
+		case !inB:
+			parts = append(parts, "-"+p)
+		default:
+			parts = append(parts, "~"+p)
+		}
+	}
+	return strings.Join(parts, ", ")
 }
 
 // Diff lists, sorted, the paths added, removed or changed between manifests.
