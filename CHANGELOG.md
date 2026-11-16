@@ -2,12 +2,12 @@
 
 ## 0.4.0
 
-Not yet released.
-
-Making the first useful experiment approachable. Default inputs, flags, report versions and verification exit codes are unchanged; everything below is additive. Build with Go 1.27.4 or later.
+Making the first useful experiment approachable. Configuration discovery and the `init` destination change as described below; existing root-level configurations remain supported. Report versions and verification exit codes are unchanged. Build with Go 1.27.4 or later.
 
 ### Added
 
+- New project configurations are created at `.invaris/invaris.json`. Commands prefer that path and fall back to a root-level configuration; `init` refuses to create a competing file when the legacy file exists. Campaigns also support configuration inside `.invaris`. See [authoring](docs/authoring.md).
+- An `invaris-cli` npm package is prepared for publication with the Linux and macOS executables and command provider. It requires Node.js 22.14 or later; see [installation](docs/installation.md#npm-installation-after-publication) for availability and npm commands.
 - `invaris explain [--format text|json] REPORT` reads a saved report offline, validates it with the rules that wrote it, and says for each result whether the fault was `detected`, `missed`, `inconclusive`, `excluded` or not run, with the meaning and next step of its recorded reason and the limits of what the report shows. It runs nothing and refuses a tampered or unsupported report. See [diagnostics](docs/diagnostics.md).
 - `invaris doctor [--format text|json] [HARNESS]` inspects a harness's setup without running any of its commands: supported actions, whether the directory can be copied into a workspace, whether each program resolves in the PATH its command would use, allowlisted variables that are unset, targets, edit markers, built-in operator eligibility, pinned preimages and writable paths. Every check says it executed nothing. See [diagnostics](docs/diagnostics.md).
 - Schemas [`explanation-v1alpha1`](schemas/explanation-v1alpha1.schema.json) and [`doctor-v1alpha1`](schemas/doctor-v1alpha1.schema.json) for the JSON output of the two commands.

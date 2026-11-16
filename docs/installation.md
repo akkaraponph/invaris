@@ -11,24 +11,24 @@ The npm package is planned for a future release and is not yet available. After 
 Run the latest published version in a project with a harness:
 
 ```sh
-npx invaris@latest check
+npx --package=invaris-cli@latest invaris check
 ```
 
 For a project dependency, run the following in the project directory to install or update it:
 
 ```sh
-npm install --save-dev invaris@latest
+npm install --save-dev invaris-cli@latest
 npx invaris check
 ```
 
 For a global installation or update:
 
 ```sh
-npm install --global invaris@latest
+npm install --global invaris-cli@latest
 invaris check
 ```
 
-`@latest` requests the latest npm release. npm manages updates; there is no `invaris update` action. To return to an earlier npm version, install that version explicitly (for example, `npm install --save-dev invaris@X.Y.Z`, replacing `X.Y.Z` with a published version). npm updates do not replace separate archive installations. The provider is included and available to the CLI; harnesses must still allowlist `PATH` when required, as described below.
+`@latest` requests the latest npm release. npm manages updates; there is no `invaris update` action. To return to an earlier npm version, install that version explicitly (for example, `npm install --save-dev invaris-cli@X.Y.Z`, replacing `X.Y.Z` with a published version). npm updates do not replace separate archive installations. The provider is included and available to the CLI; harnesses must still allowlist `PATH` when required, as described below.
 
 ## Install into a specific folder
 

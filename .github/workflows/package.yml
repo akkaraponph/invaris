@@ -128,4 +128,4 @@ jobs:
           cd "${RUNNER_TEMP}/npm"
           shasum -a 256 -c SHA256SUMS
           cd "$GITHUB_WORKSPACE"
-          python scripts/verify-npm.py "$VERSION" "${RUNNER_TEMP}/dist" "${RUNNER_TEMP}/npm/invaris-${VERSION#v}.tgz"
+          python scripts/verify-npm.py "$VERSION" "${RUNNER_TEMP}/dist" "${RUNNER_TEMP}/npm/invaris-cli-${VERSION#v}.tgz"

@@ -108,6 +108,6 @@ jobs:
           cd "${RUNNER_TEMP}/npm"
           sha256sum -c SHA256SUMS
           cd "$GITHUB_WORKSPACE"
-          package="${RUNNER_TEMP}/npm/invaris-${TAG#v}.tgz"
+          package="${RUNNER_TEMP}/npm/invaris-cli-${TAG#v}.tgz"
           python scripts/verify-npm.py "$TAG" "${RUNNER_TEMP}/dist" "$package"
           npm publish "$package" --access public --ignore-scripts

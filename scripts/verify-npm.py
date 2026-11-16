@@ -29,7 +29,7 @@ def main():
         if len(members) != len(expected) or {member.name for member in members} != expected or any(not m.isfile() for m in members):
             raise ValueError("unexpected npm package contents")
         manifest = json.load(npm.extractfile("package/package.json"))
-        if manifest["name"] != "invaris" or manifest["version"] != version or manifest.get("repository", {}).get("url") != "git+https://github.com/refactorroom/invaris.git":
+        if manifest["name"] != "invaris-cli" or manifest["version"] != version or manifest.get("repository", {}).get("url") != "git+https://github.com/refactorroom/invaris.git":
             raise ValueError("npm package name, version or repository mismatch")
         for target in TARGETS:
             with tarfile.open(args.archives / f"invaris_{version}_{target}.tar.gz") as archive:
