@@ -49,9 +49,11 @@ func TestGuidanceHonesty(t *testing.T) {
 			t.Errorf("%s must say the evidence is weak: %q", r, g.Meaning)
 		}
 	}
+	// Guidance may point at `invaris doctor HARNESS`, which inspects setup
+	// without running anything; it must never be described as running checks.
 	for r, g := range guidance {
-		if strings.Contains(g.Next, "invaris doctor") && !strings.Contains(g.Next, "planned") {
-			t.Errorf("%s presents invaris doctor as available: %q", r, g.Next)
+		if strings.Contains(g.Next, "invaris doctor") && !strings.Contains(g.Next, "invaris doctor HARNESS") {
+			t.Errorf("%s names invaris doctor without its HARNESS argument: %q", r, g.Next)
 		}
 	}
 }

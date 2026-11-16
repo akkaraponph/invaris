@@ -73,7 +73,7 @@ var guidance = map[string]Guidance{
 	},
 	domain.ReasonPrepareFailed: {
 		Meaning: "The workspace copy could not be prepared, so the experiment did not run.",
-		Next:    "The copy refuses symbolic links, files over 10 MiB and more than 2000 entries, and the report withholds which one: remove or exclude such paths (an installed node_modules is typical), check disk space and permissions, then run again; `invaris doctor` is planned to check this.",
+		Next:    "The copy refuses symbolic links, files over 10 MiB and more than 2000 entries, and the report withholds which one: remove or exclude such paths (an installed node_modules is typical), check disk space and permissions, then run again; run `invaris doctor HARNESS` to find the offending path.",
 	},
 	domain.ReasonTimeout: {
 		Meaning: "A step exceeded its time limit and was stopped, so the check did not finish.",
@@ -85,7 +85,7 @@ var guidance = map[string]Guidance{
 	},
 	domain.ReasonMissingExecutable: {
 		Meaning: "The command's program could not be found, so the command did not run.",
-		Next:    "Check that the command's program is installed and that its envAllowlist includes PATH; `invaris doctor` is planned to inspect this once available.",
+		Next:    "Check that the command's program is installed and that its envAllowlist includes PATH; run `invaris doctor HARNESS` to inspect the setup without running anything.",
 	},
 	domain.ReasonOutputLimit: {
 		Meaning: "A command produced more output than the allowed limit and was stopped, so the check did not finish.",
