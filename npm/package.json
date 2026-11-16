@@ -1,0 +1,13 @@
+{
+  "name": "invaris",
+  "version": "0.0.0",
+  "description": "Invaris verification CLI",
+  "license": "Apache-2.0",
+  "repository": { "type": "git", "url": "git+https://github.com/refactorroom/invaris.git" },
+  "engines": { "node": ">=22.14.0" },
+  "bin": {
+    "invaris": "bin/invaris.js",
+    "invaris-command-provider": "bin/invaris-command-provider.js"
+  },
+  "files": ["bin", "lib", "platforms", "LICENSE", "README.md"]
+}

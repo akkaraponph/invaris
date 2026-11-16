@@ -10,6 +10,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/engine"
 	"github.com/akkaraponph/invaris/internal/evidence"
@@ -99,9 +100,9 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	// required by a v1alpha4 harness.
 	var report evidence.Report
 	if v5 || engine.RequiresV5(spec) {
-		report = engine.RunEvidenceV5(ctx, spec, filepath.Dir(absolute), action)
+		report = engine.RunEvidenceV5(ctx, spec, configfile.ProjectRoot(absolute), action)
 	} else {
-		report = engine.RunEvidence(ctx, spec, filepath.Dir(absolute), action)
+		report = engine.RunEvidence(ctx, spec, configfile.ProjectRoot(absolute), action)
 	}
 	data, err := evidence.Marshal(report)
 	if err != nil {
@@ -154,7 +155,7 @@ const evidenceV5Flag = "v1alpha5"
 // start with "--" are flags, so a harness file name that starts with a single
 // "-" keeps working as before. Problems are reported before anything runs.
 func actionArgs(action string, args []string) (format, file string, v5 bool, err error) {
-	format, file = formatJSON, "invaris.json"
+	format, file = formatJSON, configfile.DefaultPath("invaris.json")
 	seen := map[string]bool{}
 	seenFile := false
 	value := func(i int, flag string) (string, error) {

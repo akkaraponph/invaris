@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
@@ -29,11 +30,11 @@ const (
 var campaignIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 
 // Campaign is a validated invaris.campaign/v1alpha1 file. Root is the
-// canonical directory that holds the campaign file and every referenced
-// harness; it is the source copied into the campaign snapshot.
+// canonical project directory containing the campaign and its harnesses;
+// it is the source copied into the campaign snapshot.
 type Campaign struct {
 	Name, Root, ConfigDigest string
-	File                     string // base name of the campaign file
+	File                     string // campaign file path relative to Root
 	Experiments              []CampaignExperiment
 	Acceptance               domain.AcceptancePolicy
 	// Tools are version commands run once in the snapshot before any attempt.
@@ -47,7 +48,7 @@ type Campaign struct {
 
 // CampaignExperiment is one campaign entry with its loaded, validated harness.
 // ReferenceID is the mutation experiment ID or the challenge ID. Dir is the
-// harness's directory relative to the campaign root ("." for the root): the
+// harness execution root relative to the campaign root ("." for the root): the
 // experiment evaluates that directory, as `mutate` or `challenge` would.
 type CampaignExperiment struct {
 	ID            string
@@ -95,11 +96,15 @@ func LoadCampaign(path string) (Campaign, error) {
 	if err != nil {
 		return Campaign{}, err
 	}
-	root, err := filepath.EvalSymlinks(filepath.Dir(abs))
+	root, err := filepath.EvalSymlinks(configfile.ProjectRoot(abs))
 	if err != nil {
 		return Campaign{}, fmt.Errorf("campaign directory: %w", err)
 	}
-	file := filepath.Base(abs)
+	file, err := filepath.Rel(configfile.ProjectRoot(abs), abs)
+	if err != nil {
+		return Campaign{}, err
+	}
+	file = filepath.ToSlash(file)
 	if info, err := os.Lstat(filepath.Join(root, file)); err != nil {
 		return Campaign{}, err
 	} else if !info.Mode().IsRegular() {
@@ -159,6 +164,14 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 		if e.Repeat < 1 || e.Repeat > maxCampaignRepeat {
 			return Campaign{}, fmt.Errorf("experiment %s: repeat must be 1 to %d", e.ID, maxCampaignRepeat)
 		}
+		// Workspace campaign references are relative to .invaris; validate
+		// before joining so a parent segment cannot escape that directory.
+		if path.Dir(file) == configfile.WorkspaceDir {
+			if validatePath(e.Harness) != nil {
+				return Campaign{}, fmt.Errorf("harness %q must be a relative path inside the campaign directory", e.Harness)
+			}
+			e.Harness = path.Join(configfile.WorkspaceDir, e.Harness)
+		}
 		if err := campaignHarnessName(e.Harness, file); err != nil {
 			return Campaign{}, fmt.Errorf("experiment %s: %w", e.ID, err)
 		}
@@ -170,7 +183,7 @@ func decodeCampaign(raw []byte, root, file string) (Campaign, error) {
 			}
 			specs[e.Harness] = spec
 		}
-		x := CampaignExperiment{ID: e.ID, Kind: domain.ExperimentKind(e.Kind), Harness: e.Harness, Dir: path.Dir(e.Harness),
+		x := CampaignExperiment{ID: e.ID, Kind: domain.ExperimentKind(e.Kind), Harness: e.Harness, Dir: filepath.ToSlash(configfile.ProjectRoot(filepath.FromSlash(e.Harness))),
 			HarnessDigest: spec.ConfigDigest, Repeat: e.Repeat, Spec: spec}
 		// Attempts copy the campaign snapshot, which holds no dependencies,
 		// so they link dependencies from the original harness directory.
@@ -269,13 +282,14 @@ func campaignTools(in []Adapter) ([]Command, error) {
 }
 
 // campaignHarnessName accepts a canonical relative slash path inside the
-// campaign directory. Directories the snapshot skips cannot hold a harness.
+// campaign directory. A harness directly inside .invaris is configuration
+// metadata; other paths through directories the snapshot skips are refused.
 func campaignHarnessName(name, campaignFile string) error {
 	if validatePath(name) != nil {
 		return fmt.Errorf("harness %q must be a relative path inside the campaign directory", name)
 	}
-	for _, part := range strings.Split(name, "/") {
-		if part == ".git" || part == ".invaris" {
+	for i, part := range strings.Split(name, "/") {
+		if part == ".git" || (part == ".invaris" && (i != 0 || path.Dir(name) != ".invaris")) {
 			return fmt.Errorf("harness %q is inside a directory the snapshot excludes", name)
 		}
 	}

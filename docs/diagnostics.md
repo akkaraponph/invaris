@@ -10,7 +10,7 @@ A diagnostic never says that something passed when it was not performed. What `d
 invaris doctor [--format text|json] [harness.json]
 ```
 
-The default harness is `invaris.json` and the default format is `text`. Flags come before the harness path. `doctor` loads the harness with the same strict loader the other commands use, then inspects it. It starts no process: no step, guard, test, validation command or provider adapter is executed, and every check in the JSON has `"executed": false`.
+The default harness is `.invaris/invaris.json`, with `invaris.json` as a fallback when the workspace file is absent, and the default format is `text`. Flags come before the harness path. `doctor` loads the harness with the same strict loader the other commands use, then inspects it. A harness directly inside `.invaris` inspects its parent project directory. It starts no process: no step, guard, test, validation command or provider adapter is executed, and every check in the JSON has `"executed": false`.
 
 | Exit | Meaning |
 | --- | --- |

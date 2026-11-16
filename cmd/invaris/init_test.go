@@ -107,7 +107,7 @@ func TestInitCreatesValidConfigThatRefusesEmptyWork(t *testing.T) {
 	if code != 0 || !strings.HasPrefix(string(stdout), "created ") || !strings.Contains(stderr, "refuses") {
 		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
-	info, err := os.Stat(filepath.Join(dir, "invaris.json"))
+	info, err := os.Stat(filepath.Join(dir, ".invaris", "invaris.json"))
 	if err != nil || info.Mode().Perm()&0o077 != 0 {
 		t.Fatalf("config mode %v, %v", info.Mode(), err)
 	}
@@ -132,7 +132,7 @@ func TestInitGoPresetInSelectedPath(t *testing.T) {
 	if code != 0 || !strings.Contains(stderr, "go test ./...") {
 		t.Fatalf("code=%d stderr=%q", code, stderr)
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "invaris.json"))
+	data, err := os.ReadFile(filepath.Join(dir, ".invaris", "invaris.json"))
 	if err != nil || !strings.Contains(string(data), `"go-tests"`) || !strings.Contains(string(data), `"GOMODCACHE"`) {
 		t.Fatalf("go config: %s, %v", data, err)
 	}

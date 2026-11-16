@@ -1,5 +1,9 @@
 # Harness configuration
 
+## Configuration location
+
+The CLI defaults to `.invaris/invaris.json`, falling back to `invaris.json` in the current directory only when the workspace file is absent. An explicit path overrides discovery. For a harness directly inside `.invaris`, references to the “harness directory” below mean its parent project directory: all commands and project paths use that root. Other harness locations continue to use their containing directory. `invaris init` creates the workspace configuration; see [authoring](authoring.md#workspace-layout).
+
 A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports, or [`invaris.dev/v1alpha4`](#v1alpha4-built-in-operators) with built-in operators, which emits v1alpha5. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md). To create a starter harness, see [`invaris init`](authoring.md#create-a-harness-with-init).
 
 ## Common fields and validation
@@ -196,7 +200,7 @@ Each experiment entry:
 | --- | --- |
 | `id` | Unique; 1 to 128 characters from `A-Z a-z 0-9 . _ -`, starting with a letter or digit. Used by `--only`. |
 | `kind` | `mutation` or `guardrail` |
-| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` or `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's directory. |
+| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` are rejected. A harness may be directly inside the project’s `.invaris` directory; deeper paths through `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's execution root (the parent project for `.invaris/invaris.json`). For a campaign inside `.invaris`, harness references are relative to `.invaris`. |
 | `experimentId` | For `mutation` only: the `experiment.id` of a v1alpha3 harness |
 | `challengeId` | For `guardrail` only: a challenge ID in a v1alpha2 harness whose guard declares a `policyId` (structured command guard or provider guard) |
 | `repeat` | Integer from 1 to 5 |

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/engine"
 	"github.com/akkaraponph/invaris/internal/evidence"
@@ -75,7 +76,7 @@ func runCampaignCLI(ctx context.Context, reportPath string, args []string, stdou
 		return usage("unsupported format: " + format)
 	}
 	if file == "" {
-		file = "campaign.json"
+		file = configfile.DefaultPath("campaign.json")
 	}
 	if parallel == 0 {
 		parallel = 1

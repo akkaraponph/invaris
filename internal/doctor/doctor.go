@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/engine"
 	"github.com/akkaraponph/invaris/internal/mutation"
 	"github.com/akkaraponph/invaris/internal/runner"
@@ -142,7 +143,7 @@ func Inspect(harnessPath string) Diagnosis {
 		}
 	}
 
-	dir := filepath.Dir(abs)
+	dir := configfile.ProjectRoot(abs)
 	var commands []command
 	var edits []edit
 	for _, c := range spec.Steps {

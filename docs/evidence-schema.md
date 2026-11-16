@@ -14,7 +14,7 @@ Run `python3 scripts/validate-schemas.py` to validate CLI output and deliberate 
 | --- | --- |
 | `schemaVersion` | Always `invaris.evidence/v1alpha2`. |
 | `runId` | Random 128-bit lowercase hex, unique per run. |
-| `action`, `target`, `harness` | The action, the harness directory, and the harness `name`. |
+| `action`, `target`, `harness` | The action, the harness execution root (the parent project for a config directly inside `.invaris`), and the harness `name`. |
 | `configDigest` | `sha256:` of the exact accepted harness bytes; `null` only for non-ACCEPT reports built without a loaded file. |
 | `gitRevision` | `HEAD` of the target from a bounded read-only `git rev-parse`; `null` when unavailable. |
 | `gitDirty` | `true` when the target directory has uncommitted or untracked changes (bounded read-only `git status`), `false` when clean, `null` when unknown. A revision alone does not identify the files an experiment copied; see [reproducibility provenance](#reproducibility-provenance). |
@@ -199,7 +199,9 @@ See [Campaigns](campaigns.md) for behavior and examples.
 | `decision` | `ACCEPT`, `REJECT` or `REFUSE`; exit 0, 1, 2 |
 | `diagnostics`, `artifacts` | Report-level diagnostics such as `SNAPSHOT_FAILED`, `PREFLIGHT_PROVIDER`, `SNAPSHOT_CHANGED`, `CLEANUP_FAILED` and `CAMPAIGN_INCOMPLETE`; persisted artifacts (currently none) |
 
-Each experiment records `id`, `kind`, `harness`, `root` (the harness's directory, `"."` for the campaign directory), `harnessDigest`, `referenceId`, `repeat`, `selection` (`SELECTED` or `FILTERED_OUT`), its `attempts`, and the aggregate: `stability` (`CONSISTENT`, `MIXED`, `INCOMPLETE`, `NOT_EVALUATED`), `aggregateVerdict` (only for `CONSISTENT`) and `stabilityReason`.
+Workspace configuration files under `.invaris` are excluded from the source snapshot. Their original source bytes are checked against `campaignConfigDigest` and `harnessDigest` before execution; those configuration digests remain separate from source snapshot digests.
+
+Each experiment records `id`, `kind`, `harness`, `root` (the harness execution root, `"."` for the campaign project root; a harness directly inside `.invaris` evaluates its parent project), `harnessDigest`, `referenceId`, `repeat`, `selection` (`SELECTED` or `FILTERED_OUT`), its `attempts`, and the aggregate: `stability` (`CONSISTENT`, `MIXED`, `INCOMPLETE`, `NOT_EVALUATED`), `aggregateVerdict` (only for `CONSISTENT`) and `stabilityReason`.
 
 Each attempt records `id` (`<experiment>#<n>`), `index`, `execution` (`EXECUTED`, `CANCELED`, `REFUSED`, `NOT_STARTED`), `verdict`, `reason`, `reasonCategory`, `detail`, timing, and the child evidence of its kind: `mutation` holds a [v1alpha3 experiment record](#mutation-experiments) and `proof` holds a [v1alpha2 proof](#result-details). `observations` holds the observations that child evidence refers to. An attempt that did not start has no verdict, no child evidence and no observations.
 
@@ -208,7 +210,7 @@ Go validation (`evidence.ValidateCampaign`) rejects a report unless:
 - IDs are unique, attempts are numbered `1..repeat` in order, filtered experiments have no attempts, and the selection agrees with the experiments.
 - Executed and canceled attempts carry the child evidence of their kind and nothing else, and their verdict and reason equal the child's. A `CANCELED` attempt has reason `canceled`.
 - Every child record passes the same rules as a single report: `KILLED` needs a completed assertion failure, every conclusive mutation verdict needs verified cleanup, and `PROVEN` needs a recorded mutation, a passing baseline, exactly one finding for the policy at the target, strong evidence and verified cleanup.
-- Every experiment `root` is its harness's directory and has a digest in `sourceIdentity.roots`. Every child `sourceSnapshot` equals the digest of its experiment's root, and every conclusive child has one.
+- Every experiment `root` is its harness execution root and has a digest in `sourceIdentity.roots`. Every child `sourceSnapshot` equals the digest of its experiment's root, and every conclusive child has one.
 - `parallelism` is 1 to 8, and tool observations have kind `tool`, unique `tool:` IDs, and exist only with a prepared snapshot.
 - Aggregates, both summaries, `acceptanceEvaluation.complete`, every requirement status and the decision equal the values recomputed from the attempts.
 

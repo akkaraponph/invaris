@@ -26,9 +26,19 @@ Releases are published by the [Release workflow](../.github/workflows/release.ym
 3. builds the four archives and `SHA256SUMS` once, stamped with the tag version, and verifies that exact set natively on Linux amd64, Linux arm64 and macOS arm64 (darwin/amd64 is checked for checksum and contents only);
 4. publishes a GitHub release named `Invaris vX.Y.Z` with the archives, `SHA256SUMS` and the release notes file as its description.
 
-If any step fails, nothing is published; fix the problem on `main` and tag a new patch version. The publish job uses a GitHub environment named `release`; add required reviewers to it in the repository settings if you want a manual approval before publication. The verified archives are also kept as a workflow artifact `release-vX.Y.Z` for 30 days.
+Archive and npm package verification must pass before publication. The GitHub release is published first, followed by the npm package; publication is not atomic. See [npm publication and recovery](#npm-publication-and-recovery). The publish job uses a GitHub environment named `release`; add required reviewers to it in the repository settings if you want a manual approval before publication. The verified archives are also kept as a workflow artifact `release-vX.Y.Z` for 30 days.
 
 Every CI run also rehearses packaging with the placeholder version `v0.0.0` and keeps the verified set as `snapshot-<commit>` for 7 days. Those archives are for inspection only, never for distribution.
+
+## npm publication and recovery
+
+The npm package is not published yet. Before the first release, confirm the `invaris` npm name is available and that the maintainer has an npm account with publishing access and 2FA. If the name is unavailable, stop and choose a package name before publishing. npm requires a package to exist before a trusted publisher can be configured. For the first release only, after explicit publication authorization and successful package verification, download the `release-vX.Y.Z-npm` and `release-vX.Y.Z` workflow artifacts, check `SHA256SUMS`, and run `python3 scripts/verify-npm.py vX.Y.Z ARCHIVE_DIRECTORY NPM_DIRECTORY/invaris-X.Y.Z.tgz` from the matching release checkout. Substitute the actual version and paths. After the GitHub release is published, use an authenticated interactive npm session to publish that exact verified tarball with `npm publish NPM_DIRECTORY/invaris-X.Y.Z.tgz --access public --ignore-scripts`. Do not publish a placeholder or reuse the same version. The automatic npm job for that first release cannot succeed before this bootstrap; do not rerun it after the manual publication.
+
+Then configure an npm trusted publisher for GitHub owner `refactorroom`, repository `invaris`, workflow `release.yml`, and environment `release`, allowing direct publishing. A new configuration expires if its first successful trusted publication does not occur within two days, so configure it shortly before the next release. Follow [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/). Subsequent publishing jobs use OIDC, Node 26.8.2 and npm 11.19.1; no long-lived npm token is stored in the repository.
+
+The packaging workflow builds the npm tarball once from the verified archive set, records its SHA-256, and verifies installation and binary equality on Linux amd64, Linux arm64 and macOS arm64. macOS amd64 is checked for package contents and matching binary bytes, but is not executed by this runner matrix. The release job downloads the same artifact, rechecks its digest and contents, then publishes it after the GitHub release. CI uses version `v0.0.0` only for a non-published rehearsal.
+
+If GitHub publication succeeds but npm fails, inspect the workflow and check whether the exact npm version exists before retrying the failed npm job; retry only when it is absent. Do not rerun a successful publish or replace a published version. If npm publication succeeds but a later verification fails, deprecate a defective npm version when appropriate and ship a new patch; retain the GitHub release and never move the tag. Users can install a prior published npm version explicitly or use a prior archive. Do not claim npm availability in the site until the first package is published and its registry install has been verified.
 
 ## Publication gates
 
@@ -42,7 +52,7 @@ Every CI run also rehearses packaging with the placeholder version `v0.0.0` and 
    git push origin v0.3.0
    ```
 
-4. Watch the Release workflow. When it succeeds, download an archive and `SHA256SUMS` from the release page through the [installation guide](installation.md), verify the checksum and run the examples with the installed executables. Check that the release, source-tag and changelog links resolve and that GitHub Pages shows the new version.
+4. Watch the Release workflow and complete the one-time npm bootstrap above if needed. Once both distributions are published, verify the npm package in a clean project, then download an archive and `SHA256SUMS` from the release page through the [installation guide](installation.md), verify the checksum and run the examples with the installed executables. Check that the release, source-tag and changelog links resolve and that GitHub Pages shows the new version.
 
 Never move or reuse a published tag. To build and verify archives by hand, for example while debugging packaging, use the commands in [Build and inspect archives](#build-and-inspect-archives).
 

@@ -2,8 +2,12 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -138,8 +142,9 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 
 // freezeSnapshot records the snapshot identity, including the digest of every
 // directory an experiment evaluates, and checks that the campaign file and
-// every referenced harness inside the snapshot are the bytes that were loaded
-// and validated. It returns the whole-snapshot digest and the root digests.
+// every referenced harness are the bytes that were loaded and validated.
+// Workspace configurations are checked in the source because execution copies
+// exclude .invaris. It returns the whole-snapshot digest and the root digests.
 func freezeSnapshot(c Campaign, root string, opts workspace.Options, id *evidence.SourceIdentity) (string, map[string]string, error) {
 	manifest, err := workspace.SnapshotWith(root, opts)
 	if err != nil {
@@ -162,6 +167,29 @@ func freezeSnapshot(c Campaign, root string, opts workspace.Options, id *evidenc
 		id.Roots = append(id.Roots, evidence.SourceRoot{Path: dir, SHA256: roots[dir], Files: len(sub)})
 	}
 	same := func(name, want string) error {
+		// Workspace configs are intentionally omitted from execution copies.
+		// Pin their source bytes separately before executing the loaded specs.
+		if path.Dir(name) == ".invaris" {
+			source := filepath.Join(c.Root, filepath.FromSlash(name))
+			info, err := os.Lstat(source)
+			if err != nil || !info.Mode().IsRegular() {
+				return fmt.Errorf("%s changed after it was loaded", name)
+			}
+			parent, err := os.Lstat(filepath.Dir(source))
+			if err != nil || !parent.IsDir() {
+				return fmt.Errorf("%s changed after it was loaded", name)
+			}
+			f, err := os.Open(source)
+			if err != nil {
+				return err
+			}
+			raw, err := io.ReadAll(io.LimitReader(f, maxCampaignBytes+1))
+			f.Close()
+			if err != nil || len(raw) > maxCampaignBytes || fmt.Sprintf("sha256:%x", sha256.Sum256(raw)) != want {
+				return fmt.Errorf("%s changed after it was loaded", name)
+			}
+			return nil
+		}
 		if e, ok := manifest[name]; !ok || e.Kind != "file" || "sha256:"+e.SHA256 != want {
 			return fmt.Errorf("%s changed after it was loaded", name)
 		}

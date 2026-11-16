@@ -123,7 +123,7 @@ func runInitCLI(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "init:", err)
 		return 2
 	}
-	target := filepath.Join(root, "invaris.json")
+	target := filepath.Join(root, configfile.WorkspaceDir, "invaris.json")
 	explain := initExplanation(preset)
 	if f.bools["--dry-run"] {
 		fmt.Fprintf(stderr, "dry run: would create %s (nothing was written)\n%s", target, explain)
@@ -132,6 +132,25 @@ func runInitCLI(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		return 0
+	}
+	// Refuse legacy configurations too, avoiding two competing defaults.
+	legacy := filepath.Join(root, "invaris.json")
+	if _, err := os.Lstat(legacy); err == nil {
+		fmt.Fprintf(stderr, "init: %s already exists; move it to .invaris/invaris.json to adopt the workspace layout\n", legacy)
+		return 2
+	} else if !errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintln(stderr, "init:", err)
+		return 2
+	}
+	workspace := filepath.Dir(target)
+	if err := os.Mkdir(workspace, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+		fmt.Fprintln(stderr, "init:", err)
+		return 2
+	}
+	// Do not follow an existing workspace symlink to write outside the project.
+	if info, err := os.Lstat(workspace); err != nil || !info.IsDir() {
+		fmt.Fprintln(stderr, "init: .invaris must be a real directory")
+		return 2
 	}
 	if err := configfile.Create(target, data, 0o600); err != nil {
 		if errors.Is(err, configfile.ErrExists) {

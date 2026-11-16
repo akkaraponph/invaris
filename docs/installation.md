@@ -4,6 +4,32 @@ The [v0.3.0 release](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0)
 
 The commands below install [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0), the latest release.
 
+## npm installation after publication
+
+The npm package is planned for a future release and is not yet available. After publication it will require Node.js 22.14 or later and npm, on Linux or macOS with x64 or arm64; on Windows use WSL. The package includes both the CLI and command provider and does not download binaries during installation. No Go installation is needed.
+
+Run the latest published version in a project with a harness:
+
+```sh
+npx invaris@latest check
+```
+
+For a project dependency, run the following in the project directory to install or update it:
+
+```sh
+npm install --save-dev invaris@latest
+npx invaris check
+```
+
+For a global installation or update:
+
+```sh
+npm install --global invaris@latest
+invaris check
+```
+
+`@latest` requests the latest npm release. npm manages updates; there is no `invaris update` action. To return to an earlier npm version, install that version explicitly (for example, `npm install --save-dev invaris@X.Y.Z`, replacing `X.Y.Z` with a published version). npm updates do not replace separate archive installations. The provider is included and available to the CLI; harnesses must still allowlist `PATH` when required, as described below.
+
 ## Install into a specific folder
 
 These commands work in Bash or Zsh. Choose an absolute installation path and the archive matching your system:

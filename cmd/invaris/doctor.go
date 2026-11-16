@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/akkaraponph/invaris/internal/configfile"
 	"github.com/akkaraponph/invaris/internal/doctor"
 )
 
@@ -16,9 +17,9 @@ const doctorUsage = "invaris doctor [--format text|json] [HARNESS]"
 const doctorFooter = "doctor executed no harness commands; results describe setup only."
 
 // doctorArgs parses the arguments after doctor: optional flags, then at most
-// one harness path (default invaris.json).
+// one harness path (default .invaris/invaris.json, then invaris.json).
 func doctorArgs(args []string) (format, file string, err error) {
-	format, file = formatText, "invaris.json"
+	format, file = formatText, configfile.DefaultPath("invaris.json")
 	seenFormat, seenFile := false, false
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
