@@ -145,6 +145,59 @@ Where I had to read source code rather than documentation: item 1 (`internal/wor
 
 Smaller observations, not counted as friction: `check` and `challenge` print the guard's evidence ID as `gofmt`, which reads like a guard name; the campaign `--format text` output was clear and listed the reasons by experiment ID.
 
+## After the 0.4.0 commands
+
+The same experiment was repeated with `invaris doctor` and `invaris explain`. The failing and clean runs below used the same harnesses, a fresh binary and the copy procedure from Run 0.
+
+### `doctor` on the unchanged checkout
+
+```sh
+invaris doctor selfcheck.guardrail.json        # exit 1
+```
+
+`doctor` loaded the harness, resolved `go` in the PATH its guard would use, confirmed both targets and both pinned edits, and reported the problem that cost about ten minutes in friction item 1, before anything ran:
+
+```
+  [FAIL] workspace.copy  harness directory cannot be copied into a workspace: symlink not permitted: adapters/dependency-cruiser/node_modules/.bin/acorn (limits: 2000 entries, 10485760 ... (truncated)
+  [warn] env.gofmt.GOTOOLCHAIN  allowlisted variable is not set in this environment
+Summary: 11 passed, 1 failed, 3 warnings, 1 skipped
+doctor executed no harness commands; results describe setup only.
+```
+
+The text output shortens a long message; `--format json` carries it whole. The three warnings are allowlisted variables unset in the current shell, which is harmless here. In the copy without `node_modules`, `doctor` passes all three harnesses (12, 8 and 8 passes, no failure; the mutation harnesses skip the actions they do not support).
+
+### `doctor` and a pinned preimage
+
+Changing one byte of `internal/mutation/operators.go` in the copy made `doctor` fail the pinned edits before any run:
+
+```
+  [FAIL] edit.trailing-whitespace-detected  built-in mutation cannot be applied: ineligible mutation target: content does not match the declared preimage digest
+  [FAIL] edit.selfcheck-killed  content does not match the declared preimage digest
+```
+
+Reverting the byte returned the harnesses to zero failures.
+
+### `explain` on the saved reports
+
+- The failed run at the checkout root (reports `workspace_prepare_failed`, exit 2) now reads as `inconclusive`, with the reason's meaning, a next step that names the three copy limits and `invaris doctor HARNESS`, and the limits `portable-profile`, `incomplete` and `unauthenticated`.
+- The clean challenge reads as one `detected` item (`guard_detected`) and one `missed` item (`guard_passed`, with the next step "the guard does not cover this edit... this is not proof the rule is enforced").
+- The campaign reads as `detected`, `missed`, `detected`, `missed`, with the same meanings. It makes the score and the proof rate easier to read, but it does not show them: `explain` classifies each experiment, it does not recompute rates.
+
+### Friction items, re-evaluated
+
+| # | Item | Status |
+| --- | --- | --- |
+| 1 | `workspace_prepare_failed` with details withheld | **Mostly resolved.** `doctor` finds and names the offending path before a run, and `explain` lists the limits and points at `doctor`. The limit itself is unchanged: a checkout with `node_modules` still cannot be run in place. |
+| 2 | `malformed_evidence` from a plain `go test` | **Partly resolved.** `explain` now says a mutation test or validation command must print a JSON result and points at the harness spec. `doctor` cannot detect it, because that would mean running the command. |
+| 3 | `--report` refuses to overwrite | Unchanged; the message was already clear. |
+| 4 | Challenge exit code 1 with one missed control | Unchanged; `explain` shows the decision (`REJECT`) but does not explain the exit code. |
+
+### What the new commands do not cover
+
+- `doctor` does not run adapters or any command, so it cannot check what a command prints, whether `go run ./tool` compiles, or whether provider discovery works; `provider.*` checks are reported as skipped.
+- `doctor` inspects one harness; run it for each file a campaign names.
+- `explain` interprets what a report records. It does not recompute decisions from retained inputs or compare runs.
+
 ## Known limits
 
 - gofmt-clean is not a rule the maintainers of this repository assert is critical. It was chosen because the repository already satisfies it, the guard is a small program, and a trailing space is an unambiguous fault. This shows that the workflow runs on this repository, not that this repository's quality gate is strong.
@@ -153,4 +206,4 @@ Smaller observations, not counted as friction: `check` and `challenge` print the
 - The runs used a copy of the checkout without `.git`, `node_modules` and `dist`, so mutation reports do not carry a git revision.
 - The mutation harnesses use shell adapters rather than a Go evaluator; a vet failure of any kind is reported as `INVALID`, and a test run is classified by searching the text for `--- FAIL:`. They suit this experiment and are not a general adapter.
 - Wall times have one-second resolution and come from a single run each.
-- A second operator has not repeated this workflow. This is an open item: it still needs doing, by someone, on a different operator or a different project, before any claim that the workflow generalises.
+- A second operator has not repeated this workflow, including with `doctor` and `explain`. This is an open item: it still needs doing, by someone, on a different operator or a different project, before any claim that the workflow generalises.

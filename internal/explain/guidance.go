@@ -101,7 +101,7 @@ var guidance = map[string]Guidance{
 	},
 	domain.ReasonMalformedEvidence: {
 		Meaning: "The evidence produced by a tool could not be parsed, so it was not trusted.",
-		Next:    "Check the tool's output against docs/evidence-schema.md and docs/adapter-protocol.md.",
+		Next:    "Check that the command printed exactly the result object its role requires: a mutation test or validation command prints JSON, not plain test output (see docs/harness-spec.md, \"Commands and evaluator output\"), and a provider follows docs/adapter-protocol.md.",
 	},
 	domain.ReasonWorkspaceChanged: {
 		Meaning: "The workspace changed during the run in a way the experiment did not make, or no longer matched the snapshot, so the result was not trusted.",
