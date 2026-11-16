@@ -187,7 +187,7 @@ Reverting the byte returned the harnesses to zero failures.
 
 | # | Item | Status |
 | --- | --- | --- |
-| 1 | `workspace_prepare_failed` with details withheld | **Mostly resolved.** `doctor` finds and names the offending path before a run, and `explain` lists the limits and points at `doctor`. The limit itself is unchanged: a checkout with `node_modules` still cannot be run in place. |
+| 1 | `workspace_prepare_failed` with details withheld | **Mostly resolved.** `doctor` finds and names the offending path before a run, and `explain` lists the limits and points at `doctor`. The default limit is unchanged, but a harness can now declare a [`workspace` block](../harness-spec.md#workspace-options): here `"exclude": ["adapters/dependency-cruiser/node_modules"]` would keep the ignored directory out of the copy. This self-check has not been re-run with it. |
 | 2 | `malformed_evidence` from a plain `go test` | **Partly resolved.** `explain` now says a mutation test or validation command must print a JSON result and points at the harness spec. `doctor` cannot detect it, because that would mean running the command. |
 | 3 | `--report` refuses to overwrite | Unchanged; the message was already clear. |
 | 4 | Challenge exit code 1 with one missed control | Unchanged; `explain` shows the decision (`REJECT`) but does not explain the exit code. |
