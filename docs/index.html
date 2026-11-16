@@ -34,11 +34,19 @@
       <dl class="commands">
         <div>
           <dt><code>init</code></dt>
-          <dd>Detect project markers and create a starter <code>invaris.json</code> without running project code or overwriting files.</dd>
+          <dd>Detect project markers and create a starter <code>.invaris/invaris.json</code> without running project code or overwriting files.</dd>
         </div>
         <div>
           <dt><code>migrate</code></dt>
           <dd>Upgrade a v1alpha1 harness to v1alpha2 with the same commands and gate, keeping an exact backup.</dd>
+        </div>
+        <div>
+          <dt><code>doctor</code></dt>
+          <dd>Inspect a harness's setup without running any of its commands, and say which checks were not performed.</dd>
+        </div>
+        <div>
+          <dt><code>explain</code></dt>
+          <dd>Read a saved report offline and say whether each fault was detected, missed or inconclusive, and what the report cannot show.</dd>
         </div>
         <div>
           <dt><code>run</code></dt>
@@ -65,7 +73,8 @@
 
     <section aria-labelledby="quick-start">
       <h2 id="quick-start">Quick start</h2>
-      <p>Version 0.3.0 is prepared for release. Until its tag is published, use the source commands below or the checked main-build artifacts in the <a href="https://github.com/akkaraponph/invaris/blob/main/docs/releasing.md">release guide</a>. Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.3.0">v0.3.0 release</a>. The <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
+      <p>Version 0.3.0 is the latest release. Download a CLI archive from the <a href="https://github.com/akkaraponph/invaris/releases/tag/v0.3.0">v0.3.0 release</a>. The <a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
+      <p>npm distribution is planned for a future release; see the <a href="https://github.com/refactorroom/invaris/blob/main/docs/installation.md#npm-installation-after-publication">npm installation guide</a> for prerequisites and updates.</p>
       <p>To run from source, use Go 1.27.4 or later and a POSIX shell. This example checks for a forbidden marker in a text file:</p>
       <pre><code>git clone https://github.com/akkaraponph/invaris.git
 cd invaris
@@ -92,12 +101,14 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
       <ul class="reference">
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/diagnostics.md">Diagnostics</a> <span>doctor and explain: setup inspection and offline report interpretation</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/experiments/self-check.md">Self-check experiment</a> <span>Invaris challenged on its own code, with the friction log</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, and evidence v1alpha2 to v1alpha5 contracts</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, evidence v1alpha2 to v1alpha5, explanation and doctor contracts</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
@@ -110,7 +121,7 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CHANGELOG.md#030">Changelog</a> <span>Version 0.3.0</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/releasing.md">Release preparation</a> <span>Versioned archives, checksums, installation checks and rollback</span></li>
         <li><a href="https://github.com/akkaraponph/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>
-        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Report verification, isolation, and future tooling</span></li>
+        <li><a href="https://github.com/akkaraponph/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Proposed milestones, first useful experiments, evidence verification, and release gates</span></li>
       </ul>
     </section>
 

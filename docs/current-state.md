@@ -1,6 +1,6 @@
 # Current implementation
 
-Invaris runs trusted local commands in sequence. It supports five verification actions and two authoring commands:
+Invaris runs trusted local commands in sequence. It supports five verification actions, two authoring commands and two diagnostic commands:
 
 | Action | Harness version | Report version | Purpose |
 | --- | --- | --- | --- |
@@ -11,8 +11,10 @@ Invaris runs trusted local commands in sequence. It supports five verification a
 | `campaign` | campaign v1alpha1 | v1alpha4 (v1alpha5 with a v1alpha4 harness or on request) | Run several mutation and challenge experiments in sequence, with repeats, scores and an acceptance policy |
 | `init` | writes v1alpha2 | none | Detect project markers and create a starter harness without running project code |
 | `migrate` | v1alpha1 to v1alpha2 | none | Upgrade a harness with the same behavior, keeping a backup |
+| `doctor` | any harness version | none (JSON `invaris.doctor/v1alpha1`) | Inspect a harness's setup without running any of its commands |
+| `explain` | report v1alpha2 to v1alpha5 | none (JSON `invaris.explanation/v1alpha1`) | Interpret a saved report offline: detected, missed or inconclusive, and what the report cannot show |
 
-`check`, `challenge` and `campaign` can print `--format text` or `compact` summaries; JSON is the default.
+`check`, `challenge` and `campaign` can print `--format text` or `compact` summaries; JSON is the default. [`doctor` and `explain`](diagnostics.md) print text by default; neither runs a harness command, and neither writes a report.
 
 Harness versions use the `invaris.dev/` prefix, campaign files use `invaris.campaign/`, and reports use `invaris.evidence/`. The CLI prints a JSON report and can save an identical copy to a new file with `--report`.
 

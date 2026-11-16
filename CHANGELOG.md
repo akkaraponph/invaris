@@ -1,8 +1,29 @@
 # Changelog
 
+## 0.4.0
+
+Making the first useful experiment approachable. Configuration discovery and the `init` destination change as described below; existing root-level configurations remain supported. Report versions and verification exit codes are unchanged. Build with Go 1.27.4 or later.
+
+### Added
+
+- New project configurations are created at `.invaris/invaris.json`. Commands prefer that path and fall back to a root-level configuration; `init` refuses to create a competing file when the legacy file exists. Campaigns also support configuration inside `.invaris`. See [authoring](docs/authoring.md).
+- An `invaris-cli` npm package is prepared for publication with the Linux and macOS executables and command provider. It requires Node.js 22.14 or later; see [installation](docs/installation.md#npm-installation-after-publication) for availability and npm commands.
+- `invaris explain [--format text|json] REPORT` reads a saved report offline, validates it with the rules that wrote it, and says for each result whether the fault was `detected`, `missed`, `inconclusive`, `excluded` or not run, with the meaning and next step of its recorded reason and the limits of what the report shows. It runs nothing and refuses a tampered or unsupported report. See [diagnostics](docs/diagnostics.md).
+- `invaris doctor [--format text|json] [HARNESS]` inspects a harness's setup without running any of its commands: supported actions, whether the directory can be copied into a workspace, whether each program resolves in the PATH its command would use, allowlisted variables that are unset, targets, edit markers, built-in operator eligibility, pinned preimages and writable paths. Every check says it executed nothing. See [diagnostics](docs/diagnostics.md).
+- Schemas [`explanation-v1alpha1`](schemas/explanation-v1alpha1.schema.json) and [`doctor-v1alpha1`](schemas/doctor-v1alpha1.schema.json) for the JSON output of the two commands.
+- An optional `workspace` block in v1alpha3 mutation and v1alpha4 challenge harnesses: `dependencies` links directories such as `node_modules` beside the copy instead of copying them, `exclude` leaves build output and tool caches out of the copy and its integrity snapshots, and `maxEntries` raises the 2000-entry bound up to 200000. Campaigns combine the blocks of the harnesses they reference. See [workspace options](docs/harness-spec.md#workspace-options).
+- A `workspace_changed` stage detail now lists the changed paths (up to 20, marked `+`, `-` or `~`) instead of only "workspace manifest changed", and the entry-limit and symbolic-link refusals say which `workspace` field resolves them.
+- A [self-check experiment](docs/experiments/self-check.md) that runs a gofmt guard, a detected and a missed guardrail challenge, a killed and a surviving mutant and a campaign against this repository, with its friction log (`selfcheck.*.json`).
+
+### Compatibility notes
+
+- `explain` exits `0` or `2`. `doctor` exits `0` when no check failed, `1` when a setup check failed and `2` for usage errors or an unreadable harness file. For `doctor`, `1` means a setup problem, not a rejected verification.
+- Neither command accepts `--report`; they write no report. Their JSON is not evidence and carries no decision of its own.
+- `explain` reads reports from v1alpha2 to v1alpha5. The report versions, harness versions and verdict meanings are unchanged.
+
 ## 0.3.0
 
-Prepared for release; publication follows the [release checklist](docs/releasing.md).
+Released 2026-11-15 as [v0.3.0](https://github.com/akkaraponph/invaris/releases/tag/v0.3.0).
 
 Developer experience and trustworthy mutation verification. Default inputs, flags, report versions and exit codes (`0` ACCEPT, `1` REJECT, `2` REFUSE or error) are unchanged; everything below is additive or opt-in. Build with Go 1.27.4 or later.
 

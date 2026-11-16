@@ -111,7 +111,7 @@ func proofStages(ctx context.Context, ws *workspace.Workspace, c Challenge, expe
 	if err := ctx.Err(); err != nil {
 		return domain.Inconclusive, "context ended before the baseline: " + err.Error(), commandFailure(err)
 	}
-	guard, gerr := newIntegrity(ws.Root)
+	guard, gerr := newIntegrity(ws.Root, ws.Options)
 	var before map[string]workspace.Entry
 	if gerr == nil {
 		before, gerr = guard.snapshot()

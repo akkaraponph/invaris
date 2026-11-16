@@ -240,3 +240,42 @@ func TestResultRecordsFinishTime(t *testing.T) {
 		}
 	}
 }
+
+func TestLookup(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "tool")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	plain := filepath.Join(dir, "plain")
+	if err := os.WriteFile(plain, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+":/usr/bin:/bin")
+
+	if got, err := Lookup("tool", []string{"PATH"}, "/"); err != nil || got != script {
+		t.Fatalf("allowlisted PATH: got %q, %v", got, err)
+	}
+	_, err := Lookup("tool", nil, "/")
+	if err == nil || !strings.Contains(err.Error(), DefaultPath) {
+		t.Fatalf("without PATH allowlisted the default path is searched: %v", err)
+	}
+	if got, err := Lookup("sh", nil, "/"); err != nil || !strings.HasPrefix(got, "/usr/bin/") && !strings.HasPrefix(got, "/bin/") {
+		t.Fatalf("default path lookup: got %q, %v", got, err)
+	}
+	if got, err := Lookup("./tool", nil, dir); err != nil || got != filepath.Join(dir, "tool") {
+		t.Fatalf("relative path: got %q, %v", got, err)
+	}
+	if _, err := Lookup("./plain", nil, dir); err == nil {
+		t.Fatal("non-executable file must be refused")
+	}
+	if _, err := Lookup("./missing", nil, dir); err == nil {
+		t.Fatal("missing file must be refused")
+	}
+	if _, err := Lookup(".", nil, dir); err == nil {
+		t.Fatal("a directory must be refused")
+	}
+	if _, err := Lookup("", nil, dir); err == nil {
+		t.Fatal("empty program must be refused")
+	}
+}

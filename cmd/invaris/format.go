@@ -67,6 +67,20 @@ func token(s string) string {
 // message renders free text on one line: control characters are escaped and
 // the result is cut at messageLimit bytes on a rune boundary.
 func message(s string) string {
+	out := escapeLine(s)
+	if len(out) <= messageLimit {
+		return out
+	}
+	cut := messageLimit
+	for cut > 0 && !utf8.RuneStart(out[cut]) {
+		cut--
+	}
+	return out[:cut] + "... (truncated)"
+}
+
+// escapeLine renders free text on one line without shortening it: control
+// characters are escaped and any whitespace becomes a space.
+func escapeLine(s string) string {
 	var b strings.Builder
 	for _, r := range s {
 		switch {
@@ -83,15 +97,7 @@ func message(s string) string {
 			b.WriteRune(r)
 		}
 	}
-	out := b.String()
-	if len(out) <= messageLimit {
-		return out
-	}
-	cut := messageLimit
-	for cut > 0 && !utf8.RuneStart(out[cut]) {
-		cut--
-	}
-	return out[:cut] + "... (truncated)"
+	return b.String()
 }
 
 func duration(start, finish *time.Time) string {

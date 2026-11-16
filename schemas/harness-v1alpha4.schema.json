@@ -96,6 +96,44 @@
       "items": {
         "$ref": "#/$defs/challenge"
       }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Narrows the disposable workspace copy. Paths are relative to the harness directory.",
+      "properties": {
+        "exclude": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/relativePath"
+          },
+          "description": "Paths neither copied nor compared between stages, such as build output and tool caches."
+        },
+        "dependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^/\\\\:\\u0000]+$",
+            "not": {
+              "enum": [
+                ".",
+                "..",
+                ".git",
+                ".invaris"
+              ]
+            }
+          },
+          "description": "Top-level directories, such as node_modules, linked beside the workspace instead of copied."
+        },
+        "maxEntries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000,
+          "description": "Entry bound for the copy and its snapshots. Defaults to 2000."
+        }
+      }
     }
   },
   "$defs": {

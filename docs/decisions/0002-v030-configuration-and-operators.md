@@ -1,6 +1,6 @@
 # 0002: Configuration authoring, built-in operators and portable evidence
 
-Status: accepted for 0.3.0 (unreleased). Scope: `init`, `migrate`, `--format`, `invaris.dev/v1alpha4`, built-in operators and `invaris.evidence/v1alpha5`. User documentation: [authoring](../authoring.md), [operators](../mutation-operators.md), [evidence](../evidence-schema.md#portable-profile-v1alpha5).
+Status: accepted; released in 0.3.0. Scope: `init`, `migrate`, `--format`, `invaris.dev/v1alpha4`, built-in operators and `invaris.evidence/v1alpha5`. User documentation: [authoring](../authoring.md), [operators](../mutation-operators.md), [evidence](../evidence-schema.md#portable-profile-v1alpha5).
 
 ## 1. Separate configuration branches
 

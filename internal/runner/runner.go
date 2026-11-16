@@ -160,6 +160,32 @@ func resolve(program, path string) (string, error) {
 	return "", fmt.Errorf("executable %q not found in PATH %q: %w", program, path, exec.ErrNotFound)
 }
 
+// Lookup reports the executable Run would start for program, applying the
+// same environment and PATH rules without starting anything. A bare name is
+// searched only in the effective PATH; a name with a separator is used as
+// given, relative to dir, and must be an executable regular file.
+func Lookup(program string, envAllowlist []string, dir string) (string, error) {
+	_, path := environment(envAllowlist)
+	found, err := resolve(program, path)
+	if err != nil {
+		return "", err
+	}
+	if !strings.ContainsRune(program, '/') && !strings.ContainsRune(program, filepath.Separator) {
+		return found, nil
+	}
+	if !filepath.IsAbs(found) {
+		found = filepath.Join(dir, found)
+	}
+	info, err := os.Stat(found)
+	if err != nil {
+		return "", fmt.Errorf("executable %q: %w", program, err)
+	}
+	if !info.Mode().IsRegular() || !isExecutable(info) {
+		return "", fmt.Errorf("executable %q is not an executable regular file", program)
+	}
+	return found, nil
+}
+
 type limitedWriter struct {
 	mu       sync.Mutex
 	b        bytes.Buffer

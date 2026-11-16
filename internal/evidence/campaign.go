@@ -237,7 +237,11 @@ func ValidateCampaign(r CampaignReport) error {
 		if x.Kind != domain.KindMutation && x.Kind != domain.KindGuardrail {
 			bad("experiment %q has unknown kind %q", x.ID, x.Kind)
 		}
-		if !workspace.ValidPath(x.Harness) || x.Root != path.Dir(x.Harness) || !digestPattern.MatchString(x.HarnessDigest) || x.ReferenceID == "" {
+		root := path.Dir(x.Harness)
+		if path.Base(root) == ".invaris" {
+			root = path.Dir(root)
+		}
+		if !workspace.ValidPath(x.Harness) || x.Root != root || !digestPattern.MatchString(x.HarnessDigest) || x.ReferenceID == "" {
 			bad("experiment %q has an invalid harness, root, digest or reference", x.ID)
 		}
 		if _, ok := roots[x.Root]; !ok && len(roots) > 0 {

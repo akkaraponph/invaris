@@ -1,0 +1,193 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "39fc10975d1b13e4cbb8e8d1268c5256",
+  "action": "challenge",
+  "target": "/work/invaris/examples",
+  "harness": "example-guardrail-proof",
+  "configDigest": "sha256:44675c22fabfd22367c969036d8cf885023ee5cf0bb784f9a7fc53057c0ade76",
+  "gitRevision": "6d698e15f0e3ce44b81fb7f41dbc2172d00f8e69",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:45:41.571295Z",
+  "finishedAt": "2026-11-16T02:45:41.600833Z",
+  "durationMs": 29,
+  "compatibility": {
+    "status": "legacy",
+    "inputVersion": "invaris.dev/v1alpha1",
+    "warnings": [
+      "v1alpha1 harness: trusted-local execution with weak marker evidence permitted for compatibility; migrate to invaris.dev/v1alpha2 for explicit gates"
+    ]
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [
+      "detect-forbidden-import"
+    ],
+    "precedence": "failure-first",
+    "allowWeakEvidence": true
+  },
+  "lifecycle": [
+    {
+      "id": "detect-forbidden-import",
+      "kind": "challenge",
+      "status": "PROVEN",
+      "startedAt": "2026-11-16T02:45:41.571297Z",
+      "finishedAt": "2026-11-16T02:45:41.600825Z"
+    }
+  ],
+  "steps": [],
+  "checks": [],
+  "proofs": [
+    {
+      "id": "detect-forbidden-import",
+      "policyId": "",
+      "guardId": "no-forbidden-import",
+      "target": "source.txt",
+      "faultId": "fault-aea545ff1a1819b5",
+      "evidenceStrength": "weak",
+      "status": "PROVEN",
+      "reason": "marker_matched",
+      "reasonCategory": "result",
+      "detail": "weak evidence: baseline passed; injected violation triggered expected output marker",
+      "sourceSnapshot": {
+        "sha256": "a17af20468914ec695e4d61ecfe63952dad4b8835669e944d878c1686366fe35",
+        "files": 69
+      },
+      "mutation": {
+        "path": "source.txt",
+        "beforeSha256": "60f3760e0553505d80c9274b56331201973cf228468be8b64987908926ccf754",
+        "afterSha256": "edfc6ff2cb44b53519799cc3d0b6cbc105eb49559e37884a26bc85c1d4a42165"
+      },
+      "stages": [
+        {
+          "name": "prepare",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "baseline",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "mutate",
+          "status": "OK",
+          "durationMs": 2,
+          "detail": ""
+        },
+        {
+          "name": "challenged",
+          "status": "OK",
+          "durationMs": 7,
+          "detail": ""
+        },
+        {
+          "name": "cleanup",
+          "status": "OK",
+          "durationMs": 2,
+          "detail": ""
+        }
+      ],
+      "baseline": {
+        "id": "detect-forbidden-import:baseline",
+        "policyId": "",
+        "providerId": "invaris-command",
+        "status": "PASS",
+        "inspected": null,
+        "findings": [],
+        "diagnostics": [],
+        "exitCode": 0
+      },
+      "challenged": {
+        "id": "detect-forbidden-import:challenged",
+        "policyId": "",
+        "providerId": "invaris-command",
+        "status": "FAIL",
+        "inspected": null,
+        "findings": [],
+        "diagnostics": [
+          {
+            "code": "COMMAND_FAILED",
+            "message": "exit status 1"
+          }
+        ],
+        "exitCode": 1
+      }
+    }
+  ],
+  "observations": [
+    {
+      "id": "no-forbidden-import",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [
+        "-c",
+        "if grep -q FORBIDDEN_IMPORT source.txt; then echo FORBIDDEN_IMPORT; exit 1; fi"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.579849Z",
+      "finishedAt": "2026-11-16T02:45:41.586101Z",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/bin/sh",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "no-forbidden-import",
+      "kind": "challenged",
+      "program": "sh",
+      "args": [
+        "-c",
+        "if grep -q FORBIDDEN_IMPORT source.txt; then echo FORBIDDEN_IMPORT; exit 1; fi"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:45:41.590796Z",
+      "finishedAt": "2026-11-16T02:45:41.596532Z",
+      "exitCode": 1,
+      "stdout": "FORBIDDEN_IMPORT\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "executable": {
+        "path": "/bin/sh",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 1,
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": []
+}

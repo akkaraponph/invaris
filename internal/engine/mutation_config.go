@@ -7,7 +7,39 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/akkaraponph/invaris/internal/workspace"
 )
+
+// workspaceWire is the optional "workspace" block of a v1alpha3 mutation
+// harness or a v1alpha4 challenge harness. All paths are relative to the
+// harness directory.
+type workspaceWire struct {
+	Exclude      []string `json:"exclude,omitempty"`
+	Dependencies []string `json:"dependencies,omitempty"`
+	MaxEntries   int      `json:"maxEntries,omitempty"`
+}
+
+func (w *workspaceWire) options() workspace.Options {
+	if w == nil {
+		return workspace.Options{}
+	}
+	return workspace.Options{MaxEntries: w.MaxEntries, Exclude: w.Exclude, Dependencies: w.Dependencies}
+}
+
+// validateWorkspace checks the workspace options and that no file the engine
+// edits sits where it would be neither copied nor compared.
+func (s Specification) validateWorkspace(targets ...string) error {
+	if err := s.Workspace.Validate(); err != nil {
+		return err
+	}
+	for _, t := range targets {
+		if s.Workspace.Excludes(t) {
+			return fmt.Errorf("mutation target %q is inside an excluded workspace path", t)
+		}
+	}
+	return nil
+}
 
 const versionV3 = "invaris.dev/v1alpha3"
 
@@ -32,13 +64,14 @@ type Replacement struct {
 // Use the executable fields of Adapter on the wire. These commands do not
 // accept policyId or participate in provider discovery.
 type mutationSpec struct {
-	Version              string   `json:"version"`
-	Name                 string   `json:"name"`
-	TrustMode            string   `json:"trustMode"`
-	NetworkPolicy        string   `json:"networkPolicy"`
-	WritablePaths        []string `json:"writablePaths"`
-	RedactEnv            []string `json:"redactEnv,omitempty"`
-	StoreSensitiveOutput bool     `json:"storeSensitiveOutput,omitempty"`
+	Version              string         `json:"version"`
+	Name                 string         `json:"name"`
+	TrustMode            string         `json:"trustMode"`
+	NetworkPolicy        string         `json:"networkPolicy"`
+	WritablePaths        []string       `json:"writablePaths"`
+	RedactEnv            []string       `json:"redactEnv,omitempty"`
+	StoreSensitiveOutput bool           `json:"storeSensitiveOutput,omitempty"`
+	Workspace            *workspaceWire `json:"workspace,omitempty"`
 	Experiment           struct {
 		ID         string      `json:"id"`
 		Mutation   Replacement `json:"mutation"`
@@ -59,6 +92,7 @@ func decodeMutation(raw []byte) (Specification, error) {
 	return Specification{
 		Version: in.Version, Name: in.Name, TrustMode: in.TrustMode, NetworkPolicy: in.NetworkPolicy,
 		WritablePaths: in.WritablePaths, RedactEnv: in.RedactEnv, StoreSensitiveOutput: in.StoreSensitiveOutput,
+		Workspace: in.Workspace.options(),
 		Experiment: &MutationExperiment{ID: in.Experiment.ID, Mutation: in.Experiment.Mutation,
 			Validation: command(in.Experiment.Validation), Test: command(in.Experiment.Test), TestIDs: in.Experiment.TestIDs},
 	}, nil
@@ -98,6 +132,9 @@ func (s Specification) validateMutation() error {
 	if !slices.Contains(s.WritablePaths, m.Path) {
 		return errors.New("mutation target is outside writablePaths")
 	}
+	if err := s.validateWorkspace(m.Path); err != nil {
+		return err
+	}
 	if len(e.TestIDs) < 1 || len(e.TestIDs) > 128 {
 		return errors.New("testIds must contain 1 to 128 IDs")
 	}
@@ -109,7 +146,7 @@ func (s Specification) validateMutation() error {
 		seen[id] = true
 	}
 	// Reuse native checks for trusted execution, paths, redaction and commands.
-	s.Version, s.Experiment = versionV2, nil
+	s.Version, s.Experiment, s.Workspace = versionV2, nil, workspace.Options{}
 	s.Steps = []Command{e.Validation, e.Test}
 	return s.Validate()
 }

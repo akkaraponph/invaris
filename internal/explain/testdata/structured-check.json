@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "205b7b2c63f3d9649815506bd2c52a6f",
+  "action": "check",
+  "target": "/work/invaris/examples/structured",
+  "harness": "structured fixture",
+  "configDigest": "sha256:5617f567e0017198c6f1867fb501f7a230509f280e34c9d90ec275b7d17b5cdb",
+  "gitRevision": "199769b50bda6a966364aa2af13e71541e8596b0",
+  "gitDirty": false,
+  "environment": {
+    "os": "darwin",
+    "arch": "arm64"
+  },
+  "startedAt": "2026-11-16T02:47:14.769377Z",
+  "finishedAt": "2026-11-16T02:47:14.775258Z",
+  "durationMs": 5,
+  "compatibility": {
+    "status": "legacy",
+    "inputVersion": "invaris.dev/v1alpha1",
+    "warnings": [
+      "v1alpha1 harness: trusted-local execution with weak marker evidence permitted for compatibility; migrate to invaris.dev/v1alpha2 for explicit gates"
+    ]
+  },
+  "policies": [
+    {
+      "id": "no-forbidden-marker",
+      "allowEmpty": false
+    }
+  ],
+  "gate": {
+    "requiredGuards": [
+      "fixture-guard"
+    ],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": true
+  },
+  "lifecycle": [
+    {
+      "id": "fixture-guard",
+      "kind": "guard",
+      "status": "PASS",
+      "startedAt": "2026-11-16T02:47:14.769379Z",
+      "finishedAt": "2026-11-16T02:47:14.77512Z"
+    }
+  ],
+  "steps": [],
+  "checks": [
+    {
+      "id": "fixture-guard",
+      "policyId": "no-forbidden-marker",
+      "providerId": "invaris-command",
+      "status": "PASS",
+      "inspected": 1,
+      "findings": [],
+      "diagnostics": [],
+      "exitCode": 0
+    }
+  ],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "fixture-guard",
+      "kind": "guard",
+      "program": "sh",
+      "args": [
+        "guard.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "2026-11-16T02:47:14.769379Z",
+      "finishedAt": "2026-11-16T02:47:14.77512Z",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.inspection/v1alpha1\",\"policyId\":\"no-forbidden-marker\",\"inspected\":1,\"findings\":[]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "/bin/sh",
+        "sha256": "f338dc2ba97328cb8aa29c57a348abf3267de71ef42ee1adf293b179542f2962"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 1,
+  "decision": "ACCEPT",
+  "diagnostics": [],
+  "artifacts": []
+}
