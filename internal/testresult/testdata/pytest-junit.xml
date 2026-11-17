@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="1" tests="4" time="0.028" timestamp="2026-11-16T16:25:11.971523+07:00" hostname="host"><testcase classname="test_math" name="test_adds" time="0.000" /><testcase classname="test_math" name="test_subtracts" time="0.000"><failure message="assert (2 - 1) == 0">&gt;   def test_subtracts(): assert 2 - 1 == 0
+                          ^^^^^^^^^^^^^^^^^
+E   assert (2 - 1) == 0
+
+test_math.py:3: AssertionError</failure></testcase><testcase classname="test_math" name="test_skipped" time="0.000"><skipped type="pytest.skip" message="skip">/work/test_math.py:4: skip</skipped></testcase><testcase classname="test_math.TestNested" name="test_multiplies" time="0.000" /></testsuite></testsuites>

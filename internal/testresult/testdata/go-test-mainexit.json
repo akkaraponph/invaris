@@ -1,0 +1,8 @@
+{"Time":"2026-11-17T13:01:50.241153+07:00","Action":"start","Package":"x/mainexit"}
+{"Time":"2026-11-17T13:01:50.611977+07:00","Action":"run","Package":"x/mainexit","Test":"TestA"}
+{"Time":"2026-11-17T13:01:50.61229+07:00","Action":"output","Package":"x/mainexit","Test":"TestA","Output":"=== RUN   TestA\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.612371+07:00","Action":"output","Package":"x/mainexit","Test":"TestA","Output":"--- PASS: TestA (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.612422+07:00","Action":"pass","Package":"x/mainexit","Test":"TestA","Elapsed":0}
+{"Time":"2026-11-17T13:01:50.612472+07:00","Action":"output","Package":"x/mainexit","Output":"PASS\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.613244+07:00","Action":"output","Package":"x/mainexit","Output":"FAIL\tx/mainexit\t0.372s\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.613294+07:00","Action":"fail","Package":"x/mainexit","Elapsed":0.372}

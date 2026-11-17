@@ -1,0 +1,210 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha3",
+  "runId": "<runId>",
+  "action": "mutate",
+  "target": "<root>",
+  "harness": "mutation-fixture",
+  "configDigest": "sha256:831a0d88ee8b63d104e6d5fe48a1de6cab271a53221ef309f23bfc221850063c",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha3",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [],
+  "steps": [],
+  "checks": [],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "mutation-survived:baseline",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [
+        "test.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"covered\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "mutation-survived:validation",
+      "kind": "validation",
+      "program": "sh",
+      "args": [
+        "validate.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"VALID\"}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "mutation-survived:tests",
+      "kind": "tests",
+      "program": "sh",
+      "args": [
+        "test.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"covered\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": null,
+  "decision": "REJECT",
+  "diagnostics": [],
+  "artifacts": [],
+  "experiment": {
+    "id": "mutation-survived",
+    "mutationId": "replace-survived",
+    "engineVersion": "<engineVersion>",
+    "operator": "replace",
+    "target": "behavior.sh",
+    "testCommandId": "assert-covered",
+    "validationCommandId": "syntax",
+    "testIds": [
+      "covered"
+    ],
+    "verdict": "SURVIVED",
+    "reason": "all_tests_passed",
+    "reasonCategory": "result",
+    "sourceSnapshot": {
+      "sha256": "3d7775eb29c451543a175f13a4225bb006cc5b4ba3af3c16d885cd1e06945d16",
+      "files": 7
+    },
+    "mutation": {
+      "path": "behavior.sh",
+      "beforeSha256": "84e25163fff0bdd890c37c50bf70daefe961eaa0ed661af12eac77008fc142a0",
+      "afterSha256": "0a5fb200b08872d7edbdba85f49b4497a24e948a9df38865a80ef0f3581ac1e2"
+    },
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "baseline",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "mutate",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "validation",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "tests",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "cleanup",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      }
+    ],
+    "baseline": {
+      "observationId": "mutation-survived:baseline",
+      "tests": [
+        {
+          "id": "covered",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    },
+    "validation": {
+      "observationId": "mutation-survived:validation",
+      "tests": null,
+      "validity": "VALID"
+    },
+    "tests": {
+      "observationId": "mutation-survived:tests",
+      "tests": [
+        {
+          "id": "covered",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    }
+  }
+}

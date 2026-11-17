@@ -1,0 +1,17 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "builtin-operators-campaign",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {"id": "spacing", "kind": "guardrail", "harness": "invaris.json", "challengeId": "spacing", "repeat": 2},
+    {"id": "line-ending", "kind": "guardrail", "harness": "invaris.json", "challengeId": "line-ending", "repeat": 1},
+    {"id": "leaked-token", "kind": "guardrail", "harness": "invaris.json", "challengeId": "leaked-token", "repeat": 1}
+  ],
+  "acceptance": {
+    "requireNoSurvivors": false,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

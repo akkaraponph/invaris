@@ -1,0 +1,2 @@
+PASS no-forbidden-import findings=0
+ACCEPT checks=1

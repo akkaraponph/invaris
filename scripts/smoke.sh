@@ -44,6 +44,46 @@ for action in check challenge; do
     accept "$action" "$root/examples/forbidden-dependency/invaris.json"
 done
 
+# Built-in operators (v1alpha4 harness, v1alpha5 evidence), offline.
+v5() {
+    status=0
+    (cd "$root/examples/operators" && "$tmp/invaris" --report "$tmp/report.json" "$@") >"$tmp/stdout.json" || status=$?
+    test "$status" -eq 0
+    cmp "$tmp/report.json" "$tmp/stdout.json"
+    grep -q '"schemaVersion": "invaris.evidence/v1alpha5"' "$tmp/stdout.json"
+    grep -q '"decision": "ACCEPT"' "$tmp/stdout.json"
+    rm "$tmp/report.json"
+    count=$((count + 1))
+    printf 'PASS v1alpha5 %s examples/operators\n' "$*"
+}
+for action in check challenge campaign; do
+    v5 "$action"
+done
+(cd "$root/examples/operators" && "$tmp/invaris" challenge --format compact) | grep -q '^ACCEPT proofs=3$'
+count=$((count + 1))
+printf 'PASS challenge --format compact examples/operators\n'
+
+# explain reads a saved report offline and refuses a tampered one; doctor
+# inspects a harness's setup and executes nothing.
+(cd "$root/examples/operators" && "$tmp/invaris" --report "$tmp/explain-report.json" challenge) >/dev/null
+"$tmp/invaris" explain "$tmp/explain-report.json" >"$tmp/explained.txt"
+grep -q -- '-> detected' "$tmp/explained.txt"
+grep -qx 'Explained offline from the report; nothing was run.' "$tmp/explained.txt"
+"$tmp/invaris" explain --format json "$tmp/explain-report.json" | grep -q '"version": "invaris.explanation/v1alpha1"'
+sed 's/"decision": "ACCEPT"/"decision": "REJECT"/' "$tmp/explain-report.json" >"$tmp/tampered.json"
+status=0
+"$tmp/invaris" explain "$tmp/tampered.json" >/dev/null 2>&1 || status=$?
+test "$status" -eq 2
+rm "$tmp/explain-report.json" "$tmp/tampered.json" "$tmp/explained.txt"
+count=$((count + 1))
+printf 'PASS explain examples/operators (detected; tampered report refused)\n'
+"$tmp/invaris" doctor "$root/examples/structured/invaris.json" >"$tmp/doctor.txt"
+test "$(tail -n 1 "$tmp/doctor.txt")" = 'doctor executed no harness commands; results describe setup only.'
+grep -q '^Summary: .* 0 failed' "$tmp/doctor.txt"
+rm "$tmp/doctor.txt"
+count=$((count + 1))
+printf 'PASS doctor examples/structured/invaris.json\n'
+
 mutation() {
     cfg="$root/examples/mutation/$1.json"
     status=0

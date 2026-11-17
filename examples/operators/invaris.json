@@ -1,0 +1,25 @@
+{
+  "version": "invaris.dev/v1alpha4",
+  "name": "builtin-operators",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "writablePaths": ["notes.txt", "lines.txt", "sample.env"],
+  "policies": [
+    {"id": "trailing-whitespace"},
+    {"id": "line-endings"},
+    {"id": "synthetic-secret"}
+  ],
+  "guards": [
+    {"id": "whitespace", "policyId": "trailing-whitespace", "minInspected": 1, "program": "sh", "args": ["scan.sh", "trailing-whitespace", "notes.txt"]},
+    {"id": "crlf", "policyId": "line-endings", "minInspected": 1, "program": "sh", "args": ["scan.sh", "line-endings", "lines.txt"]},
+    {"id": "secrets", "policyId": "synthetic-secret", "minInspected": 1, "program": "sh", "args": ["scan.sh", "synthetic-secret", "sample.env"]}
+  ],
+  "challenges": [
+    {"id": "spacing", "guard": "whitespace", "file": "notes.txt",
+     "mutation": {"operator": "trailing-whitespace", "version": "1", "preimageSha256": "6a040607a71ed12071b8d4b3d618c63cffdcd55dcedec77c818ee8aca70d01b8"}},
+    {"id": "line-ending", "guard": "crlf", "file": "lines.txt",
+     "mutation": {"operator": "crlf-injection", "version": "1", "preimageSha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f"}},
+    {"id": "leaked-token", "guard": "secrets", "file": "sample.env",
+     "mutation": {"operator": "secret-leak-injection", "version": "1", "preimageSha256": "ada9adb927074e9652576205e7ed4611800a3554a1cf289723033b17dd302d70", "fixture": "invaris-test-token-v1"}}
+  ]
+}

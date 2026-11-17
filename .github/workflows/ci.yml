@@ -1,23 +1,56 @@
-name: Release checks
+name: CI
+
+# CI builds main only: pull requests to main are checked before merge, and
+# pushes to main re-check the merged result, which is the commit a release tag
+# must point to. Other branches are not built. Release tags call this workflow
+# through release.yml.
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GOTOOLCHAIN: local
+  GOPROXY: 'off'
+  GOSUMDB: 'off'
+
 jobs:
-  go:
-    name: Go checks (${{ matrix.os }})
+  lint:
+    name: Format and vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed for:"; echo "$unformatted"; exit 1
+          fi
+      - run: go vet ./...
+
+  test:
+    name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-    env:
-      GOTOOLCHAIN: local
-      GOPROXY: 'off'
-      GOSUMDB: 'off'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -29,18 +62,29 @@ jobs:
           python-version: '3.12'
       - run: go test ./...
       - run: go test -race ./...
-      - run: go vet ./...
-      - run: go build -o "${RUNNER_TEMP}/invaris" ./cmd/invaris
-      - run: sh scripts/smoke.sh
-      - run: python -m pip install -r scripts/requirements-schema.txt
-      - run: python scripts/validate-schemas.py
+      - name: Offline smoke examples
+        run: sh scripts/smoke.sh
+      - name: JSON Schemas against real CLI output
+        run: |
+          python -m pip install -r scripts/requirements-schema.txt
+          python scripts/validate-schemas.py
+
+  fuzz:
+    name: Operator fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go test ./internal/mutation -run '^$' -fuzz '^FuzzPlan$' -fuzztime=10s
 
   dependency-cruiser:
+    name: Dependency-Cruiser adapter
     runs-on: ubuntu-latest
-    env:
-      GOTOOLCHAIN: local
-      GOPROXY: 'off'
-      GOSUMDB: 'off'
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -55,3 +99,18 @@ jobs:
       - run: node --test adapters/dependency-cruiser/provider.test.mjs
       - run: go test -tags=integration ./internal/engine -run '^TestDependencyCruiserProof$' -count=1 -v
       - run: sh scripts/smoke.sh --with-dependency-cruiser
+
+  # Rehearse packaging with a placeholder version on everything headed for
+  # main, so a release tag never meets a packaging problem for the first time.
+  # Releases, GitHub Pages and packages come only from main; a manual run on
+  # another branch skips this job.
+  # A release run packages the tagged version itself (release.yml).
+  package:
+    name: Package
+    needs: [lint, test]
+    if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.ref == 'refs/heads/main' || github.base_ref == 'main') }}
+    uses: ./.github/workflows/package.yml
+    with:
+      version: v0.0.0
+      artifact-name: snapshot-${{ github.sha }}
+      retention-days: 7

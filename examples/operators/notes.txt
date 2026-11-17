@@ -1,0 +1,3 @@
+Release notes
+
+Invaris checks text files.

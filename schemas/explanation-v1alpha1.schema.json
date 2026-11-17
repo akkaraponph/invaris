@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://invaris.dev/schemas/explanation-v1alpha1.schema.json",
+  "title": "Invaris explanation v1alpha1",
+  "description": "The output of `invaris explain --format json`: an offline reading of one validated evidence report. `class` separates what a result recorded from what it means for a fault: detected and missed concern the deliberate edit, inconclusive means the evidence does not decide, excluded and not-run take no part in a rate. `reason` and `category` are null unless the report recorded a reason. `limits` lists what the report cannot show; `unauthenticated` is always present. The explanation is not evidence itself and carries no decision of its own.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "report", "items", "limits"],
+  "properties": {
+    "version": { "const": "invaris.explanation/v1alpha1" },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "action", "runId", "decision", "subject"],
+      "properties": {
+        "schemaVersion": {
+          "enum": [
+            "invaris.evidence/v1alpha2",
+            "invaris.evidence/v1alpha3",
+            "invaris.evidence/v1alpha4",
+            "invaris.evidence/v1alpha5"
+          ]
+        },
+        "action": { "enum": ["run", "check", "challenge", "mutate", "campaign"] },
+        "runId": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+        "decision": { "enum": ["ACCEPT", "REJECT", "REFUSE"] },
+        "subject": { "type": "string" }
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "outcome", "class", "reason", "category", "meaning", "next"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["step", "guard", "proof", "mutation", "experiment"] },
+          "outcome": { "type": "string", "minLength": 1 },
+          "class": { "enum": ["passed", "failed", "detected", "missed", "inconclusive", "excluded", "not-run"] },
+          "reason": { "type": ["string", "null"] },
+          "category": { "enum": ["result", "setup", "infrastructure", "evidence", null] },
+          "meaning": { "type": "string", "minLength": 1, "pattern": "^[^\\n\\r]*$" },
+          "next": { "type": ["string", "null"], "pattern": "^[^\\n\\r]*$" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "reason": { "type": "null" } }, "required": ["reason"] },
+            "then": { "properties": { "next": { "type": "null" } } }
+          }
+        ]
+      }
+    },
+    "limits": {
+      "type": "array",
+      "contains": {
+        "type": "object",
+        "required": ["code"],
+        "properties": { "code": { "const": "unauthenticated" } }
+      },
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "enum": ["weak-evidence", "portable-profile", "legacy-input", "dirty-worktree", "workspace-excluded", "incomplete", "unauthenticated"]
+          },
+          "message": { "type": "string", "minLength": 1, "pattern": "^[^\\n\\r]*$" }
+        }
+      }
+    }
+  }
+}

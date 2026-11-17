@@ -1,0 +1,2 @@
+PASS fixture-guard policy=no-forbidden-marker findings=0
+ACCEPT checks=1

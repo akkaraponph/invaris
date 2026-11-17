@@ -1,0 +1,7 @@
+Invaris check: "structured fixture"
+  input invaris.dev/v1alpha1 (legacy compatibility)
+  guard fixture-guard  status=FAIL  policy=no-forbidden-marker  inspected=1  findings=1  exit=1
+    evidence=fixture-guard  duration=<ms>
+    finding policy=no-forbidden-marker rule=no-forbidden-marker path=source.txt
+    COMMAND_FAILED: exit status 1
+Decision: REJECT  checks=1 pass=0 fail=1 refuse=0 not_run=0

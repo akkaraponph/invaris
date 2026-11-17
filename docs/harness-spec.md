@@ -1,6 +1,10 @@
 # Harness configuration
 
-A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md).
+## Configuration location
+
+The CLI defaults to `.invaris/invaris.json`, falling back to `invaris.json` in the current directory only when the workspace file is absent. An explicit path overrides discovery. For a harness directly inside `.invaris`, references to the “harness directory” below mean its parent project directory: all commands and project paths use that root. Other harness locations continue to use their containing directory. `invaris init` creates the workspace configuration; see [authoring](authoring.md#workspace-layout).
+
+A harness is a JSON file that defines commands and experiments. `run`, `check`, and `challenge` accept `invaris.dev/v1alpha1` or `invaris.dev/v1alpha2` and emit v1alpha2 reports, or [`invaris.dev/v1alpha4`](#v1alpha4-built-in-operators) with built-in operators, which emits v1alpha5. `mutate` uses [v1alpha3 input](#single-mutant-harness) and output. A [campaign file](#campaign-file) groups existing harnesses for the `campaign` action. See the [evidence schema](evidence-schema.md). To create a starter harness, see [`invaris init`](authoring.md#create-a-harness-with-init).
 
 ## Common fields and validation
 
@@ -20,9 +24,20 @@ Paths use forward slashes. Absolute paths, empty segments, `.` or `..` segments,
 
 Optional `policies` declares permitted policy IDs. Optional `networkPolicy` currently accepts only `unrestricted`; it does not provide network isolation. Optional `writablePaths` restricts challenge targets to the listed exact paths: omission retains legacy behavior, whereas an explicit empty list permits no mutation. These declarations do not confine trusted commands. `requiredAdapters` is valid only in v1alpha2 (see provider negotiation below).
 
-The existing v1alpha1 examples remain valid. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#output-migration)).
+The existing v1alpha1 examples remain valid; [`invaris migrate`](authoring.md#upgrade-a-v1alpha1-harness-with-migrate) converts one to v1alpha2 without changing its behavior. Invalid configuration is refused before execution. Reports are now emitted as `invaris.evidence/v1alpha2` for both input versions; the v1alpha1 report shape is no longer produced (see the migration notes in [evidence-schema.md](evidence-schema.md#output-migration)).
 
 For `run`, optional `failFast` and `alwaysRunGuards` booleans both default to true. When `failFast` is false, later steps are attempted after a failed step. When `alwaysRunGuards` is false, guards are skipped after a step failure. Skipped steps and guards appear as `NOT_RUN` with a reason; a skipped guard cannot produce a passing action. Cancellation also records unstarted work as `NOT_RUN`.
+
+## Output formats
+
+```sh
+invaris [--report new-file.json] check [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]
+invaris [--report new-file.json] challenge [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]
+```
+
+The default is `json` on every terminal and in CI. `text` prints each guard (status, policy, inspected count, findings, exit, evidence ID, duration and diagnostics) or each proof (guard, target, expected policy and path or `marker (weak evidence)`, observed findings, baseline and challenged status, verdict, reason, evidence ID, duration and failed stages), then `Decision:` with counts. `compact` prints one line per guard or proof and a final decision line, with no JSON. Flags go after the action and before the optional harness file; each may appear once. An unknown flag or format, a repeated or empty flag, a flag after the harness file, or an extra argument exits `2` before anything runs. `run` and `mutate` print JSON only and reject `--format`. Every action accepts `--evidence-version v1alpha5` to request the [portable evidence profile](evidence-schema.md#portable-profile-v1alpha5); no other value is accepted.
+
+Text and compact output are rendered from the validated, redacted report after any `--report` file is published; they never recompute a decision, and the exit code is the report's. The `--report` file is always the JSON report. Output has no color or other terminal control sequences: control characters in names, IDs and messages are escaped, values with spaces or `=` are quoted, diagnostic messages are cut at 160 bytes with `... (truncated)`, and IDs are never truncated. A missing measurement prints `n/a`.
 
 ## v1alpha2 additions
 
@@ -87,6 +102,28 @@ v1alpha1 inputs use a derived gate that permits weak marker proofs. v1alpha2 acc
 
 The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both harness versions. Run `sh scripts/smoke.sh` to verify the bundled offline configurations.
 
+## v1alpha4 built-in operators
+
+`invaris.dev/v1alpha4` is the v1alpha2 guard harness plus built-in challenge mutations. It is a separate branch from the v1alpha3 behavioral mutation harness and accepts `run`, `check` and `challenge`. Its schema is [`schemas/harness-v1alpha4.schema.json`](../schemas/harness-v1alpha4.schema.json). Every v1alpha2 rule applies, including explicit `trustMode` and `networkPolicy`, exact `writablePaths` (omitted means no mutation) and the gate. The only difference in defaults: without a configured gate, **weak marker evidence is not permitted** (as in v1alpha2). Upgrading a v1alpha2 file is a manual edit; [`migrate`](authoring.md#upgrade-a-v1alpha1-harness-with-migrate) only produces v1alpha2.
+
+A challenge has either the literal form (`before`, `after`, optional `expectedOutput`) or a `mutation` object, decided by which fields are present, even as empty strings. Mixing them, `"mutation": null` and `"mutation": {}` are refused before anything runs.
+
+```json
+{"id": "spacing", "guard": "whitespace", "file": "notes.txt",
+ "mutation": {"operator": "trailing-whitespace", "version": "1", "preimageSha256": "<64 lowercase hex>"}}
+```
+
+| Field | Requirement |
+| --- | --- |
+| `operator` | `trailing-whitespace`, `crlf-injection` or `secret-leak-injection` ([catalog](mutation-operators.md)) |
+| `version` | `"1"` |
+| `preimageSha256` | Lowercase hex SHA-256 of the whole target file as authored. The edit is refused (`INCONCLUSIVE`, `mutation_rejected`) when the copied file no longer matches. |
+| `fixture` | Required as `invaris-test-token-v1` for `secret-leak-injection`, and forbidden on the others |
+
+No other options, seeds, globs or file references exist. The challenge's guard must declare a `policyId` (a structured command guard or a provider guard): a built-in challenge cannot be proven by an output marker, and the finding must match that policy as its rule at the target path. A built-in challenge runs through the same lifecycle as a literal one: fresh copy, healthy baseline with inspected targets, then the planned edit installed with the preimage pinned and re-validated, the same guard over the same scope, classification, integrity check and verified cleanup. A guard that reports the expected finding is `PROVEN`; one that still passes is `UNPROVEN`; a wrong or extra finding, a missing tool, a timeout or a cleanup failure is `INCONCLUSIVE`.
+
+A v1alpha4 harness always produces [v1alpha5 evidence](evidence-schema.md#portable-profile-v1alpha5), including on early failure. See the runnable [operator example](../examples/operators/README.md).
+
 ## Single-mutant harness
 
 `invaris.dev/v1alpha3` is the input version for `mutate`. It requires a name, `trustMode: "trusted-local"`, `networkPolicy: "unrestricted"`, a nonempty `writablePaths` list, and one `experiment`. See the [v1alpha3 schema](../schemas/harness-v1alpha3.schema.json).
@@ -96,11 +133,11 @@ The CLI emits the same [v1alpha2 evidence format](evidence-schema.md) for both h
 | Field | Requirement |
 | --- | --- |
 | `id` | Nonblank experiment ID without surrounding whitespace |
-| `mutation` | `id`, `operator: "replace"`, `path`, `before`, and `after` |
+| `mutation` | `id`, `operator` (`"replace"` or `"delete"`), `path`, `before`, and for `replace` a nonempty `after` |
 | `validation`, `test` | Commands for validity assessment and selected tests |
 | `testIds` | 1 to 128 unique, case-sensitive IDs without surrounding whitespace |
 
-The mutation ID follows the same ID rules. Its `path` must match an entry in `writablePaths`. Replacement strings must be nonempty and distinct. The engine requires exactly one literal occurrence of `before`, counting overlapping matches, and changes only the declared target.
+The mutation ID follows the same ID rules. Its `path` must match an entry in `writablePaths`. For `replace`, the strings must be nonempty and distinct. `delete` removes the single occurrence of `before`, which is the usual way to drop a guard line: include the line's trailing newline in `before`, and omit `after` or set it to `""`. See [`examples/mutation/deleted.json`](../examples/mutation/deleted.json). The engine requires exactly one literal occurrence of `before`, counting overlapping matches, and changes only the declared target.
 
 Set optional `preimageSha256` to 64 lowercase hexadecimal characters to require exact target contents. If the target's SHA-256 differs at mutation time, the result is `mutation_rejected` and the engine writes nothing. The digest identifies contents, not their origin.
 
@@ -116,7 +153,43 @@ Each selected case appears exactly once, in any order. Exit 0 requires all `PASS
 
 Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"}` with exit 0 or `INVALID` with exit 1.
 
+### Test-result converters
+
+`invaris test-result <format> [FILE|-]` turns a test reporter's output into this object, so a test command needs no hand-written converter. It reads FILE, or stdin when FILE is omitted or `-`, prints one object, and exits `0` when every test passed, `1` when at least one assertion failed, and `2` when the output cannot be converted. A test command runs it through a shell, for example `{"program": "sh", "args": ["-c", "go test -json ./... | invaris test-result go-test-json"]}`.
+
+| Format | Reporter | Test ID |
+| --- | --- | --- |
+| `go-test-json` | `go test -json` | `<package>.<test>`, subtests as `<package>.TestX/sub` |
+| `jest-json` | `jest --json`, `vitest run --reporter=json` | `<test file relative to the working directory>::<full test name>` |
+| `junit-xml` | `pytest --junitxml=FILE` | `<classname>::<name>` |
+
+Use these IDs in `testIds`. Skipped, pending and todo tests are left out, so a selected test that was skipped makes the experiment inconclusive. A package that does not build, a package or test file that fails without a failed test (a timeout, `TestMain` exiting nonzero, a test file that fails to load or whose `afterAll` throws), a pytest setup error, duplicate IDs or no tests at all exit `2` and never count as a killed mutant. Reporter output is limited to 16 MiB. With `jest-json` or `junit-xml`, write the report to a file excluded by `workspace.exclude`, or to stdout, so it is not a workspace change.
+
 Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.
+
+## Workspace options
+
+`mutate` and `challenge` run in a disposable copy of the harness directory. By default the copier refuses symbolic links and stops at 2000 entries, so a Node project with `node_modules` cannot be copied as is. A v1alpha3 mutation harness and a v1alpha4 challenge harness accept an optional `workspace` block, with every path relative to the harness directory:
+
+```json
+"workspace": {
+  "dependencies": ["node_modules"],
+  "exclude": [".next", "coverage"],
+  "maxEntries": 10000
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `dependencies` | Top-level directory names that are not copied. Each one is linked beside the copy, in its parent directory, and points at the same directory in the source. Resolvers that walk up the tree, such as Node and Vite, find it; the copy holds no link of its own, and a cache a tool creates at `node_modules/.vite` inside the copy stays in the copy. Each dependency must exist as a directory. |
+| `exclude` | Canonical relative paths that are not copied and are left out of every snapshot. Anything a command creates or changes at or below them is not a `workspace_changed`. Use this for build output and tool caches, never for sources a test reads. |
+| `maxEntries` | Entry bound for the copy and its snapshots, from 1 to 200000. The default is 2000. |
+
+A mutation target or challenge file cannot sit in an excluded path or a dependency. Dependencies and exclusions are outside the integrity check: a command can change them, or write through a dependency link into the source, without the run noticing. This trades part of the integrity guarantee for the ability to run the project, so keep the lists narrow. The harness digest in every report pins these options.
+
+When a stage changes the workspace, the stage detail lists up to 20 changed paths, marked `+` (added), `-` (removed) or `~` (changed). For example, `workspace manifest changed: +node_modules/.vite/deps` points straight at the cache to exclude.
+
+In a campaign, the snapshot leaves out every harness's exclusions and dependencies, each taken relative to its harness directory, and uses the largest `maxEntries`. The report records that list as `sourceIdentity.workspaceExclude` and a raised bound as `sourceIdentity.workspaceMaxEntries`, and `invaris explain` names the excluded paths as a limit. Attempts link dependencies from the original harness directory, because the snapshot does not contain them.
 
 ## Campaign file
 
@@ -139,7 +212,7 @@ Each experiment entry:
 | --- | --- |
 | `id` | Unique; 1 to 128 characters from `A-Z a-z 0-9 . _ -`, starting with a letter or digit. Used by `--only`. |
 | `kind` | `mutation` or `guardrail` |
-| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` or `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's directory. |
+| `harness` | A relative slash path inside the campaign directory, for example `api/mutation.json`. Absolute paths, empty, `.` and `..` segments, backslashes, `:`, and paths through `.git` are rejected. A harness may be directly inside the project’s `.invaris` directory; deeper paths through `.invaris` are rejected. Every directory on the path must be a real directory and the file a regular file: symbolic links are not followed. It cannot be the campaign file itself. The experiment evaluates the harness's execution root (the parent project for `.invaris/invaris.json`). For a campaign inside `.invaris`, harness references are relative to `.invaris`. |
 | `experimentId` | For `mutation` only: the `experiment.id` of a v1alpha3 harness |
 | `challengeId` | For `guardrail` only: a challenge ID in a v1alpha2 harness whose guard declares a `policyId` (structured command guard or provider guard) |
 | `repeat` | Integer from 1 to 5 |

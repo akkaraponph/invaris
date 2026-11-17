@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/akkaraponph/invaris/internal/workspace"
@@ -19,16 +20,21 @@ import (
 type integrity struct {
 	root string
 	info os.FileInfo
+	opts workspace.Options
 }
 
-func newIntegrity(root string) (integrity, error) {
+// changeListLimit bounds how many changed paths an error names.
+const changeListLimit = 20
+
+func newIntegrity(root string, opts workspace.Options) (integrity, error) {
 	info, err := os.Lstat(root)
-	return integrity{root: root, info: info}, err
+	return integrity{root: root, info: info, opts: opts}, err
 }
 
-// snapshot records the manifest to compare against later.
+// snapshot records the manifest to compare against later. Paths the
+// harness excludes are not part of it.
 func (g integrity) snapshot() (map[string]workspace.Entry, error) {
-	return workspace.Snapshot(g.root)
+	return workspace.SnapshotWith(g.root, g.opts)
 }
 
 // verify checks the root identity and compares the manifest with want.
@@ -40,12 +46,14 @@ func (g integrity) verify(want map[string]workspace.Entry) error {
 	if g.info == nil || !os.SameFile(g.info, info) || info.Mode() != g.info.Mode() {
 		return errors.New("workspace root changed")
 	}
-	after, err := workspace.Snapshot(g.root)
+	after, err := g.snapshot()
 	if err != nil {
 		return err
 	}
 	if len(workspace.Diff(want, after)) != 0 {
-		return errors.New("workspace manifest changed")
+		// Name the paths so a tool cache or build output can be found and
+		// declared in workspace.exclude without reproducing the run.
+		return fmt.Errorf("workspace manifest changed: %s", workspace.DescribeChanges(want, after, changeListLimit))
 	}
 	return nil
 }

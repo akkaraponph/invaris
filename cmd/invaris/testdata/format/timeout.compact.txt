@@ -1,0 +1,2 @@
+INCONCLUSIVE c guard=slow target=source.txt reason=timeout strength=weak
+REFUSE proofs=1

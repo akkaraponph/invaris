@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha3",
+  "runId": "<runId>",
+  "action": "mutate",
+  "target": "<root>",
+  "harness": "mutation-fixture",
+  "configDigest": "sha256:81d3a963458a301d994f72922003b61a44dca9caf2e51d51a5f259d8dc3540d5",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha3",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [],
+  "steps": [],
+  "checks": [],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "mutation-invalid:baseline",
+      "kind": "baseline",
+      "program": "sh",
+      "args": [
+        "test.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 0,
+      "stdout": "{\"version\":\"invaris.test-result/v1alpha1\",\"tests\":[{\"id\":\"covered\",\"status\":\"PASS\"}]}\n",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "mutation-invalid:validation",
+      "kind": "validation",
+      "program": "sh",
+      "args": [
+        "validate.sh"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 1,
+      "stdout": "{\"version\":\"invaris.validity-result/v1alpha1\",\"status\":\"INVALID\"}\n",
+      "stderr": "<shell-syntax-error>\n",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": null,
+  "decision": "REFUSE",
+  "diagnostics": [],
+  "artifacts": [],
+  "experiment": {
+    "id": "mutation-invalid",
+    "mutationId": "replace-invalid",
+    "engineVersion": "<engineVersion>",
+    "operator": "replace",
+    "target": "behavior.sh",
+    "testCommandId": "assert-covered",
+    "validationCommandId": "syntax",
+    "testIds": [
+      "covered"
+    ],
+    "verdict": "INVALID",
+    "reason": "mutant_invalid",
+    "reasonCategory": "result",
+    "sourceSnapshot": {
+      "sha256": "3d7775eb29c451543a175f13a4225bb006cc5b4ba3af3c16d885cd1e06945d16",
+      "files": 7
+    },
+    "mutation": {
+      "path": "behavior.sh",
+      "beforeSha256": "84e25163fff0bdd890c37c50bf70daefe961eaa0ed661af12eac77008fc142a0",
+      "afterSha256": "f2a21d3385884fdd73393859a6a07ee86d2123c3abbcb8b687fd3dbadc94edb2"
+    },
+    "stages": [
+      {
+        "name": "prepare",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "baseline",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "mutate",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "validation",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      },
+      {
+        "name": "cleanup",
+        "status": "OK",
+        "durationMs": 0,
+        "detail": ""
+      }
+    ],
+    "baseline": {
+      "observationId": "mutation-invalid:baseline",
+      "tests": [
+        {
+          "id": "covered",
+          "status": "PASS"
+        }
+      ],
+      "validity": ""
+    },
+    "validation": {
+      "observationId": "mutation-invalid:validation",
+      "tests": null,
+      "validity": "INVALID"
+    },
+    "tests": null
+  }
+}

@@ -1,0 +1,6 @@
+{"ImportPath":"example.com/b [example.com/b.test]","Action":"build-output","Output":"# example.com/b [example.com/b.test]\n"}
+{"ImportPath":"example.com/b [example.com/b.test]","Action":"build-output","Output":"./b_test.go:5:28: undefined: undefined\n"}
+{"ImportPath":"example.com/b [example.com/b.test]","Action":"build-fail"}
+{"Time":"2026-11-16T16:25:13.51267+07:00","Action":"start","Package":"example.com/b"}
+{"Time":"2026-11-16T16:25:13.512831+07:00","Action":"output","Package":"example.com/b","Output":"FAIL\texample.com/b [build failed]\n","OutputType":"frame"}
+{"Time":"2026-11-16T16:25:13.512877+07:00","Action":"fail","Package":"example.com/b","Elapsed":0,"FailedBuild":"example.com/b [example.com/b.test]"}

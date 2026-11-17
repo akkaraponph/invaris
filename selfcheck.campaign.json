@@ -1,0 +1,18 @@
+{
+  "version": "invaris.campaign/v1alpha1",
+  "name": "invaris-selfcheck",
+  "trustMode": "trusted-local",
+  "networkPolicy": "unrestricted",
+  "experiments": [
+    {"id": "mutation-killed", "kind": "mutation", "harness": "selfcheck.mutation-killed.json", "experimentId": "selfcheck-killed", "repeat": 1},
+    {"id": "mutation-survived", "kind": "mutation", "harness": "selfcheck.mutation-survived.json", "experimentId": "selfcheck-survived", "repeat": 1},
+    {"id": "guardrail-detected", "kind": "guardrail", "harness": "selfcheck.guardrail.json", "challengeId": "trailing-whitespace-detected", "repeat": 1},
+    {"id": "guardrail-missed", "kind": "guardrail", "harness": "selfcheck.guardrail.json", "challengeId": "secret-missed-control", "repeat": 1}
+  ],
+  "acceptance": {
+    "requireNoSurvivors": true,
+    "requireAllGuardrailsProven": true,
+    "requireNoInconclusive": true,
+    "requireNoMixed": true
+  }
+}

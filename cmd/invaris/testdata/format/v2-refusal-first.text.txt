@@ -1,0 +1,8 @@
+Invaris check: compat
+  guard fails  status=FAIL  policy=none  inspected=n/a  findings=0  exit=1
+    evidence=fails  duration=<ms>
+    COMMAND_FAILED: exit status 1
+  guard refuses  status=REFUSE  policy=none  inspected=n/a  findings=0  exit=n/a
+    evidence=refuses  duration=<ms>
+    REFUSED: fork/exec ./missing-guard: no such file or directory
+Decision: REFUSE  checks=2 pass=0 fail=1 refuse=1 not_run=0

@@ -1,0 +1,3 @@
+FAIL fails findings=0
+REFUSE refuses findings=0
+REJECT checks=2

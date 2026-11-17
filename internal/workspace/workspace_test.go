@@ -2,8 +2,11 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -402,5 +405,86 @@ func TestManifestDigest(t *testing.T) {
 	sb, _ = Snapshot(b.Root)
 	if ManifestDigest(sa) == ManifestDigest(sb) {
 		t.Fatal("mode change not reflected")
+	}
+}
+
+func TestOptionsExcludeAndLimit(t *testing.T) {
+	src := t.TempDir()
+	for _, f := range []string{"keep.txt", ".next/a.js", ".next/b/c.js", "node_modules/pkg/index.js", "src/.next-not/x"} {
+		write(t, src, f, "x", 0o644)
+	}
+	opts := Options{Exclude: []string{".next"}, Dependencies: []string{"node_modules"}, MaxEntries: 5}
+	w, err := PrepareWith(context.Background(), src, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = w.Close() })
+	for _, gone := range []string{".next", "node_modules"} {
+		if _, err := os.Lstat(filepath.Join(w.Root, gone)); !errors.Is(err, fs.ErrNotExist) {
+			t.Fatalf("%s copied into workspace: %v", gone, err)
+		}
+	}
+	link := filepath.Join(filepath.Dir(w.Root), "node_modules")
+	if target, err := os.Readlink(link); err != nil || filepath.Base(target) != "node_modules" {
+		t.Fatalf("dependency not linked beside the workspace: %q %v", target, err)
+	}
+	if _, err := os.Stat(filepath.Join(link, "pkg", "index.js")); err != nil {
+		t.Fatalf("dependency not reachable through the link: %v", err)
+	}
+	before, err := w.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A tool cache under an excluded path is outside the integrity check.
+	write(t, w.Root, ".next/cache/x", "y", 0o644)
+	write(t, w.Root, "node_modules/.vite/deps", "y", 0o644)
+	after, err := w.Snapshot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := Diff(before, after); len(d) != 0 {
+		t.Fatalf("excluded changes were compared: %v", d)
+	}
+	write(t, w.Root, "keep.txt", "changed", 0o644)
+	write(t, w.Root, "new.txt", "n", 0o644)
+	after, _ = w.Snapshot()
+	if got := DescribeChanges(before, after, 10); got != "~keep.txt, +new.txt" {
+		t.Fatalf("DescribeChanges = %q", got)
+	}
+	container := filepath.Dir(w.Root)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(container); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("container left behind: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(src, "node_modules", "pkg", "index.js")); err != nil {
+		t.Fatalf("closing removed the source dependency: %v", err)
+	}
+
+	// The raised limit applies, and the error says how to fix it.
+	_, err = PrepareWith(context.Background(), src, Options{MaxEntries: 2})
+	if err == nil || !strings.Contains(err.Error(), "workspace exceeds 2 entries") || !strings.Contains(err.Error(), "workspace.maxEntries") {
+		t.Fatalf("limit error = %v", err)
+	}
+}
+
+func TestOptionsValidate(t *testing.T) {
+	for name, o := range map[string]Options{
+		"negative limit":   {MaxEntries: -1},
+		"limit over cap":   {MaxEntries: MaxEntriesCeiling + 1},
+		"absolute exclude": {Exclude: []string{"/tmp"}},
+		"dot-dot exclude":  {Exclude: []string{"a/../b"}},
+		"nested dep":       {Dependencies: []string{"a/node_modules"}},
+		"dep also exclude": {Exclude: []string{"node_modules"}, Dependencies: []string{"node_modules"}},
+		"git dep":          {Dependencies: []string{".git"}},
+	} {
+		if err := o.Validate(); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	if _, err := PrepareWith(context.Background(), t.TempDir(), Options{Dependencies: []string{"node_modules"}}); err == nil ||
+		!strings.Contains(err.Error(), `dependency "node_modules" is not a directory`) {
+		t.Fatalf("missing dependency: %v", err)
 	}
 }

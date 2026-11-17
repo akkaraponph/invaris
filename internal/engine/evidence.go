@@ -58,7 +58,7 @@ func evidenceMetadata(ctx context.Context, spec Specification, root, action stri
 
 func buildEvidence(ctx context.Context, spec Specification, root, action string, legacy Report) evidence.Report {
 	r := evidenceMetadata(ctx, spec, root, action, legacy.StartedAt, legacy.FinishedAt)
-	legacyInput := spec.Version != versionV2
+	legacyInput := spec.Version == versionV1
 	if legacyInput {
 		r.Compatibility.Status = "legacy"
 		r.Compatibility.Warnings = []string{"v1alpha1 harness: trusted-local execution with weak marker evidence permitted for compatibility; migrate to invaris.dev/v1alpha2 for explicit gates"}
@@ -197,8 +197,8 @@ func hasChallenge(m map[string]Challenge, id string) bool { _, ok := m[id]; retu
 // guards, challenge evaluates proofs. An action whose applied gate requires
 // nothing (and has no steps) is refused as empty work. Without a configured
 // gate every declared guard (run/check) or challenge (challenge) is required.
-// v1alpha1 inputs permit weak evidence for compatibility; v1alpha2 does not
-// unless its gate says so.
+// v1alpha1 inputs permit weak evidence for compatibility; v1alpha2 and
+// v1alpha4 do not unless their gate says so.
 func effectiveGate(spec Specification, action string) domain.Gate {
 	if spec.Gate != nil {
 		g := *spec.Gate
@@ -209,7 +209,9 @@ func effectiveGate(spec Specification, action string) domain.Gate {
 		}
 		return g
 	}
-	g := domain.Gate{Precedence: domain.FailureFirst, AllowWeakEvidence: spec.Version != versionV2}
+	// Only v1alpha1 permits weak evidence by default; v1alpha2 and v1alpha4
+	// require strong evidence unless the configured gate says otherwise.
+	g := domain.Gate{Precedence: domain.FailureFirst, AllowWeakEvidence: spec.Version == versionV1}
 	if action == "challenge" {
 		for _, c := range spec.Challenges {
 			g.RequiredProofs = append(g.RequiredProofs, c.ID)
@@ -284,8 +286,12 @@ func toCheck(res Result, cmd Command) domain.Check {
 		n := res.Inspection.Inspected
 		c.Inspected = &n
 		for _, f := range res.Inspection.Findings {
-			// v1alpha1 inspections identify a policy, not a separate native rule.
-			c.Findings = append(c.Findings, domain.Finding{PolicyID: f.PolicyID, RuleID: f.PolicyID, Path: f.Path})
+			// An inspection without a ruleId identifies a policy, not a separate native rule.
+			rule := f.RuleID
+			if rule == "" {
+				rule = f.PolicyID
+			}
+			c.Findings = append(c.Findings, domain.Finding{PolicyID: f.PolicyID, RuleID: rule, Path: f.Path, Message: f.Message, Line: f.Line})
 		}
 	}
 	return c

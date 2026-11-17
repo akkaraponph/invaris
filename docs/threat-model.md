@@ -7,7 +7,9 @@ Invaris runs commands with your user permissions. Use trusted harnesses, executa
 - **Engine operations use the copy.** Baselines, replacements, and evaluators run in a temporary workspace. The engine copies the source checkout without changing its files, including dirty, untracked, and read-only files. Trusted commands can still access the source through absolute paths.
 - **One declared replacement is allowed.** The engine replaces exactly one occurrence in the declared file and records whole-file hashes before and after. It revalidates the target after the baseline and rejects symlinks, removed targets, and ambiguous matches. Replacement installs a new file, so existing hard links retain their original bytes.
 - **Cleanup is verified.** The engine removes the copy and checks that it is absent before finalizing a result. Cleanup failure yields `INCONCLUSIVE`. Report validation rejects `PROVEN` without a recorded mutation and an `OK` cleanup stage.
-- **Copy size and file types are restricted.** The copier accepts at most 2,000 entries and 10 MiB per file. It rejects symbolic links and non-regular files, skips `.git` and `.invaris`, and refuses temporary directories inside the checkout.
+- **Copy size and file types are restricted.** The copier accepts at most 2,000 entries and 10 MiB per file. It rejects symbolic links and non-regular files, skips `.git` and `.invaris` at every level (so nested repositories and submodule metadata are not reconstructed, and guards that need Git cannot run in a copy), and refuses temporary directories inside the checkout.
+- **Cancellation stops copying.** Interrupting a run checks for cancellation before every copied entry and between 1 MiB chunks of each file. A canceled copy is removed, and the result is `INCONCLUSIVE` with reason `canceled` (or `timeout` for a deadline) instead of `workspace_prepare_failed`. There is no total-byte budget: a large tree is bounded only by the entry and file limits.
+- **Every target read and write uses the same checks.** The engine reads a target only after confirming that it is a canonical relative path resolving to itself without symbolic links, naming a bounded, owner-writable regular file, and it repeats those checks when it writes.
 
 ## Integrity guarantees shared by proofs and mutations
 
@@ -27,6 +29,7 @@ If a command moves or replaces the workspace directory, cleanup becomes unverifi
 - **Tool honesty.** Providers and evaluators report what they inspected, which tests ran, and what failed. Invaris checks report structure, expected identifiers, paths, and exit codes. It trusts tools to report truthfully.
 - **Rule completeness.** A proof shows that the selected guard detected this change. It does not establish that the guard detects every violation. Marker proofs rely on output text and require a gate that permits weak evidence.
 - **Detached descendants.** Cancellation targets the child process group on Linux and macOS. Other platforms terminate only the direct child. Detached descendants can escape group termination.
+- **Forced termination.** `SIGKILL` or power loss runs no cleanup: an `invaris-proof-*` directory can remain in the temporary directory. Remove it by hand once no run is active. Invaris does not scavenge temporary directories, because another run may own them.
 
 Provider findings must fall within the harness's declared scope. Inspection counts remain the provider's claim. `minInspected` sets a minimum count; `preimageSha256` requires exact target contents. Neither authenticates a tool or the origin of its inputs.
 
@@ -53,3 +56,15 @@ Matching `beforeSha256`, `afterSha256`, and `configDigest` against retained file
 Retained harnesses and source files can contain secrets and are outside report redaction. Report redaction covers configured literal secret values, including prefixes cut off in excerpts. Encoded, transformed, and undeclared secrets can remain visible.
 
 Evaluators must wait for their children and close their streams before returning a verdict. If an evaluator exits 1 while a descendant keeps a pipe open, Go can report the exit error without a separate pipe-wait error.
+
+## Built-in operators and portable evidence
+
+Built-in operators plan their edit from the target bytes read through the same checks as a literal replacement, and install it with the declared preimage pinned, so a target changed after authoring is refused rather than edited. The synthetic secret is a fixed, documented test token; no operator produces a real credential or contacts a service, but a trusted guard you choose can still use the network.
+
+The v1alpha5 profile withholds the root path, executable paths, argument lists, output excerpts and free-text details, and keeps hashes, IDs and counts. Command digests let a reader confirm that a challenged check ran the baseline's command without seeing it. The projection does not hide secrets placed in IDs, policy names or file names, and older report versions still carry paths and bounded output. Neither profile authenticates the report.
+
+## Authoring commands
+
+`init` and `migrate` run no harness command, guard or package script, and their output is not evidence. `init --detect` only checks which marker files exist at the project root; symbolic links and special files are refused rather than followed. `init` publishes with a hard link that fails if the name exists, so it never overwrites a file.
+
+`migrate` keeps an exact backup, takes an exclusive lock file and re-checks the harness identity and bytes before an atomic rename. These checks serialize cooperating migrations and catch ordinary concurrent edits; they do not defend against a hostile local process racing the same paths. A killed process or power loss can leave the lock, backup or a temporary file; nothing removes them automatically. See [recovery](authoring.md#failures-and-recovery).

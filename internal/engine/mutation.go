@@ -28,7 +28,7 @@ func runMutationEvidence(ctx context.Context, spec Specification, root string) e
 			{Code: "INVALID_MUTATION_HARNESS", Message: message},
 		}}
 	}
-	experiment, observations := runMutation(ctx, spec, root, workspace.Prepare, (*workspace.Workspace).Close)
+	experiment, observations := runMutation(ctx, spec, root, prepareFunc(ctx, spec.Workspace), (*workspace.Workspace).Close)
 	r := evidenceMetadata(ctx, spec, root, "mutate", started, time.Now().UTC())
 	r.SchemaVersion = evidence.MutationSchemaVersion
 	experiment.EngineVersion = engineVersion()
@@ -78,11 +78,11 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		err = errors.New("unsafe mutation workspace")
 	}
 	if err != nil {
-		record("prepare", start, "workspace_prepare_failed", err)
+		record("prepare", start, prepareFailure(err), err)
 		return
 	}
 	record("prepare", start, "", nil)
-	guard, statErr := newIntegrity(ws.Root)
+	guard, statErr := newIntegrity(ws.Root, ws.Options)
 	workspaceRoot := guard.info
 	defer func() {
 		start := time.Now()
@@ -163,7 +163,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 		return
 	}
 	e.Mutation = &domain.Mutation{Path: applied.Path, BeforeSHA256: applied.BeforeSHA256, AfterSHA256: applied.AfterSHA256}
-	mutated, err := workspace.Snapshot(ws.Root)
+	mutated, err := guard.snapshot()
 	if err != nil {
 		record("mutate", start, "workspace_changed", err)
 		return
@@ -174,7 +174,7 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	expected.SHA256 = applied.AfterSHA256
 	before[m.Path] = expected
 	if len(workspace.Diff(before, mutated)) != 0 {
-		record("mutate", start, "workspace_changed", errors.New("unexpected manifest after replacement"))
+		record("mutate", start, "workspace_changed", errors.New("unexpected manifest after replacement: "+workspace.DescribeChanges(before, mutated, changeListLimit)))
 		return
 	}
 	record("mutate", start, "", nil)
@@ -202,14 +202,40 @@ func runMutation(ctx context.Context, spec Specification, root string,
 	return
 }
 
-// engineVersion is the module version of this build, or nil for a
-// development build whose version is unknown.
+// engineVersion is the linked release version when one was set, otherwise
+// the module version of this build, or nil for a development build whose
+// version is unknown. It is never invented.
 func engineVersion() *string {
+	return EngineVersion()
+}
+
+// EngineVersion is engineVersion for the CLI's --version.
+func EngineVersion() *string {
+	if releaseVersion != "" {
+		v := releaseVersion
+		return &v
+	}
 	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
 		v := info.Main.Version
 		return &v
 	}
 	return nil
+}
+
+// prepareFunc binds ctx and the harness's workspace options to the copier,
+// so ending the context stops a copy in progress and removes the partial
+// workspace.
+func prepareFunc(ctx context.Context, opts workspace.Options) func(string) (*workspace.Workspace, error) {
+	return func(source string) (*workspace.Workspace, error) { return workspace.PrepareWith(ctx, source, opts) }
+}
+
+// prepareFailure is the reason for a workspace that could not be prepared:
+// canceled or timeout when the context ended during the copy.
+func prepareFailure(err error) string {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return commandFailure(err)
+	}
+	return domain.ReasonPrepareFailed
 }
 
 func commandFailure(err error) string {

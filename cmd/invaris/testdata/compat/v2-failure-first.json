@@ -1,0 +1,153 @@
+{
+  "schemaVersion": "invaris.evidence/v1alpha2",
+  "runId": "<runId>",
+  "action": "check",
+  "target": "<root>",
+  "harness": "compat",
+  "configDigest": "sha256:b183914faed870ad6dd2befe51ad251c141f9e4719deeb355abcbf1d696a5ae9",
+  "gitRevision": null,
+  "gitDirty": null,
+  "environment": {
+    "os": "<os>",
+    "arch": "<arch>"
+  },
+  "startedAt": "<time>",
+  "finishedAt": "<time>",
+  "durationMs": 0,
+  "compatibility": {
+    "status": "native",
+    "inputVersion": "invaris.dev/v1alpha2",
+    "warnings": []
+  },
+  "policies": [],
+  "gate": {
+    "requiredGuards": [
+      "fails",
+      "refuses"
+    ],
+    "requiredProofs": [],
+    "precedence": "failure-first",
+    "allowWeakEvidence": false
+  },
+  "lifecycle": [
+    {
+      "id": "fails",
+      "kind": "guard",
+      "status": "FAIL",
+      "startedAt": "<time>",
+      "finishedAt": "<time>"
+    },
+    {
+      "id": "refuses",
+      "kind": "guard",
+      "status": "REFUSE",
+      "startedAt": "<time>",
+      "finishedAt": "<time>"
+    }
+  ],
+  "steps": [],
+  "checks": [
+    {
+      "id": "fails",
+      "policyId": "",
+      "providerId": "invaris-command",
+      "status": "FAIL",
+      "inspected": null,
+      "findings": [],
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "exitCode": 1
+    },
+    {
+      "id": "refuses",
+      "policyId": "",
+      "providerId": "invaris-command",
+      "status": "REFUSE",
+      "inspected": null,
+      "findings": [],
+      "diagnostics": [
+        {
+          "code": "REFUSED",
+          "message": "fork/exec ./missing-guard: no such file or directory"
+        }
+      ],
+      "exitCode": null
+    }
+  ],
+  "proofs": [],
+  "observations": [
+    {
+      "id": "fails",
+      "kind": "guard",
+      "program": "sh",
+      "args": [
+        "-c",
+        "exit 1"
+      ],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "COMMAND_FAILED",
+          "message": "exit status 1"
+        }
+      ],
+      "executable": {
+        "path": "<executable>",
+        "sha256": "<executable-sha256>"
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    },
+    {
+      "id": "refuses",
+      "kind": "guard",
+      "program": "./missing-guard",
+      "args": [],
+      "provider": {
+        "name": "invaris-command",
+        "version": null,
+        "toolName": null,
+        "toolVersion": null
+      },
+      "scope": [],
+      "startedAt": "<time>",
+      "finishedAt": "<time>",
+      "exitCode": null,
+      "stdout": "",
+      "stderr": "",
+      "truncated": false,
+      "diagnostics": [
+        {
+          "code": "REFUSED",
+          "message": "fork/exec ./missing-guard: no such file or directory"
+        }
+      ],
+      "executable": {
+        "path": "<executable>",
+        "sha256": null
+      },
+      "timeoutSeconds": 30,
+      "envAllowlist": []
+    }
+  ],
+  "targetCount": 1,
+  "decision": "REJECT",
+  "diagnostics": [],
+  "artifacts": []
+}

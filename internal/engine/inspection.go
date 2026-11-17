@@ -1,8 +1,11 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -12,6 +15,52 @@ import (
 type Finding struct {
 	PolicyID string `json:"policyId"`
 	Path     string `json:"path"`
+	// RuleID, Message and Line are optional. An omitted ruleId reports the
+	// policy as the rule, as before; present values are bounded.
+	RuleID  string `json:"ruleId,omitempty"`
+	Message string `json:"message,omitempty"`
+	Line    *int   `json:"line,omitempty"`
+}
+
+// Bounds on the optional inspection finding fields.
+const (
+	maxFindingRuleID  = 128
+	maxFindingMessage = 1024
+)
+
+// UnmarshalJSON decodes one finding strictly: unknown fields, null values,
+// an empty ruleId and a line below 1 are refused.
+func (f *Finding) UnmarshalJSON(b []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	for k, v := range raw {
+		switch k {
+		case "policyId", "path", "ruleId", "message", "line":
+		default:
+			return fmt.Errorf("unknown finding field %q", k)
+		}
+		if string(bytes.TrimSpace(v)) == "null" {
+			return fmt.Errorf("finding field %q is null", k)
+		}
+	}
+	type plain Finding
+	var p plain
+	if err := json.Unmarshal(b, &p); err != nil {
+		return err
+	}
+	if _, ok := raw["ruleId"]; ok && (p.RuleID == "" || len(p.RuleID) > maxFindingRuleID) {
+		return errors.New("finding ruleId must be 1 to 128 bytes")
+	}
+	if len(p.Message) > maxFindingMessage {
+		return errors.New("finding message exceeds 1024 bytes")
+	}
+	if p.Line != nil && *p.Line < 1 {
+		return errors.New("finding line must be at least 1")
+	}
+	*f = Finding(p)
+	return nil
 }
 
 type Inspection struct {

@@ -1,0 +1,2 @@
+PROVEN detect-forbidden-import guard=no-forbidden-import target=source.txt reason=marker_matched strength=weak
+ACCEPT proofs=1
