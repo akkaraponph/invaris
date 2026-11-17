@@ -73,22 +73,22 @@
 
     <section aria-labelledby="quick-start">
       <h2 id="quick-start">Quick start</h2>
-      <p>Version 0.4.0 is the latest release. Download a CLI archive from the <a href="https://github.com/refactorroom/invaris/releases/tag/v0.4.0">v0.4.0 release</a>. The <a href="https://github.com/refactorroom/invaris/blob/main/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
-      <p>The <code>invaris-cli</code> npm package is available; see the <a href="https://github.com/refactorroom/invaris/blob/main/docs/installation.md#npm-installation-after-publication">npm installation guide</a> for prerequisites and updates.</p>
+      <p>Version 0.4.0 is the latest release. Download a CLI archive from the <a href="https://github.com/refactorroom/invaris/releases/tag/v0.4.0">v0.4.0 release</a>. The <a href="https://github.com/refactorroom/invaris/blob/dev/docs/installation.md">installation guide</a> covers Bash, Zsh, and Windows through WSL.</p>
+      <p>The <code>invaris-cli</code> npm package is available; see the <a href="https://github.com/refactorroom/invaris/blob/dev/docs/installation.md#npm-installation-after-publication">npm installation guide</a> for prerequisites and updates.</p>
       <p>To run from source, use Go 1.27.4 or later and a POSIX shell. This example checks for a forbidden marker in a text file:</p>
       <pre><code>git clone https://github.com/refactorroom/invaris.git
 cd invaris
 go run ./cmd/invaris check examples/invaris.json
 go run ./cmd/invaris challenge examples/invaris.json
 go run ./cmd/invaris run examples/invaris.json</code></pre>
-      <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. Add <code>--format text</code> or <code>--format compact</code> after <code>check</code> or <code>challenge</code> for a <a href="https://github.com/refactorroom/invaris/blob/main/docs/harness-spec.md#output-formats">readable summary</a>; the exit code and any <code>--report</code> file stay the same. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
-      <p>Challenges verify workspace integrity and cleanup before finalizing a proof. Reports record the change's digests, stages, <a href="https://github.com/refactorroom/invaris/blob/main/docs/evidence-schema.md#reasons-and-categories">outcome reason</a>, and <a href="https://github.com/refactorroom/invaris/blob/main/docs/evidence-schema.md#reproducibility-provenance">input identifiers</a>.</p>
-      <p>To challenge guards without writing <code>before</code> and <code>after</code> strings, a v1alpha4 harness can name a <a href="https://github.com/refactorroom/invaris/blob/main/docs/mutation-operators.md">built-in operator</a>. The example emits portable <a href="https://github.com/refactorroom/invaris/blob/main/docs/evidence-schema.md#portable-profile-v1alpha5">v1alpha5 evidence</a>:</p>
+      <p>Each command writes an <code>invaris.evidence/v1alpha2</code> JSON report to stdout. Add <code>--format text</code> or <code>--format compact</code> after <code>check</code> or <code>challenge</code> for a <a href="https://github.com/refactorroom/invaris/blob/dev/docs/harness-spec.md#output-formats">readable summary</a>; the exit code and any <code>--report</code> file stay the same. The challenge reports <code>PROVEN</code> when the baseline passes and the guard detects the injected marker. Structured guards also match the expected policy and file.</p>
+      <p>Challenges verify workspace integrity and cleanup before finalizing a proof. Reports record the change's digests, stages, <a href="https://github.com/refactorroom/invaris/blob/dev/docs/evidence-schema.md#reasons-and-categories">outcome reason</a>, and <a href="https://github.com/refactorroom/invaris/blob/dev/docs/evidence-schema.md#reproducibility-provenance">input identifiers</a>.</p>
+      <p>To challenge guards without writing <code>before</code> and <code>after</code> strings, a v1alpha4 harness can name a <a href="https://github.com/refactorroom/invaris/blob/dev/docs/mutation-operators.md">built-in operator</a>. The example emits portable <a href="https://github.com/refactorroom/invaris/blob/dev/docs/evidence-schema.md#portable-profile-v1alpha5">v1alpha5 evidence</a>:</p>
       <pre><code>cd examples/operators &amp;&amp; go run ../../cmd/invaris challenge --format text</code></pre>
       <p>To test whether selected tests catch a code change, run the mutation example:</p>
       <pre><code>go run ./cmd/invaris mutate examples/mutation/killed.json</code></pre>
-      <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/refactorroom/invaris/blob/main/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
-      <p>The <code>campaign</code> action runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/refactorroom/invaris/blob/main/docs/campaigns.md">Campaigns</a>.</p>
+      <p>The example reports <code>KILLED</code> in a v1alpha3 report: the original tests passed and a selected test failed after a valid change. To inspect that change later, <a href="https://github.com/refactorroom/invaris/blob/dev/docs/evidence-schema.md#inspecting-the-actual-edit">retain the harness and target bytes</a>.</p>
+      <p>The <code>campaign</code> action runs several of these experiments together and reports a mutation score, guardrail results, and an <code>ACCEPT</code>, <code>REJECT</code>, or <code>REFUSE</code> decision. See <a href="https://github.com/refactorroom/invaris/blob/dev/docs/campaigns.md">Campaigns</a>.</p>
       <ul class="exit-codes">
         <li><code>0</code> Successful action</li>
         <li><code>1</code> Failure, unproven challenge, or surviving mutant</li>
@@ -99,29 +99,29 @@ go run ./cmd/invaris run examples/invaris.json</code></pre>
     <section aria-labelledby="reference">
       <h2 id="reference">Reference</h2>
       <ul class="reference">
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/diagnostics.md">Diagnostics</a> <span>doctor and explain: setup inspection and offline report interpretation</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/experiments/self-check.md">Self-check experiment</a> <span>Invaris challenged on its own code, with the friction log</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/installation.md">Installation and terminal guide</a> <span>Custom folders, Bash, Zsh, and Windows through WSL</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/authoring.md">Create and upgrade harnesses</a> <span>The init and migrate commands</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/diagnostics.md">Diagnostics</a> <span>doctor and explain: setup inspection and offline report interpretation</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/experiments/self-check.md">Self-check experiment</a> <span>Invaris challenged on its own code, with the friction log</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/harness-spec.md">Harness specification</a> <span>Configuration, commands, and challenge behavior</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/campaigns.md">Campaigns</a> <span>Sequential experiments, repeats, scores, and acceptance</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/mutation-operators.md">Built-in mutation operators</a> <span>Trailing whitespace, CRLF and synthetic secret edits for guard challenges</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/inspection.md">Structured inspection</a> <span>Policy and file matching</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/evidence-schema.md">Evidence schema</a> <span>Report fields and typed outcomes</span></li>
         <li><a href="https://github.com/refactorroom/invaris/tree/main/schemas">JSON Schemas</a> <span>Harness v1alpha2 and v1alpha4, campaign, adapter, evidence v1alpha2 to v1alpha5, explanation and doctor contracts</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/ecosystem.md">Related projects</a> <span>Open-source verification and guardrail tools</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/threat-model.md">Threat model</a> <span>What proofs and workspaces do and do not protect</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/provider-support.md">Inspiration</a> <span>Tools that inspired Invaris</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/dependency-cruiser-example.md">Dependency-Cruiser example</a> <span>Install and run the bundled JavaScript adapter</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/ecosystem.md">Related projects</a> <span>Open-source verification and guardrail tools</span></li>
         <li><a href="https://github.com/refactorroom/invaris/tree/main/examples/go-project">Go project example</a> <span>Go tests, an import guard, and report examples</span></li>
         <li><a href="https://github.com/refactorroom/invaris/tree/main/examples/operators">Operator example</a> <span>Challenge three offline guards with built-in operators</span></li>
         <li><a href="https://github.com/refactorroom/invaris/tree/main/examples/mutation">Mutation fixtures</a> <span>Run killed, surviving, and invalid mutants</span></li>
         <li><a href="https://github.com/refactorroom/invaris/tree/main/examples">Example harnesses</a> <span>Runnable configurations and fixtures</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/current-state.md">Implementation status</a> <span>Supported features and planned capabilities</span></li>
         <li><a href="https://github.com/refactorroom/invaris/blob/main/CHANGELOG.md#040">Changelog</a> <span>Version 0.4.0</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/releasing.md">Release preparation</a> <span>Versioned archives, checksums, installation checks and rollback</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/releasing.md">Release preparation</a> <span>Versioned archives, checksums, installation checks and rollback</span></li>
         <li><a href="https://github.com/refactorroom/invaris/blob/main/CONTRIBUTING.md">Contributing</a> <span>Pull request rules and local checks</span></li>
-        <li><a href="https://github.com/refactorroom/invaris/blob/main/docs/roadmap.md">Roadmap</a> <span>Proposed milestones, first useful experiments, evidence verification, and release gates</span></li>
+        <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/roadmap.md">Roadmap</a> <span>Proposed milestones, first useful experiments, evidence verification, and release gates</span></li>
       </ul>
     </section>
 
