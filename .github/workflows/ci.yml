@@ -99,13 +99,15 @@ jobs:
       - run: go test -tags=integration ./internal/engine -run '^TestDependencyCruiserProof$' -count=1 -v
       - run: sh scripts/smoke.sh --with-dependency-cruiser
 
-  # Rehearse packaging on every change with a placeholder version, so a
-  # release tag never meets a packaging problem for the first time.
+  # Rehearse packaging with a placeholder version on everything headed for
+  # main, so a release tag never meets a packaging problem for the first time.
+  # Releases, GitHub Pages and packages come only from main: pull requests to
+  # staging skip this job, pull requests to main and pushes to main run it.
+  # A release run packages the tagged version itself (release.yml).
   package:
     name: Package
     needs: [lint, test]
-    # A release run packages the tagged version itself (release.yml).
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ !startsWith(github.ref, 'refs/tags/') && (github.ref == 'refs/heads/main' || github.base_ref == 'main') }}
     uses: ./.github/workflows/package.yml
     with:
       version: v0.0.0

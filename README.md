@@ -107,7 +107,7 @@ Dependency-Cruiser, Redproof, Stryker, and Promptfoo [inspired Invaris](docs/pro
 
 ## Contributing
 
-Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Builds run only after pushes to `main`; verify the Linux, macOS and Dependency-Cruiser results on the merged commit before publishing. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/refactorroom/invaris/rules/27257768) for merge requirements.
+Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Releases, packages and the GitHub Pages site come only from `main`, and CI rehearses packaging only for pull requests to `main` and pushes to `main`; verify the Linux, macOS and Dependency-Cruiser results on the merged commit before publishing. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/refactorroom/invaris/rules/27257768) for merge requirements.
 
 ## License
 

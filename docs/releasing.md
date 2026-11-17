@@ -28,7 +28,7 @@ Releases are published by the [Release workflow](../.github/workflows/release.ym
 
 Archive and npm package verification must pass before publication. The GitHub release is published first, followed by the npm package; publication is not atomic. See [npm publication and recovery](#npm-publication-and-recovery). The publish job uses a GitHub environment named `release`; add required reviewers to it in the repository settings if you want a manual approval before publication. The verified archives are also kept as a workflow artifact `release-vX.Y.Z` for 30 days.
 
-Every CI run also rehearses packaging with the placeholder version `v0.0.0` and keeps the verified set as `snapshot-<commit>` for 7 days. Those archives are for inspection only, never for distribution.
+Releases, npm packages and the GitHub Pages site (served from `main`, folder `/docs`) come only from `main`. CI runs that target `main` (pull requests to `main`, pushes to `main` and manual runs on `main`) also rehearse packaging with the placeholder version `v0.0.0` and keeps the verified set as `snapshot-<commit>` for 7 days. Those archives are for inspection only, never for distribution.
 
 ## npm publication and recovery
 
@@ -42,7 +42,7 @@ If GitHub publication succeeds but npm fails, inspect the workflow and check whe
 
 ## Publication gates
 
-1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). CI must pass on both pull requests and on the resulting push to `main`.
+1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). Only the promotion PR rehearses packaging. CI must pass on both pull requests and on the resulting push to `main`.
 2. Prepare `docs/releases/X.Y.Z.md` and the `## X.Y.Z` changelog section in that promotion, and remove "prepared for release" wording that will be wrong once published.
 3. After explicit publication authorization, tag the tested `main` commit and push only that tag:
 
