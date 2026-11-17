@@ -40,6 +40,14 @@ type SourceIdentity struct {
 	GitRevision    *string      `json:"gitRevision"`
 	GitDirty       *bool        `json:"gitDirty"`
 	Excluded       []string     `json:"excluded"`
+	// WorkspaceExclude lists, sorted, the paths the harnesses' workspace
+	// blocks left out of the snapshot (exclusions and dependencies, relative
+	// to the campaign root). Changes there were not checked. Omitted when no
+	// harness declares any.
+	WorkspaceExclude []string `json:"workspaceExclude,omitempty"`
+	// WorkspaceMaxEntries is the snapshot entry bound when a harness raised
+	// it above the default 2000; omitted otherwise.
+	WorkspaceMaxEntries int `json:"workspaceMaxEntries,omitempty"`
 }
 
 // SourceRoot is the manifest digest of one directory of the snapshot that an
@@ -347,6 +355,17 @@ func validateSourceIdentity(s SourceIdentity, bad func(string, ...any)) map[stri
 	}
 	if !slices.Equal(s.Excluded, ExcludedFromSnapshot) {
 		bad("excluded must be %v", ExcludedFromSnapshot)
+	}
+	for i, p := range s.WorkspaceExclude {
+		if !workspace.ValidPath(p) || i > 0 && s.WorkspaceExclude[i-1] >= p {
+			bad("workspaceExclude entry %q is invalid, unsorted or repeated", p)
+		}
+	}
+	if s.WorkspaceExclude != nil && len(s.WorkspaceExclude) == 0 {
+		bad("workspaceExclude must be omitted when empty")
+	}
+	if m := s.WorkspaceMaxEntries; m != 0 && (m < 1 || m > workspace.MaxEntriesCeiling || m == workspace.MaxEntries) {
+		bad("workspaceMaxEntries must be omitted or a non-default bound up to %d", workspace.MaxEntriesCeiling)
 	}
 	return roots
 }

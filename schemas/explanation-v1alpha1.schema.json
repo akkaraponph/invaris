@@ -64,7 +64,7 @@
         "required": ["code", "message"],
         "properties": {
           "code": {
-            "enum": ["weak-evidence", "portable-profile", "legacy-input", "dirty-worktree", "incomplete", "unauthenticated"]
+            "enum": ["weak-evidence", "portable-profile", "legacy-input", "dirty-worktree", "workspace-excluded", "incomplete", "unauthenticated"]
           },
           "message": { "type": "string", "minLength": 1, "pattern": "^[^\\n\\r]*$" }
         }

@@ -182,15 +182,18 @@
         "id",
         "operator",
         "path",
-        "before",
-        "after"
+        "before"
       ],
       "properties": {
         "id": {
           "$ref": "#/$defs/label"
         },
         "operator": {
-          "const": "replace"
+          "enum": [
+            "replace",
+            "delete"
+          ],
+          "description": "replace swaps before for after; delete removes before."
         },
         "path": {
           "$ref": "#/$defs/relativePath"
@@ -201,13 +204,50 @@
         },
         "after": {
           "type": "string",
-          "minLength": 1
+          "description": "Required and nonempty for replace; omitted or empty for delete."
         },
         "preimageSha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "const": "replace"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "after"
+            ],
+            "properties": {
+              "after": {
+                "minLength": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "const": "delete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "after": {
+                "maxLength": 0
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

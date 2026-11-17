@@ -63,6 +63,8 @@ type Finding struct {
 	RuleID   string `json:"ruleId"`
 	Path     string `json:"path"`
 	Message  string `json:"message"`
+	// Line is the 1-based line a structured guard reported, when it did.
+	Line *int `json:"line,omitempty"`
 }
 
 type Diagnostic struct {
