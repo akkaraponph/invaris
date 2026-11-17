@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 
 	"github.com/akkaraponph/invaris/internal/domain"
 	"github.com/akkaraponph/invaris/internal/evidence"
@@ -43,6 +45,7 @@ const (
 	LimitPortableProfile = "portable-profile"
 	LimitLegacyInput     = "legacy-input"
 	LimitDirtyWorktree   = "dirty-worktree"
+	LimitWorkspaceExcl   = "workspace-excluded"
 	LimitIncomplete      = "incomplete"
 	LimitUnauthenticated = "unauthenticated"
 )
@@ -324,6 +327,18 @@ func explainCampaign(r evidence.CampaignReport) (Explanation, error) {
 		e.Items = append(e.Items, item(x.ID, "experiment", outcome, class, reason))
 	}
 	e.Limits = limits(weak, r.SchemaVersion, false, r.SourceIdentity.GitDirty, r.Decision)
+	if excl := r.SourceIdentity.WorkspaceExclude; len(excl) > 0 {
+		// Insert before the closing limits so the order stays fixed.
+		l := Limit{LimitWorkspaceExcl, "The campaign snapshot left out " + strings.Join(excl, ", ") + "; changes there were not checked."}
+		at := len(e.Limits)
+		for i, x := range e.Limits {
+			if x.Code == LimitIncomplete || x.Code == LimitUnauthenticated {
+				at = i
+				break
+			}
+		}
+		e.Limits = slices.Insert(e.Limits, at, l)
+	}
 	return e, nil
 }
 

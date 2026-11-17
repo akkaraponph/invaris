@@ -133,11 +133,11 @@ A v1alpha4 harness always produces [v1alpha5 evidence](evidence-schema.md#portab
 | Field | Requirement |
 | --- | --- |
 | `id` | Nonblank experiment ID without surrounding whitespace |
-| `mutation` | `id`, `operator: "replace"`, `path`, `before`, and `after` |
+| `mutation` | `id`, `operator` (`"replace"` or `"delete"`), `path`, `before`, and for `replace` a nonempty `after` |
 | `validation`, `test` | Commands for validity assessment and selected tests |
 | `testIds` | 1 to 128 unique, case-sensitive IDs without surrounding whitespace |
 
-The mutation ID follows the same ID rules. Its `path` must match an entry in `writablePaths`. Replacement strings must be nonempty and distinct. The engine requires exactly one literal occurrence of `before`, counting overlapping matches, and changes only the declared target.
+The mutation ID follows the same ID rules. Its `path` must match an entry in `writablePaths`. For `replace`, the strings must be nonempty and distinct. `delete` removes the single occurrence of `before`, which is the usual way to drop a guard line: include the line's trailing newline in `before`, and omit `after` or set it to `""`. See [`examples/mutation/deleted.json`](../examples/mutation/deleted.json). The engine requires exactly one literal occurrence of `before`, counting overlapping matches, and changes only the declared target.
 
 Set optional `preimageSha256` to 64 lowercase hexadecimal characters to require exact target contents. If the target's SHA-256 differs at mutation time, the result is `mutation_rejected` and the engine writes nothing. The digest identifies contents, not their origin.
 
@@ -152,6 +152,18 @@ The same test command and case IDs apply to the baseline and mutant. The test co
 Each selected case appears exactly once, in any order. Exit 0 requires all `PASS` and exit 1 requires at least one `ASSERTION_FAILED`.
 
 Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"}` with exit 0 or `INVALID` with exit 1.
+
+### Test-result converters
+
+`invaris test-result <format> [FILE|-]` turns a test reporter's output into this object, so a test command needs no hand-written converter. It reads FILE, or stdin when FILE is omitted or `-`, prints one object, and exits `0` when every test passed, `1` when at least one assertion failed, and `2` when the output cannot be converted. A test command runs it through a shell, for example `{"program": "sh", "args": ["-c", "go test -json ./... | invaris test-result go-test-json"]}`.
+
+| Format | Reporter | Test ID |
+| --- | --- | --- |
+| `go-test-json` | `go test -json` | `<package>.<test>`, subtests as `<package>.TestX/sub` |
+| `jest-json` | `jest --json`, `vitest run --reporter=json` | `<test file relative to the working directory>::<full test name>` |
+| `junit-xml` | `pytest --junitxml=FILE` | `<classname>::<name>` |
+
+Use these IDs in `testIds`. Skipped, pending and todo tests are left out, so a selected test that was skipped makes the experiment inconclusive. A package that does not build, a package or test file that fails without a failed test (a timeout, `TestMain` exiting nonzero, a test file that fails to load or whose `afterAll` throws), a pytest setup error, duplicate IDs or no tests at all exit `2` and never count as a killed mutant. Reporter output is limited to 16 MiB. With `jest-json` or `junit-xml`, write the report to a file excluded by `workspace.exclude`, or to stdout, so it is not a workspace change.
 
 Evaluators reserve these statuses for completed assessments. Infrastructure failures can report diagnostics on stderr and exit 2. Malformed or incomplete stdout, conflicting exits, and runner errors make the experiment inconclusive.
 
@@ -177,7 +189,7 @@ A mutation target or challenge file cannot sit in an excluded path or a dependen
 
 When a stage changes the workspace, the stage detail lists up to 20 changed paths, marked `+` (added), `-` (removed) or `~` (changed). For example, `workspace manifest changed: +node_modules/.vite/deps` points straight at the cache to exclude.
 
-In a campaign, the snapshot leaves out every harness's exclusions and dependencies, each taken relative to its harness directory, and uses the largest `maxEntries`. Attempts link dependencies from the original harness directory, because the snapshot does not contain them.
+In a campaign, the snapshot leaves out every harness's exclusions and dependencies, each taken relative to its harness directory, and uses the largest `maxEntries`. The report records that list as `sourceIdentity.workspaceExclude` and a raised bound as `sourceIdentity.workspaceMaxEntries`, and `invaris explain` names the excluded paths as a limit. Attempts link dependencies from the original harness directory, because the snapshot does not contain them.
 
 ## Campaign file
 

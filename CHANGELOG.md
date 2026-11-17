@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+Closing the gaps found when Invaris was used on a real Node project. Default inputs, report versions and verification exit codes are unchanged; new fields are optional and omitted when unused.
+
+### Added
+
+- `invaris --help` (also `-h`, `help`) prints usage to stdout and exits 0, and `invaris --version` (also `version`) prints `invaris <version>`: the linked release, the module version, or `dev`.
+- `"operator": "delete"` in v1alpha3 mutation harnesses removes the single occurrence of `before` (omit `after` or set it to `""`), so deleting a guard line no longer needs a stand-in replacement. Mutation evidence v1alpha3–v1alpha5 accepts `operator: "delete"`; reports from `replace` harnesses are unchanged. Example: `examples/mutation/deleted.json`.
+- `invaris test-result <go-test-json|jest-json|junit-xml> [FILE|-]` converts `go test -json`, jest or vitest JSON, and pytest JUnit XML into an `invaris.test-result/v1alpha1` object with exit `0`, `1` or `2`. A build failure, a timeout, a package or test file that fails outside its tests (such as `TestMain` exiting nonzero or a throwing `afterAll`), a suite that fails to load or a pytest setup error exits `2`, so it never counts as a killed mutant; skipped tests are left out. See [test-result converters](docs/harness-spec.md#test-result-converters).
+- Structured inspection findings accept optional `ruleId`, `message` and `line`, which are copied into report findings. Reports gain an optional finding `line` (evidence schemas v1alpha2, v1alpha4 and v1alpha5); messages stay withheld in v1alpha5. A challenge proof for a structured command guard matches the finding's policy and path, whatever `ruleId` it reports.
+- Campaign reports record the paths the harnesses' `workspace` blocks left out of the snapshot as `sourceIdentity.workspaceExclude`, and a raised entry bound as `workspaceMaxEntries`; `invaris explain` reports them as the `workspace-excluded` limit. Both fields are omitted when no harness declares a workspace block.
+- `docs/ecosystem.md` gains the Evaris compatibility table, kept identical in Evaris `docs/invaris.md`.
+
+### Compatibility notes
+
+- Consumers that strictly decode findings, such as Evaris, must accept the optional `line` before they read reports from guards that emit it. Reports from guards that do not emit it are unchanged. Evaris 0.4.0 accepts it; Evaris 0.3.0 and earlier refuse such reports.
+
 ## 0.4.0
 
 Making the first useful experiment approachable. Configuration discovery and the `init` destination change as described below; existing root-level configurations remain supported. Report versions and verification exit codes are unchanged. Build with Go 1.27.4 or later.

@@ -286,8 +286,12 @@ func toCheck(res Result, cmd Command) domain.Check {
 		n := res.Inspection.Inspected
 		c.Inspected = &n
 		for _, f := range res.Inspection.Findings {
-			// v1alpha1 inspections identify a policy, not a separate native rule.
-			c.Findings = append(c.Findings, domain.Finding{PolicyID: f.PolicyID, RuleID: f.PolicyID, Path: f.Path})
+			// An inspection without a ruleId identifies a policy, not a separate native rule.
+			rule := f.RuleID
+			if rule == "" {
+				rule = f.PolicyID
+			}
+			c.Findings = append(c.Findings, domain.Finding{PolicyID: f.PolicyID, RuleID: rule, Path: f.Path, Message: f.Message, Line: f.Line})
 		}
 	}
 	return c

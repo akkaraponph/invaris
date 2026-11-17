@@ -120,8 +120,21 @@ func (s Specification) validateMutation() error {
 		return errors.New("guard and workflow fields are outside the mutation harness")
 	}
 	m := e.Mutation
-	if m.Operator != "replace" || m.Before == "" || m.After == "" || m.Before == m.After {
-		return errors.New("mutation must specify a nonempty, distinct replacement")
+	switch m.Operator {
+	case "replace":
+		if m.Before == "" || m.After == "" || m.Before == m.After {
+			return errors.New("mutation must specify a nonempty, distinct replacement")
+		}
+	case "delete":
+		// Delete removes the one occurrence of before; after is omitted or "".
+		if m.Before == "" {
+			return errors.New("delete mutation needs a nonempty before")
+		}
+		if m.After != "" {
+			return errors.New("delete mutation takes no after (omit it or use \"\")")
+		}
+	default:
+		return errors.New(`mutation operator must be "replace" or "delete"`)
 	}
 	if err := validatePath(m.Path); err != nil {
 		return err

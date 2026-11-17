@@ -142,7 +142,7 @@ def mutation_checks(binary):
     hv = validator(load("harness-v1alpha3.schema.json"))
     ev = validator(load("evidence-v1alpha3.schema.json"))
     directory = ROOT / "examples" / "mutation"
-    for name, expected_exit in (("killed", 0), ("survived", 1), ("invalid", 2)):
+    for name, expected_exit in (("killed", 0), ("survived", 1), ("invalid", 2), ("deleted", 0)):
         path = directory / f"{name}.json"
         config = json.loads(path.read_text())
         check(valid(hv, config), f"invalid mutation harness: {name}")
@@ -156,13 +156,16 @@ def mutation_checks(binary):
             continue
         check(valid(ev, doc), f"invalid mutation evidence: {name}")
         check(not valid(evidence, doc), f"v1alpha2 accepts mutation evidence: {name}")
-        check(doc.get("experiment", {}).get("verdict") == name.upper(), f"wrong mutation verdict: {name}")
+        want_verdict = "KILLED" if name == "deleted" else name.upper()
+        check(doc.get("experiment", {}).get("verdict") == want_verdict, f"wrong mutation verdict: {name}")
         for description, edit in {
             "missing test IDs": lambda d: d["experiment"].pop("testIds"),
             "null validation": lambda d: d["experiment"].update(validation=None),
             "bad operator": lambda d: d["experiment"]["mutation"].update(operator="patch"),
             "unsafe target": lambda d: d["experiment"]["mutation"].update(path="../source"),
             "empty write scope": lambda d: d.update(writablePaths=[]),
+            "delete with after": lambda d: d["experiment"]["mutation"].update(operator="delete", after="x"),
+            "replace without after": lambda d: (d["experiment"]["mutation"].update(operator="replace"), d["experiment"]["mutation"].pop("after", None)),
         }.items():
             bad = copy.deepcopy(config)
             edit(bad)

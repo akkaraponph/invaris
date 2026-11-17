@@ -206,6 +206,11 @@ func runMutation(ctx context.Context, spec Specification, root string,
 // the module version of this build, or nil for a development build whose
 // version is unknown. It is never invented.
 func engineVersion() *string {
+	return EngineVersion()
+}
+
+// EngineVersion is engineVersion for the CLI's --version.
+func EngineVersion() *string {
 	if releaseVersion != "" {
 		v := releaseVersion
 		return &v

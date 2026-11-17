@@ -2,12 +2,16 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/testresult"
 	"github.com/akkaraponph/invaris/internal/workspace"
 )
 
@@ -121,5 +125,89 @@ func TestCampaignMergesWorkspaceOptions(t *testing.T) {
 	o = mergeWorkspace(o, ".", workspace.Options{Exclude: []string{"dist"}, MaxEntries: 100})
 	if strings.Join(o.Exclude, ",") != "app/.next,app/node_modules,dist" || o.MaxEntries != 9000 || len(o.Dependencies) != 0 {
 		t.Fatalf("merged %+v", o)
+	}
+}
+
+func TestDeleteOperatorKillsMutant(t *testing.T) {
+	root := t.TempDir()
+	src := "func check(ok bool) error {\n\tif !ok { return err }\n\treturn nil\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "src"), []byte(src), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	raw := strings.Replace(mutationConfig, `"operator":"replace","path":"src","before":"old","after":"new"`,
+		`"operator":"delete","path":"src","before":"\tif !ok { return err }\n"`, 1)
+	spec, err := decodeSpecification([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed := emit(strings.ReplaceAll(cleanTests, "PASS", "ASSERTION_FAILED"))
+	spec.Experiment.TestIDs = []string{"case"}
+	spec.Experiment.Test.Args = []string{"-c", `if grep -q 'return err' src; then ` + emit(cleanTests) + `; else ` + failed + `; exit 1; fi`}
+	spec.Experiment.Validation.Args = []string{"-c", emit(cleanValidity)}
+	e, _ := runMutation(context.Background(), spec, root, prepareFunc(context.Background(), spec.Workspace), (*workspace.Workspace).Close)
+	if e.Verdict != domain.MutationKilled || e.Operator != "delete" {
+		t.Fatalf("verdict %s operator %s stages %+v", e.Verdict, e.Operator, e.Stages)
+	}
+	want := sha256.Sum256([]byte("func check(ok bool) error {\n\treturn nil\n}\n"))
+	if e.Mutation == nil || e.Mutation.AfterSHA256 != hex.EncodeToString(want[:]) {
+		t.Fatalf("mutation %+v", e.Mutation)
+	}
+}
+
+func TestDeleteOperatorContract(t *testing.T) {
+	for name, tc := range map[string]struct {
+		from, to string
+		ok       bool
+	}{
+		"delete without after":            {`"operator":"replace","path":"src","before":"old","after":"new"`, `"operator":"delete","path":"src","before":"old"`, true},
+		"delete keeping after":            {`"operator":"replace"`, `"operator":"delete"`, false},
+		"delete with after":               {`"operator":"replace","path":"src","before":"old","after":"new"`, `"operator":"delete","path":"src","before":"old","after":"x"`, false},
+		"delete with empty after literal": {`"operator":"replace","path":"src","before":"old","after":"new"`, `"operator":"delete","path":"src","before":"old","after":""`, true},
+		"replace without after":           {`"after":"new"`, `"after":""`, false},
+		"delete empty before":             {`"operator":"replace","path":"src","before":"old","after":"new"`, `"operator":"delete","path":"src","before":""`, false},
+		"unknown operator":                {`"operator":"replace"`, `"operator":"remove"`, false},
+	} {
+		raw := strings.Replace(mutationConfig, tc.from, tc.to, 1)
+		if raw == mutationConfig {
+			t.Fatalf("%s: fixture not changed", name)
+		}
+		_, err := decodeSpecification([]byte(raw))
+		if (err == nil) != tc.ok {
+			t.Errorf("%s: err = %v, want ok=%v", name, err, tc.ok)
+		}
+	}
+	// The exactly-once marker rule still applies to delete.
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "src"), []byte("old old"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	spec, err := decodeSpecification([]byte(strings.Replace(mutationConfig, `"operator":"replace","path":"src","before":"old","after":"new"`, `"operator":"delete","path":"src","before":"old"`, 1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec.Experiment.TestIDs = []string{"case"}
+	spec.Experiment.Test.Args = []string{"-c", emit(cleanTests)}
+	spec.Experiment.Validation.Args = []string{"-c", emit(cleanValidity)}
+	e, _ := runMutation(context.Background(), spec, root, prepareFunc(context.Background(), spec.Workspace), (*workspace.Workspace).Close)
+	if e.Reason != "mutation_rejected" {
+		t.Fatalf("reason %s", e.Reason)
+	}
+}
+
+// A selected test that the converter omits (skipped) leaves the experiment
+// inconclusive: it is neither a pass nor a kill.
+func TestSkippedSelectedTestIsInconclusive(t *testing.T) {
+	junit := `<testsuite><testcase classname="m" name="covered"/><testcase classname="m" name="selected"><skipped/></testcase></testsuite>`
+	result, err := testresult.Convert("junit-xml", strings.NewReader(junit), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _ := json.Marshal(result)
+	spec, root := mutationTestProject(t)
+	spec.Experiment.TestIDs = []string{"m::covered", "m::selected"}
+	spec.Experiment.Test.Args = []string{"-c", emit(string(out))}
+	e, _ := runMutation(context.Background(), spec, root, prepareFunc(context.Background(), spec.Workspace), (*workspace.Workspace).Close)
+	if e.Verdict != domain.MutationInconclusive || e.Reason != "malformed_evidence" {
+		t.Fatalf("verdict %s reason %s", e.Verdict, e.Reason)
 	}
 }
