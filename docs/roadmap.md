@@ -1,35 +1,45 @@
-# Roadmap after v0.3.0
+# Roadmap after v0.5.0
 
-Proposed on 2026-11-15. Versions below are planning targets, not scheduled or
-approved implementation commitments. Promote a milestone only after its exit
-criteria are met; split or defer it when evidence changes the scope.
+Proposed on 2026-11-15 and revised on 2026-11-17 after v0.5.0. Versions below
+are planning targets, not scheduled or approved implementation commitments.
+Promote a milestone only after its exit criteria are met; split or defer it when
+evidence changes the scope.
 
 ## Current baseline
 
-Version 0.3.0 was released on 2026-11-15 and is the baseline for this
-roadmap. See its [release notes](releases/0.3.0.md) and the
+Version 0.5.0 was released on 2026-11-17 and is the baseline for this roadmap.
+See its [release notes](releases/0.5.0.md) and the
 [current implementation](current-state.md) for its scope.
 
 The CLI runs trusted local checks, challenges guards with deliberate edits,
-tests single behavioral mutations, and combines experiments into campaigns with
-fresh baselines, repeats and typed acceptance policies. It also provides starter
-harnesses, v1alpha1 migration, human-readable summaries, three byte-level guard
-operators and portable v1alpha5 evidence. Dependency-Cruiser is the documented
-real-analyzer integration.
+tests single behavioral mutations (replacing or deleting a line), and combines
+experiments into campaigns with fresh baselines, repeats and typed acceptance
+policies. It also provides starter harnesses, v1alpha1 migration, `doctor` and
+`explain` diagnostics, human-readable summaries, test-report conversion for
+`go test`, jest/vitest and pytest, three byte-level guard operators and
+portable v1alpha5 evidence. Dependency-Cruiser is the documented real-analyzer
+integration, and Evaris 0.4.0 can run `check` and `campaign` as an optional
+verifier.
 
 These capabilities establish experiment infrastructure. A passing check alone
 does not show that it catches faults; a proven challenge establishes detection
 of that specific edit, not complete rule coverage. Commands remain trusted and
 unsandboxed, and reports do not authenticate who executed them.
 
+## Delivered milestones
+
+| Version | Outcome | Status of exit criteria |
+| --- | --- | --- |
+| v0.4.0 (2026-11-16) | Make a first useful experiment approachable | `doctor` and `explain` were added from the [self-check experiment](experiments/self-check.md) friction log. A second operator has not yet repeated the workflow, so this milestone's exit criteria are only partly met. |
+| v0.5.0 (2026-11-17) | Close gaps found on a real Node project | Replaced the planned evidence-verification milestone, which moves to v0.6.0. Added `--help`, `--version`, the `delete` mutation operator, `test-result` converters, finding `line` and recorded workspace exclusions. The self-check experiment has not been repeated with these features. |
+
 ## Release sequence
 
 | Target | Intended outcome | Exit criteria |
 | --- | --- | --- |
-| v0.3.x, as needed after publication | Maintain a dependable baseline | Fix confirmed defects while preserving published report shapes and outcome semantics. Documented examples and downloaded-archive installation checks pass. Historical fixtures still load and retain their intended decisions; any necessary contract change gets an explicit compatibility decision. |
-| v0.4.0 | Make a first useful experiment approachable | A developer can adapt a documented workflow to a real repository, run a passing baseline and deliberate fault, and interpret detected, missed and inconclusive outcomes. A second operator can repeat it. Add bounded setup diagnostics and report explanations where the workflow exposes confusion; keep unknown facts and execution limits explicit. The [self-check experiment](experiments/self-check.md) is the first run of this workflow, with `doctor` and `explain` added from its friction log; a second operator has not yet repeated it. |
-| v0.5.0 | Make retained evidence independently inspectable | Verify supported reports against their internal relationships and, when supplied, exact retained harness/source bytes. Distinguish malformed evidence, mismatched inputs and unavailable inputs. Cover literal edits, built-in operators and campaign children. Separate offline verification from command re-execution and report authentication. |
-| v0.6.0 | Make campaign changes useful in CI | Compare explicitly matched experiments across runs, showing scope, policy, operator, tool and configuration changes where recorded. Show denominators, exclusions, mixed and incomplete outcomes. Refuse unsupported comparisons instead of presenting a score delta as a regression. Demonstrate the workflow on a real consumer. |
+| v0.5.x, as needed | Maintain a dependable baseline | Fix confirmed defects while preserving published report shapes and outcome semantics. Documented examples, downloaded-archive installation and npm package checks pass. Historical fixtures still load and retain their intended decisions; any necessary contract change gets an explicit compatibility decision. |
+| v0.6.0 | Make retained evidence independently inspectable | Verify supported reports against their internal relationships and, when supplied, exact retained harness/source bytes. Distinguish malformed evidence, mismatched inputs and unavailable inputs. Cover literal edits, built-in operators and campaign children. Separate offline verification from command re-execution and report authentication. |
+| v0.7.0 | Make campaign changes useful in CI | Compare explicitly matched experiments across runs, showing scope, policy, operator, tool and configuration changes where recorded. Show denominators, exclusions, mixed and incomplete outcomes. Refuse unsupported comparisons instead of presenting a score delta as a regression. Demonstrate the workflow on a real consumer. |
 | v1.0.0, after adoption evidence | Offer a durable CLI and evidence contract | Publish the supported command/schema matrix and compatibility policy; test historical reports and harnesses; provide migration or explicit refusal paths, recovery guidance and repeatable releases. Resolve material findings from actual users and state the precise limits of stability. |
 
 Maintenance can run alongside workflow discovery. Later milestones depend on
@@ -65,10 +75,10 @@ fault into an arbitrary project merely to make onboarding appear complete.
 
 ## Scope decisions before subsequent milestones
 
-- **Diagnostics:** define `doctor` as bounded setup inspection and `explain` as
-  interpretation of recorded evidence before committing to either interface.
-  State which checks execute tools; never imply that a diagnostic passed when
-  it was not performed. Build on existing reason categories and text output.
+- **Diagnostics:** `doctor` (bounded setup inspection) and `explain`
+  (interpretation of recorded evidence) shipped in v0.4.0. Extend them only from
+  observed confusion. State which checks execute tools; never imply that a
+  diagnostic passed when it was not performed.
 - **Verification and retention:** define `verify` against supported report
   versions and retained inputs. Reports currently do not archive source bytes;
   missing inputs must remain unverifiable. Portable reports intentionally

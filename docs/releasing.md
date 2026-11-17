@@ -1,19 +1,19 @@
 # Prepare and publish a release
 
-The latest GitHub release is [v0.4.0](https://github.com/refactorroom/invaris/releases/tag/v0.4.0); see its [release notes](releases/0.4.0.md). The examples below use v0.4.0; substitute the version you are preparing.
+The latest GitHub release is [v0.5.0](https://github.com/refactorroom/invaris/releases/tag/v0.5.0); see its [release notes](releases/0.5.0.md). The examples below use v0.5.0; substitute the version you are preparing.
 
 ## Build and inspect archives
 
 Use the Go version in `go.mod`, Python 3.11 or later, and Linux or macOS on amd64 or arm64. Run from the repository root:
 
 ```sh
-python3 scripts/package-release.py v0.4.0 --output dist/v0.4.0
-python3 scripts/verify-release.py v0.4.0 dist/v0.4.0
+python3 scripts/package-release.py v0.5.0 --output dist/v0.5.0
+python3 scripts/verify-release.py v0.5.0 dist/v0.5.0
 ```
 
 The destination must not exist. Packaging refuses to overwrite an earlier build; on failure, inspect the partial output and choose a new destination. `dist/` is ignored by Git. Build from the exact tested release commit with a clean worktree before publication.
 
-The directory contains four `invaris_0.4.0_<os>_<arch>.tar.gz` archives (`linux` and `darwin`, each on `amd64` and `arm64`) and `SHA256SUMS`. Every archive has only `invaris`, `invaris-command-provider`, `LICENSE` and a version-specific `README.md` at its root. Builds disable cgo and stamp `engineVersion` with `v0.4.0`.
+The directory contains four `invaris_0.5.0_<os>_<arch>.tar.gz` archives (`linux` and `darwin`, each on `amd64` and `arm64`) and `SHA256SUMS`. Every archive has only `invaris`, `invaris-command-provider`, `LICENSE` and a version-specific `README.md` at its root. Builds disable cgo and stamp `engineVersion` with `v0.5.0`.
 
 Verification checks every archive's SHA-256, exact member list, regular file types and executable permissions. It extracts the native archive into a new folder with a space in its name, then runs the installed CLI and provider, checks the stamped version, reads text and compact output, runs an operator campaign, initializes an empty project and rehearses migration with an exact backup. Other architecture binaries are cross-built and inspected, but are not executed on that runner.
 
