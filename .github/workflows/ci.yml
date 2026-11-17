@@ -1,11 +1,12 @@
 name: CI
 
-# Pull requests to staging and main are checked before merge; pushes to main
-# re-check the merged result, which is the commit a release tag must point to.
-# Release tags call this workflow through release.yml.
+# CI builds main only: pull requests to main are checked before merge, and
+# pushes to main re-check the merged result, which is the commit a release tag
+# must point to. Other branches are not built. Release tags call this workflow
+# through release.yml.
 on:
   pull_request:
-    branches: [main, staging]
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -101,8 +102,8 @@ jobs:
 
   # Rehearse packaging with a placeholder version on everything headed for
   # main, so a release tag never meets a packaging problem for the first time.
-  # Releases, GitHub Pages and packages come only from main: pull requests to
-  # staging skip this job, pull requests to main and pushes to main run it.
+  # Releases, GitHub Pages and packages come only from main; a manual run on
+  # another branch skips this job.
   # A release run packages the tagged version itself (release.yml).
   package:
     name: Package
