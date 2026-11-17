@@ -1,0 +1,42 @@
+{"Time":"2026-11-17T13:01:47.689833+07:00","Action":"start","Package":"x/hang"}
+{"Time":"2026-11-17T13:01:48.048324+07:00","Action":"run","Package":"x/hang","Test":"TestA"}
+{"Time":"2026-11-17T13:01:48.048608+07:00","Action":"output","Package":"x/hang","Test":"TestA","Output":"=== RUN   TestA\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:48.04867+07:00","Action":"output","Package":"x/hang","Test":"TestA","Output":"--- PASS: TestA (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:48.048699+07:00","Action":"pass","Package":"x/hang","Test":"TestA","Elapsed":0}
+{"Time":"2026-11-17T13:01:48.04872+07:00","Action":"run","Package":"x/hang","Test":"TestB"}
+{"Time":"2026-11-17T13:01:48.048772+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"=== RUN   TestB\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.052566+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"panic: test timed out after 2s\n"}
+{"Time":"2026-11-17T13:01:50.052738+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\trunning tests:\n"}
+{"Time":"2026-11-17T13:01:50.052787+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t\tTestB (2s)\n"}
+{"Time":"2026-11-17T13:01:50.052827+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\n"}
+{"Time":"2026-11-17T13:01:50.052866+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"goroutine 20 [running]:\n"}
+{"Time":"2026-11-17T13:01:50.052904+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.(*M).startAlarm.func1()\n"}
+{"Time":"2026-11-17T13:01:50.053007+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2961 +0x2c4\n"}
+{"Time":"2026-11-17T13:01:50.053108+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"created by time.goFunc\n"}
+{"Time":"2026-11-17T13:01:50.053155+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/time/sleep.go:182 +0x38\n"}
+{"Time":"2026-11-17T13:01:50.053206+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\n"}
+{"Time":"2026-11-17T13:01:50.053246+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"goroutine 1 [chan receive]:\n"}
+{"Time":"2026-11-17T13:01:50.053284+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.(*T).Run(0x3ad2cc75c008, {0x1044d1300?, 0x3ad2cc69aa88?}, 0x10463f718)\n"}
+{"Time":"2026-11-17T13:01:50.05335+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2268 +0x3cc\n"}
+{"Time":"2026-11-17T13:01:50.053401+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.runTests.func1(0x3ad2cc75c008)\n"}
+{"Time":"2026-11-17T13:01:50.053439+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2744 +0x38\n"}
+{"Time":"2026-11-17T13:01:50.05348+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.tRunner(0x3ad2cc75c008, 0x3ad2cc69abb8)\n"}
+{"Time":"2026-11-17T13:01:50.053518+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2195 +0xc4\n"}
+{"Time":"2026-11-17T13:01:50.053557+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.runTests({0x1044d0fe0, 0x1}, {0x1044d151c, 0x6}, 0x3ad2cc728078, {0x10465e5f0, 0x2, 0x2}, {0x3ad2cc69ac58?, 0x3ad2cc72c180?, ...})\n"}
+{"Time":"2026-11-17T13:01:50.053604+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2742 +0x400\n"}
+{"Time":"2026-11-17T13:01:50.05364+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.(*M).Run(0x3ad2cc714140)\n"}
+{"Time":"2026-11-17T13:01:50.053773+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2602 +0x578\n"}
+{"Time":"2026-11-17T13:01:50.053807+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"main.main()\n"}
+{"Time":"2026-11-17T13:01:50.053839+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t_testmain.go:48 +0x80\n"}
+{"Time":"2026-11-17T13:01:50.053872+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\n"}
+{"Time":"2026-11-17T13:01:50.053905+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"goroutine 36 [sleep]:\n"}
+{"Time":"2026-11-17T13:01:50.053937+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"time.Sleep(0x34630b8a000)\n"}
+{"Time":"2026-11-17T13:01:50.053971+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/runtime/time.go:368 +0x150\n"}
+{"Time":"2026-11-17T13:01:50.054004+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"x/hang.TestB(0x3ad2cc75c488?)\n"}
+{"Time":"2026-11-17T13:01:50.054048+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/hang/h_test.go:4 +0x28\n"}
+{"Time":"2026-11-17T13:01:50.054123+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"testing.tRunner(0x3ad2cc75c488, 0x10463f718)\n"}
+{"Time":"2026-11-17T13:01:50.054158+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2195 +0xc4\n"}
+{"Time":"2026-11-17T13:01:50.054192+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-11-17T13:01:50.054235+07:00","Action":"output","Package":"x/hang","Test":"TestB","Output":"\t/work/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.4.darwin-arm64/src/testing/testing.go:2260 +0x3b8\n"}
+{"Time":"2026-11-17T13:01:50.05534+07:00","Action":"output","Package":"x/hang","Output":"FAIL\tx/hang\t2.364s\n","OutputType":"frame"}
+{"Time":"2026-11-17T13:01:50.055382+07:00","Action":"fail","Package":"x/hang","Elapsed":2.366}

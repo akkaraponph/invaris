@@ -50,7 +50,8 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 		Environment: evidence.Environment{OS: runtime.GOOS, Arch: runtime.GOARCH},
 		StartedAt:   time.Now().UTC(), AcceptancePolicy: c.Acceptance,
 		SourceIdentity: evidence.SourceIdentity{GitRevision: gitRevision(ctx, c.Root), GitDirty: gitDirty(ctx, c.Root),
-			Excluded: slices.Clone(evidence.ExcludedFromSnapshot)},
+			Excluded: slices.Clone(evidence.ExcludedFromSnapshot), WorkspaceExclude: sortedOrNil(c.Workspace.Exclude),
+			WorkspaceMaxEntries: nonDefaultLimit(c.Workspace.MaxEntries)},
 		Selection:   evidence.CampaignSelection{Mode: "all", Only: []string{}},
 		Parallelism: parallel,
 	}
@@ -138,6 +139,25 @@ func runCampaign(ctx context.Context, c Campaign, selected []bool, only []string
 	r.FinishedAt = time.Now().UTC()
 	r.DurationMs = r.FinishedAt.Sub(r.StartedAt).Milliseconds()
 	return r
+}
+
+// sortedOrNil returns a sorted copy, or nil for an empty list, so reports
+// without workspace exclusions keep their previous shape.
+func sortedOrNil(paths []string) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := slices.Clone(paths)
+	slices.Sort(out)
+	return out
+}
+
+// nonDefaultLimit is the entry bound when it differs from the default.
+func nonDefaultLimit(n int) int {
+	if n == 0 || n == workspace.MaxEntries {
+		return 0
+	}
+	return n
 }
 
 // freezeSnapshot records the snapshot identity, including the digest of every

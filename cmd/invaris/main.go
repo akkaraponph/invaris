@@ -29,6 +29,16 @@ func mainExit() int {
 // goes to stdout only after any requested report file has been published, so a
 // publication failure never leaves a verdict on stdout.
 func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 {
+		switch args[0] {
+		case "--help", "-h", "help":
+			usage(stdout)
+			return 0
+		case "--version", "version":
+			fmt.Fprintln(stdout, "invaris "+versionString())
+			return 0
+		}
+	}
 	var reportPath string
 	if len(args) >= 2 && args[0] == "--report" {
 		reportPath, args = args[1], args[2:]
@@ -37,9 +47,11 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor") {
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor" || args[0] == "test-result") {
 		if reportPath != "" {
 			switch args[0] {
+			case "test-result":
+				fmt.Fprintln(stderr, "--report is not valid for test-result: it converts test output and writes no report")
 			case "explain":
 				fmt.Fprintln(stderr, "--report is not valid for explain: it reads a report and writes none")
 			case "doctor":
@@ -51,6 +63,9 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 		if args[0] == "explain" {
 			return runExplainCLI(args[1:], stdout, stderr)
+		}
+		if args[0] == "test-result" {
+			return runTestResultCLI(args[1:], stdout, stderr)
 		}
 		if args[0] == "doctor" {
 			return runDoctorCLI(args[1:], stdout, stderr)
@@ -136,14 +151,30 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 func usageError(stderr io.Writer, problem string) int {
 	fmt.Fprintln(stderr, problem)
-	fmt.Fprintln(stderr, "usage: invaris [--report new-file.json] <run|mutate> [--evidence-version v1alpha5] [harness.json]")
-	fmt.Fprintln(stderr, "       invaris [--report new-file.json] <check|challenge> [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]")
-	fmt.Fprintln(stderr, "       "+campaignUsage)
-	fmt.Fprintln(stderr, "       "+initUsage)
-	fmt.Fprintln(stderr, "       "+migrateUsage)
-	fmt.Fprintln(stderr, "       "+explainUsage)
-	fmt.Fprintln(stderr, "       "+doctorUsage)
+	usage(stderr)
 	return 2
+}
+
+// usage writes the command synopsis. --help sends it to stdout; usage errors
+// send it to stderr.
+func usage(w io.Writer) {
+	fmt.Fprintln(w, "usage: invaris [--report new-file.json] <run|mutate> [--evidence-version v1alpha5] [harness.json]")
+	fmt.Fprintln(w, "       invaris [--report new-file.json] <check|challenge> [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]")
+	fmt.Fprintln(w, "       "+campaignUsage)
+	fmt.Fprintln(w, "       "+initUsage)
+	fmt.Fprintln(w, "       "+migrateUsage)
+	fmt.Fprintln(w, "       "+explainUsage)
+	fmt.Fprintln(w, "       "+doctorUsage)
+	fmt.Fprintln(w, "       "+testResultUsage)
+	fmt.Fprintln(w, "       invaris --help | --version")
+}
+
+// versionString is the linked release version, the module version, or "dev".
+func versionString() string {
+	if v := engine.EngineVersion(); v != nil {
+		return *v
+	}
+	return "dev"
 }
 
 // evidenceV5Flag is the only value --evidence-version accepts. Older report

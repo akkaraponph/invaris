@@ -62,7 +62,7 @@ func validateMutationExperiment(e *MutationExperiment, observations []Observatio
 			bad("invalid experiment, mutation or command ID")
 		}
 	}
-	if e.TestCommandID == e.ValidationCommandID || e.Operator != "replace" || !workspace.ValidPath(e.Target) {
+	if e.TestCommandID == e.ValidationCommandID || (e.Operator != "replace" && e.Operator != "delete") || !workspace.ValidPath(e.Target) {
 		bad("invalid mutation operator, target or command IDs")
 	}
 	if len(e.TestIDs) == 0 || len(e.TestIDs) > 128 {

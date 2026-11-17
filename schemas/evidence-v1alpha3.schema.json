@@ -285,7 +285,7 @@
         "id": {"type": "string", "minLength": 1},
         "mutationId": {"type": "string", "minLength": 1},
         "engineVersion": {"$ref": "#/$defs/nullableString"},
-        "operator": {"const": "replace"},
+        "operator": {"enum": ["replace", "delete"]},
         "target": {"type": "string", "minLength": 1},
         "testCommandId": {"type": "string", "minLength": 1},
         "validationCommandId": {"type": "string", "minLength": 1},

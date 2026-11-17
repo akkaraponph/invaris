@@ -72,10 +72,10 @@ Add the installation folder to your current terminal session:
 ```sh
 export PATH="$INVARIS_HOME:$PATH"
 command -v invaris
-invaris
+invaris --version
 ```
 
-`command -v invaris` should show the installation path. Running `invaris` without an action prints usage and exits with status 2; that is expected.
+`command -v invaris` should show the installation path, and `invaris --version` prints the installed release, for example `invaris v0.5.0`. `invaris --help` prints usage and exits 0; running `invaris` without an action prints the same usage and exits with status 2.
 
 For future terminals, add the following line once to `~/.bashrc` for Bash or `~/.zshrc` for Zsh, changing the path if necessary:
 

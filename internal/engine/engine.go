@@ -223,7 +223,10 @@ func challenge(ctx context.Context, root string, spec Specification, providers p
 		if g.ID != c.Guard {
 			continue
 		}
-		expect = expectation{Policy: g.PolicyID, Rule: g.PolicyID}
+		// A structured command guard may name its own ruleId; the proof
+		// matches its policy and path. Before ruleId existed the rule was
+		// always the policy, so this keeps the same strength.
+		expect = expectation{Policy: g.PolicyID}
 		evaluate = func(ctx context.Context, workRoot string) domain.Check {
 			res := checkGuard(ctx, workRoot, g)
 			runs = append(runs, res)

@@ -157,3 +157,10 @@ func TestDoctorUnreadableHarnessExits2(t *testing.T) {
 		t.Fatalf("directory: exit %d", code)
 	}
 }
+
+func TestDoctorDeleteHarness(t *testing.T) {
+	code, out, _ := runDoctor(t, filepath.Join("..", "..", "examples", "mutation", "deleted.json"))
+	if code != 0 || !strings.Contains(out, "edit.mutation-deleted") || !strings.Contains(out, "0 failed") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+}

@@ -19,8 +19,10 @@ import (
 // native rule at the mutated path. Otherwise the proof is weak and Marker
 // decides whether the failing output is the expected one.
 type expectation struct {
-	Policy, Rule string
-	Marker       func(domain.Check) bool
+	Policy string
+	// Rule is the expected native rule; empty matches any rule.
+	Rule   string
+	Marker func(domain.Check) bool
 }
 
 // prove challenges a guard inside one disposable copy of root. The same
@@ -215,7 +217,7 @@ func classify(expect expectation, target string, got domain.Check) (domain.Proof
 	if len(got.Findings) != 1 {
 		return domain.Inconclusive, fmt.Sprintf("expected exactly one finding at the mutated path, got %d", len(got.Findings)), domain.ReasonFindingMismatch
 	}
-	if f := got.Findings[0]; f.PolicyID != expect.Policy || f.RuleID != expect.Rule || f.Path != target {
+	if f := got.Findings[0]; f.PolicyID != expect.Policy || (expect.Rule != "" && f.RuleID != expect.Rule) || f.Path != target {
 		return domain.Inconclusive, "finding does not match the expected policy, rule and mutated path", domain.ReasonFindingMismatch
 	}
 	return domain.Proven, "guard reported the expected policy and rule at the mutated path", domain.ReasonGuardDetected

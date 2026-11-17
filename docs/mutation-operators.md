@@ -1,6 +1,6 @@
 # Built-in mutation operators
 
-Built-in operators let a guard challenge declare a small, exact edit by name instead of writing `before` and `after` strings. They are available in [`invaris.dev/v1alpha4` guard harnesses](harness-spec.md#v1alpha4-built-in-operators) and are used only to challenge guards. The behavioral `mutate` action keeps its literal `replace` mutation.
+Built-in operators let a guard challenge declare a small, exact edit by name instead of writing `before` and `after` strings. They are available in [`invaris.dev/v1alpha4` guard harnesses](harness-spec.md#v1alpha4-built-in-operators) and are used only to challenge guards. The behavioral `mutate` action keeps its literal mutations: `replace` and `delete` (see the [single-mutant harness](harness-spec.md#single-mutant-harness)).
 
 Each operator is a pure function of the target file's exact bytes. It does not parse source code, guess comment syntax, read other files or run anything. The same input bytes always give the same output bytes. Any change to an operator's output requires a new operator version, and version `"1"` is the only version.
 
