@@ -49,7 +49,7 @@ Use these links to explore related tools. Check each repository's license and no
 
 ## Evaris compatibility
 
-[Evaris](https://github.com/akkaraponph/evaris) can run `invaris check` as an optional verifier. This table is kept identical in Evaris `docs/invaris.md`:
+[Evaris](https://github.com/refactorroom/evaris) can run `invaris check` as an optional verifier. This table is kept identical in Evaris `docs/invaris.md`:
 
 | Evaris | Invaris build | `invaris --version` | Harness / evidence read | Status |
 | --- | --- | --- | --- | --- |
