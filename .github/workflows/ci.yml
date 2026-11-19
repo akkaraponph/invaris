@@ -1,9 +1,9 @@
 name: CI
 
-# Check source on Linux before and after merging to main.
+# Check changes to dev and main, and verify the merged release branch.
 on:
   pull_request:
-    branches: [main]
+    branches: [dev, main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -26,6 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Require dev as the source of release PRs
+        if: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && (github.head_ref != 'dev' || github.event.pull_request.head.repo.full_name != github.repository) }}
+        run: |
+          echo '::error::Open feature PRs against dev and promote dev to main.'
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
