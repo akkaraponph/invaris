@@ -80,6 +80,31 @@ func Convert(format string, r io.Reader, cwd string) (Result, error) {
 	return Result{Version: Version, Tests: c.tests}, nil
 }
 
+// Select keeps only the tests named in ids, in that order, so the result
+// matches a mutation harness's testIds while the whole suite still runs. A
+// selected ID that is missing (not run, skipped or misspelled) or named twice
+// is an error, so selection can never turn an absent test into a pass.
+func (r Result) Select(ids []string) (Result, error) {
+	byID := make(map[string]domain.TestCaseResult, len(r.Tests))
+	for _, t := range r.Tests {
+		byID[t.ID] = t
+	}
+	seen := make(map[string]bool, len(ids))
+	out := Result{Version: r.Version, Tests: make([]domain.TestCaseResult, 0, len(ids))}
+	for _, id := range ids {
+		if seen[id] {
+			return Result{}, fmt.Errorf("test ID %q is selected twice", id)
+		}
+		seen[id] = true
+		t, ok := byID[id]
+		if !ok {
+			return Result{}, fmt.Errorf("selected test %q is not in the reporter output (not run, skipped or a different ID)", id)
+		}
+		out.Tests = append(out.Tests, t)
+	}
+	return out, nil
+}
+
 // collector keeps tests in first-seen order and refuses duplicate IDs.
 type collector struct {
 	tests []domain.TestCaseResult

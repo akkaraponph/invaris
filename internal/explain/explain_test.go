@@ -9,6 +9,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/akkaraponph/invaris/internal/domain"
+	"github.com/akkaraponph/invaris/internal/evidence"
 )
 
 func fixture(t *testing.T, name string) []byte {
@@ -295,5 +298,43 @@ func TestWeakEvidenceIsAnythingButStrong(t *testing.T) {
 		if !found {
 			t.Errorf("strength %q: weak-evidence limit missing: %v", value, e.Limits)
 		}
+	}
+}
+
+// An inconclusive mutation quotes the recorded stage detail and the baseline
+// tests that did not pass, so the cause is visible without reading raw JSON.
+func TestExplainMutationDetails(t *testing.T) {
+	x := &evidence.MutationExperiment{
+		Verdict: domain.MutationInconclusive,
+		Reason:  "unhealthy_baseline",
+		Stages: []domain.Stage{
+			{Name: "prepare", Status: domain.StageOK},
+			{Name: "baseline", Status: "FAILED", Detail: "unhealthy_baseline"},
+		},
+		Baseline: &evidence.MutationCommandResult{Tests: []domain.TestCaseResult{
+			{ID: "ok", Status: domain.TestPass},
+			{ID: "suite::needs state", Status: domain.TestAssertionFailed},
+		}},
+	}
+	got := mutationDetails(x, "attempt 1: ")
+	want := []string{"attempt 1: baseline test suite::needs state: ASSERTION_FAILED"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("details = %q, want %q", got, want)
+	}
+	x.Stages[1].Detail = "malformed_evidence: test evidence has 41 tests but the harness selects 1 testIds"
+	x.Reason, x.Baseline = "malformed_evidence", nil
+	if got := mutationDetails(x, ""); len(got) != 1 || !strings.HasPrefix(got[0], "stage baseline: malformed_evidence: test evidence has 41") {
+		t.Fatalf("stage detail = %q", got)
+	}
+	x.Verdict = domain.MutationKilled
+	if got := mutationDetails(x, ""); got != nil {
+		t.Fatalf("killed mutation has details %q", got)
+	}
+	many := make([]string, maxDetails+3)
+	for i := range many {
+		many[i] = "d"
+	}
+	if c := capDetails(many); len(c) != maxDetails+1 || c[maxDetails] != "... 3 more" {
+		t.Fatalf("cap = %d %q", len(c), c[len(c)-1])
 	}
 }
