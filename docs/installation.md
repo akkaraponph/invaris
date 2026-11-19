@@ -1,8 +1,8 @@
 # Install Invaris and run it from a terminal
 
-The [v0.4.0 release](https://github.com/refactorroom/invaris/releases/tag/v0.4.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
+The [v0.5.0 release](https://github.com/refactorroom/invaris/releases/tag/v0.5.0) provides Linux and macOS binaries. You do not need Go to use them. You need a terminal, the [GitHub CLI](https://cli.github.com/) (`gh`), `tar`, and a SHA-256 checker. Copying the examples also requires Git. On Windows, use [WSL](#windows-cmd-and-powershell-through-wsl); no native Windows archive is published for this release.
 
-The commands below install [v0.4.0](https://github.com/refactorroom/invaris/releases/tag/v0.4.0), the latest release.
+The archive commands below install [v0.5.0](https://github.com/refactorroom/invaris/releases/tag/v0.5.0).
 
 ## npm installation after publication
 
@@ -36,18 +36,18 @@ These commands work in Bash or Zsh. Choose an absolute installation path and the
 
 | System | Archive |
 | --- | --- |
-| macOS, Apple Silicon | `invaris_0.4.0_darwin_arm64.tar.gz` |
-| macOS, Intel | `invaris_0.4.0_darwin_amd64.tar.gz` |
-| Linux or WSL, x86-64 | `invaris_0.4.0_linux_amd64.tar.gz` |
-| Linux or WSL, ARM64 | `invaris_0.4.0_linux_arm64.tar.gz` |
+| macOS, Apple Silicon | `invaris_0.5.0_darwin_arm64.tar.gz` |
+| macOS, Intel | `invaris_0.5.0_darwin_amd64.tar.gz` |
+| Linux or WSL, x86-64 | `invaris_0.5.0_linux_amd64.tar.gz` |
+| Linux or WSL, ARM64 | `invaris_0.5.0_linux_arm64.tar.gz` |
 
 For example, install on macOS Apple Silicon into `$HOME/.local/share/invaris`. Change the first two values for another folder or system. Use a new folder for the first installation; extraction replaces files with matching names.
 
 ```sh
 INVARIS_HOME="$HOME/.local/share/invaris"
-INVARIS_ARCHIVE="invaris_0.4.0_darwin_arm64.tar.gz"
+INVARIS_ARCHIVE="invaris_0.5.0_darwin_arm64.tar.gz"
 mkdir -p "$INVARIS_HOME"
-gh release download v0.4.0 --repo refactorroom/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
+gh release download v0.5.0 --repo refactorroom/invaris --pattern "$INVARIS_ARCHIVE" --pattern SHA256SUMS --dir "$INVARIS_HOME"
 cd "$INVARIS_HOME"
 ```
 
@@ -100,7 +100,7 @@ This copies the structured example into a new demo folder you choose. Run in Bas
 ```sh
 INVARIS_SOURCE="$HOME/invaris-source"
 INVARIS_PROJECT="$HOME/projects/invaris-demo"
-git clone --branch v0.4.0 --depth 1 https://github.com/refactorroom/invaris.git "$INVARIS_SOURCE"
+git clone --branch v0.5.0 --depth 1 https://github.com/refactorroom/invaris.git "$INVARIS_SOURCE"
 mkdir -p "$INVARIS_PROJECT"
 cp "$INVARIS_SOURCE/examples/structured/invaris.json" "$INVARIS_SOURCE/examples/structured/guard.sh" "$INVARIS_SOURCE/examples/structured/source.txt" "$INVARIS_PROJECT/"
 cd "$INVARIS_PROJECT"
