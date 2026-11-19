@@ -6,13 +6,13 @@ Invaris is an experimental Go CLI that runs project checks and tests whether tho
 
 Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
-Version [0.4.0](CHANGELOG.md#040) is the latest release.
+[Documentation and quick start](https://refactorroom.github.io/invaris/) · [Invaris 0.5.1 release notes](docs/releases/0.5.1.md)
 
 ## Install the CLI
 
 The [`invaris-cli` npm package](https://www.npmjs.com/package/invaris-cli) is available for Node.js 22.14 or later on Linux and macOS (including WSL). Run `npx --package=invaris-cli@latest invaris check` in a project with a harness. See the [npm installation instructions](docs/installation.md#npm-installation-after-publication) for installation and updates.
 
-Download the archive for your system from the [v0.4.0 release](https://github.com/refactorroom/invaris/releases/tag/v0.4.0). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
+Download the archive for your system from the [v0.5.1 release](https://github.com/refactorroom/invaris/releases/tag/v0.5.1). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
 See the [installation and terminal guide](docs/installation.md) for commands to:
 
@@ -107,7 +107,7 @@ Dependency-Cruiser, Redproof, Stryker, and Promptfoo [inspired Invaris](docs/pro
 
 ## Contributing
 
-Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Builds run only after pushes to `main`; verify the Linux, macOS and Dependency-Cruiser results on the merged commit before publishing. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/refactorroom/invaris/rules/27257768) for merge requirements.
+Develop changes on a topic branch and open a pull request targeting `staging`. Promote tested changes from `staging` to `main` with a pull request. Releases and packages come only from `main`; GitHub Pages is published from `dev`, and CI builds only pull requests to `main` and pushes to `main`; verify the Linux, macOS and Dependency-Cruiser results on the merged commit before publishing. See the [contribution guide](CONTRIBUTING.md) for local validation and the [branch ruleset](https://github.com/refactorroom/invaris/rules/27257768) for merge requirements.
 
 ## License
 

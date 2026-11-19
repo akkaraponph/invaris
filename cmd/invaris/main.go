@@ -39,6 +39,12 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 	}
+	if len(args) == 2 && (args[1] == "--help" || args[1] == "-h") {
+		if line, ok := actionUsage(args[0]); ok {
+			fmt.Fprintln(stdout, "usage: "+line)
+			return 0
+		}
+	}
 	var reportPath string
 	if len(args) >= 2 && args[0] == "--report" {
 		reportPath, args = args[1], args[2:]
@@ -47,11 +53,11 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 	}
-	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor" || args[0] == "test-result") {
+	if len(args) >= 1 && (args[0] == "init" || args[0] == "migrate" || args[0] == "explain" || args[0] == "doctor" || args[0] == "test-result" || args[0] == "validity-result") {
 		if reportPath != "" {
 			switch args[0] {
-			case "test-result":
-				fmt.Fprintln(stderr, "--report is not valid for test-result: it converts test output and writes no report")
+			case "test-result", "validity-result":
+				fmt.Fprintln(stderr, "--report is not valid for "+args[0]+": it writes no report")
 			case "explain":
 				fmt.Fprintln(stderr, "--report is not valid for explain: it reads a report and writes none")
 			case "doctor":
@@ -66,6 +72,9 @@ func runCLI(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 		if args[0] == "test-result" {
 			return runTestResultCLI(args[1:], stdout, stderr)
+		}
+		if args[0] == "validity-result" {
+			return runValidityResultCLI(ctx, args[1:], stdout, stderr)
 		}
 		if args[0] == "doctor" {
 			return runDoctorCLI(args[1:], stdout, stderr)
@@ -166,7 +175,33 @@ func usage(w io.Writer) {
 	fmt.Fprintln(w, "       "+explainUsage)
 	fmt.Fprintln(w, "       "+doctorUsage)
 	fmt.Fprintln(w, "       "+testResultUsage)
+	fmt.Fprintln(w, "       "+validityResultUsage)
 	fmt.Fprintln(w, "       invaris --help | --version")
+}
+
+// actionUsage returns the synopsis `invaris ACTION --help` prints.
+func actionUsage(action string) (string, bool) {
+	switch action {
+	case "run", "mutate":
+		return "invaris [--report new-file.json] " + action + " [--evidence-version v1alpha5] [harness.json]", true
+	case "check", "challenge":
+		return "invaris [--report new-file.json] " + action + " [--format json|text|compact] [--evidence-version v1alpha5] [harness.json]", true
+	case "campaign":
+		return campaignUsage, true
+	case "init":
+		return initUsage, true
+	case "migrate":
+		return migrateUsage, true
+	case "explain":
+		return explainUsage, true
+	case "doctor":
+		return doctorUsage, true
+	case "test-result":
+		return testResultUsage, true
+	case "validity-result":
+		return validityResultUsage, true
+	}
+	return "", false
 }
 
 // versionString is the linked release version, the module version, or "dev".

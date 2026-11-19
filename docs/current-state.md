@@ -1,6 +1,6 @@
 # Current implementation
 
-Invaris runs trusted local commands in sequence. It supports five verification actions, two authoring commands and two diagnostic commands:
+Invaris runs trusted local commands in sequence. It supports five verification actions, authoring and diagnostic commands, and mutation evidence helpers:
 
 | Action | Harness version | Report version | Purpose |
 | --- | --- | --- | --- |
@@ -13,6 +13,8 @@ Invaris runs trusted local commands in sequence. It supports five verification a
 | `migrate` | v1alpha1 to v1alpha2 | none | Upgrade a harness with the same behavior, keeping a backup |
 | `doctor` | any harness version | none (JSON `invaris.doctor/v1alpha1`) | Inspect a harness's setup without running any of its commands |
 | `explain` | report v1alpha2 to v1alpha5 | none (JSON `invaris.explanation/v1alpha1`) | Interpret a saved report offline: detected, missed or inconclusive, and what the report cannot show |
+| `test-result` | none | `invaris.test-result/v1alpha1` | Convert a test reporter's output to evidence for the selected test IDs |
+| `validity-result` | none | `invaris.validity-result/v1alpha1` | Run a TypeScript validity check and distinguish source diagnostics from a setup failure |
 
 `check`, `challenge` and `campaign` can print `--format text` or `compact` summaries; JSON is the default. [`doctor` and `explain`](diagnostics.md) print text by default; neither runs a harness command, and neither writes a report.
 
@@ -38,6 +40,6 @@ A [campaign](campaigns.md) references existing mutation and challenge harnesses 
 
 Required providers are discovered before commands run. Offline fixtures cover the generic command bridge and Python protocol example. The [Dependency-Cruiser example](dependency-cruiser-example.md) documents the tested JavaScript adapter and its tool version.
 
-CI runs on pull requests to `staging` and `main` and on pushes to `main`, on Linux and macOS using the Go version in `go.mod`, and rehearses packaging on every run. Pushing a version tag runs the same checks, builds and natively verifies the archives, and publishes the GitHub release. See the [CI workflow](../.github/workflows/ci.yml), the [release workflow](../.github/workflows/release.yml), [hosted results](https://github.com/akkaraponph/invaris/actions), and the [release guide](releasing.md).
+CI runs on pull requests to `staging` and `main` and on pushes to `main`, on Linux and macOS using the Go version in `go.mod`, and rehearses packaging on every run. Pushing a version tag runs the same checks, builds and natively verifies the archives, and publishes the GitHub release. See the [CI workflow](../.github/workflows/ci.yml), the [release workflow](../.github/workflows/release.yml), [hosted results](https://github.com/refactorroom/invaris/actions), and the [release guide](releasing.md).
 
 The [portable v1alpha5 profile](evidence-schema.md#portable-profile-v1alpha5) withholds paths, arguments, output and free text, and adds command digests, reproduction identities for built-in edits and campaign effectiveness rows. Isolation, caching, semantic (AST) operators and equivalent-mutant detection are future work; baseline reuse was declined. See the [roadmap](roadmap.md) and [execution limits](threat-model.md).

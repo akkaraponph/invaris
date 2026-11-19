@@ -49,14 +49,15 @@ Use these links to explore related tools. Check each repository's license and no
 
 ## Evaris compatibility
 
-[Evaris](https://github.com/akkaraponph/evaris) can run `invaris check` as an optional verifier. This table is kept identical in Evaris `docs/invaris.md`:
+[Evaris](https://github.com/refactorroom/evaris) can run `invaris check` or a campaign as an optional verifier. This table is kept identical in Evaris `docs/invaris.md`:
 
 | Evaris | Invaris build | `invaris --version` | Harness / evidence read | Status |
 | --- | --- | --- | --- | --- |
 | 0.4.0 | `ee92f3c` (pre-v0.2.0) | none (legacy) | `invaris.dev/v1alpha2` / `invaris.evidence/v1alpha2` | Tested in Evaris CI |
 | 0.4.0 | v0.3.0 | none (legacy) | same | Tested in Evaris CI |
 | 0.4.0 | v0.4.0 | none (legacy) | same | Tested in Evaris CI |
-| 0.4.0 | 0.5.x | `invaris v0.5.Z` | same; findings may carry `line` | Accepted; tested locally against a development build of the 0.5 changes, added to CI once v0.5.0 is tagged |
+| 0.5.0 | v0.5.0 | `invaris v0.5.0` | same; findings may carry `line` | Included in the real-binary CI matrix |
+| 0.4.0 and later | later 0.5.x | `invaris v0.5.Z` | same | Accepted |
 | 0.4.0 | development build | `invaris dev` or a Go pseudo-version | same | Accepted and recorded |
 | 0.4.0 | any other release | `invaris vX.Y.Z` | not tested | `UNAVAILABLE`, `UNSUPPORTED_TOOL_VERSION` |
 | 0.3.0 and earlier | `ee92f3c` only | not checked | same, without `line` | Rejects findings that carry `line` |

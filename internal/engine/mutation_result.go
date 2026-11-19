@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/akkaraponph/invaris/internal/domain"
 )
@@ -16,8 +17,11 @@ func parseTestResult(stdout string, exitCode int, expectedIDs []string) ([]TestC
 	if err := decodeStrict([]byte(stdout), &response); err != nil {
 		return nil, err
 	}
-	if response.Version != "invaris.test-result/v1alpha1" || len(response.Tests) != len(expectedIDs) {
-		return nil, errors.New("invalid test evidence version or case count")
+	if response.Version != "invaris.test-result/v1alpha1" {
+		return nil, errors.New("invalid test evidence version")
+	}
+	if len(response.Tests) != len(expectedIDs) {
+		return nil, fmt.Errorf("test evidence has %d tests but the harness selects %d testIds; print only the selected tests (invaris test-result --test-id ID ...)", len(response.Tests), len(expectedIDs))
 	}
 	byID := make(map[string]TestCaseResult, len(response.Tests))
 	for _, result := range response.Tests {

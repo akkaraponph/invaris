@@ -1,6 +1,6 @@
 # Prepare and publish a release
 
-The latest GitHub release is [v0.4.0](https://github.com/refactorroom/invaris/releases/tag/v0.4.0); see its [release notes](releases/0.4.0.md). The examples below use v0.4.0; substitute the version you are preparing.
+See [GitHub releases](https://github.com/refactorroom/invaris/releases) for published versions. Replace the example version with the version you are preparing.
 
 ## Build and inspect archives
 
@@ -28,7 +28,7 @@ Releases are published by the [Release workflow](../.github/workflows/release.ym
 
 Archive and npm package verification must pass before publication. The GitHub release is published first, followed by the npm package; publication is not atomic. See [npm publication and recovery](#npm-publication-and-recovery). The publish job uses a GitHub environment named `release`; add required reviewers to it in the repository settings if you want a manual approval before publication. The verified archives are also kept as a workflow artifact `release-vX.Y.Z` for 30 days.
 
-Every CI run also rehearses packaging with the placeholder version `v0.0.0` and keeps the verified set as `snapshot-<commit>` for 7 days. Those archives are for inspection only, never for distribution.
+Releases and npm packages come only from `main`. GitHub Pages is served from the `/docs` folder on `dev`. CI builds only `main` (pull requests to `main` and pushes to `main`), and those runs also rehearse packaging with the placeholder version `v0.0.0` and keeps the verified set as `snapshot-<commit>` for 7 days. Those archives are for inspection only, never for distribution.
 
 ## npm publication and recovery
 
@@ -42,7 +42,7 @@ If GitHub publication succeeds but npm fails, inspect the workflow and check whe
 
 ## Publication gates
 
-1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). CI must pass on both pull requests and on the resulting push to `main`.
+1. Merge the feature PR into `staging`, then promote `staging` to `main` through a PR as described in [Contributing](../CONTRIBUTING.md). CI builds only the promotion PR and the resulting push to `main`; run the local checks before merging into `staging`. CI must pass on the promotion PR and on the resulting push to `main`.
 2. Prepare `docs/releases/X.Y.Z.md` and the `## X.Y.Z` changelog section in that promotion, and remove "prepared for release" wording that will be wrong once published.
 3. After explicit publication authorization, tag the tested `main` commit and push only that tag:
 
