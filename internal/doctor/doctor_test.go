@@ -100,10 +100,10 @@ func TestDoctorExamplesHaveNoFailures(t *testing.T) {
 func TestDoctorActionsAndOrder(t *testing.T) {
 	d := Inspect(repoFile("examples", "structured", "invaris.json"))
 	var ids []string
-	for _, c := range d.Checks[:5] {
+	for _, c := range d.Checks[:6] {
 		ids = append(ids, c.ID)
 	}
-	if got := strings.Join(ids, ","); got != "harness.load,action.run,action.check,action.challenge,action.mutate" {
+	if got := strings.Join(ids, ","); got != "harness.load,harness.version,action.run,action.check,action.challenge,action.mutate" {
 		t.Fatalf("order: %s", got)
 	}
 	requireStatus(t, d, "action.mutate", Skipped)

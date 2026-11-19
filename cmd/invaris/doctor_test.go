@@ -18,6 +18,30 @@ func runDoctor(t *testing.T, args ...string) (int, string, string) {
 
 const doctorLastLine = "doctor executed no harness commands; results describe setup only."
 
+func TestDoctorLegacyMigrationHint(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "legacy.json")
+	original := []byte(`{"version":"invaris.dev/v1alpha1","name":"legacy","guards":[{"id":"g","program":"true"}]}`)
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	code, out, stderr := runDoctor(t, path)
+	if code != 0 || stderr != "" || !strings.Contains(out, "[warn] harness.version") || !strings.Contains(out, "invaris migrate --dry-run") {
+		t.Fatalf("legacy hint: exit %d stdout %q stderr %q", code, out, stderr)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(data, original) {
+		t.Fatalf("doctor changed the harness: %v", err)
+	}
+	code, out, stderr = runDoctor(t, "--format", "json", path)
+	if code != 0 || stderr != "" || !strings.Contains(out, `"id": "harness.version"`) || !strings.Contains(out, `"status": "warn"`) {
+		t.Fatalf("JSON hint: exit %d stdout %q stderr %q", code, out, stderr)
+	}
+	_, out, _ = runDoctor(t, doctorHarness(t, "sh"))
+	if strings.Contains(out, "harness.version") {
+		t.Fatalf("modern harness received legacy hint: %s", out)
+	}
+}
+
 func doctorHarness(t *testing.T, program string) string {
 	t.Helper()
 	dir := t.TempDir()
