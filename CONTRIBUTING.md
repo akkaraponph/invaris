@@ -7,7 +7,7 @@
 3. Keep the pull request up to date with its base branch. Resolve review conversations and pass local checks before merging.
 4. To promote tested changes, open a pull request from `staging` to `main`. Hotfix pull requests can target `main` and must pass the same local checks.
 
-The [CI workflow](.github/workflows/ci.yml) builds `main` only: it runs on every pull request to `main`, on every push to `main` (the merged result that a release is cut from), and on demand. Pull requests to `staging` and other branches are not built; run the local checks below before merging into `staging`. It checks formatting and `go vet`, runs the tests with and without the race detector on Linux and macOS, runs the offline smoke examples, validates the JSON Schemas against real CLI output, runs a short operator fuzz, exercises the real Dependency-Cruiser adapter. Runs for `main` also rehearse packaging: archives and the npm package are built once with a placeholder version `v0.0.0` and verified on Linux amd64, Linux arm64 and macOS arm64. Releases and packages come only from `main`; GitHub Pages is published from `dev`. A new push to a pull request cancels its earlier run. Wait for every job to pass before merging. The [branch ruleset](https://github.com/akkaraponph/invaris/rules/27257768) requires pull requests and blocks force pushes and deletion on both branches; approvals are optional. To make merging depend on CI, add the CI jobs as required status checks to that ruleset.
+The [CI workflow](.github/workflows/ci.yml) runs on pull requests to `main`, on pushes to `main`, and on demand. Its Linux jobs check formatting, run `go vet` and regular and race tests, run offline smoke examples, validate JSON Schemas, fuzz mutation planning, and exercise Dependency-Cruiser. Run the local checks below before merging into `staging`. Maintainers build and publish releases manually from `main` using the [release guide](docs/releasing.md). GitHub Pages is published from `dev`.
 
 ## Local checks
 
@@ -33,7 +33,7 @@ python3 scripts/package-release.py v0.3.0 --output dist/v0.3.0
 python3 scripts/verify-release.py v0.3.0 dist/v0.3.0
 ```
 
-The output directory must be new. CI runs these checks on Linux and macOS and uploads the checked archives and `SHA256SUMS`. See [release preparation](docs/releasing.md) for artifact download, publication gates and rollback.
+The output directory must be new. Run these checks locally before a release. See [release preparation](docs/releasing.md) for packaging, publication and rollback.
 
 For an adapter, start with the [protocol and conformance kit](docs/adapter-protocol.md#testing-a-third-party-provider). Provide clean, violating, and unevaluable fixtures. Run a positive proof and a surviving-mutation control with any real analyzer, and record the tool version and platform. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md) for the pinned Dependency-Cruiser installation and test commands.
 
