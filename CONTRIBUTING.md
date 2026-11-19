@@ -2,12 +2,12 @@
 
 ## Pull requests
 
-1. Create a topic branch from `staging` in the repository or in your fork. Use the `panda-feature/` prefix for feature branches.
-2. Run the local checks below and open a pull request targeting `staging`.
+1. Create a topic branch from `dev` in the repository or in your fork. Use the `panda-feature/` prefix for feature branches.
+2. Run the local checks below and open a pull request targeting `dev`, the integration branch.
 3. Keep the pull request up to date with its base branch. Resolve review conversations and pass local checks before merging.
-4. To promote tested changes, open a pull request from `staging` to `main`. Hotfix pull requests can target `main` and must pass the same local checks.
+4. When `dev` is ready to release, open a pull request from `dev` to `main`, the default production branch. Use a merge commit to keep the two branches' shared history.
 
-The [CI workflow](.github/workflows/ci.yml) runs on pull requests to `main`, on pushes to `main`, and on demand. Its Linux jobs check formatting, run `go vet` and regular and race tests, run offline smoke examples, validate JSON Schemas, fuzz mutation planning, and exercise Dependency-Cruiser. Run the local checks below before merging into `staging`. Maintainers build and publish releases manually from `main` using the [release guide](docs/releasing.md). GitHub Pages is published from `dev`.
+The [CI workflow](.github/workflows/ci.yml) runs on pull requests to `dev` and `main`, on pushes to `main`, and on demand. Its Linux jobs check formatting, run `go vet` and regular and race tests, run offline smoke examples, validate JSON Schemas, fuzz mutation planning, and exercise Dependency-Cruiser. Maintainers build and publish releases manually from `main` using the [release guide](docs/releasing.md). GitHub Pages is published from `dev`.
 
 ## Local checks
 

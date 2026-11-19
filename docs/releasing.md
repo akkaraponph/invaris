@@ -20,8 +20,8 @@ Verification checks every archive's SHA-256, exact member list, regular file typ
 ## Publish on GitHub
 
 Prepare the release notes at `docs/releases/X.Y.Z.md` and add the
-`## X.Y.Z` changelog section. Promote the changes from `staging` to `main`
-and wait for Linux CI on the merge commit. Choose that commit in a clean
+`## X.Y.Z` changelog section on `dev`. Promote `dev` to `main` through a pull
+request and wait for Linux CI on the merge commit. Choose that commit in a clean
 checkout when building the archives above.
 
 After verifying the archives, create and push the version tag and publish
