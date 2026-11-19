@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+Fixes found by running 0.5.0 end to end on a real NestJS/Next.js remaster with Evaris. Report versions, decisions and exit codes are unchanged.
+
+### Fixed
+
+- `invaris test-result` could not feed a mutation run whose `testIds` select part of a suite: it printed every test, and `mutate` requires exactly the selected ones, so the experiment was `INCONCLUSIVE` (`malformed_evidence`). Running only the selected test instead breaks suites whose tests share state. New repeatable `--test-id ID` keeps only the named tests, in order, while the whole suite runs; a missing or skipped selected test exits `2`. See [test-result converters](docs/harness-spec.md#test-result-converters).
+- The `malformed_evidence` stage detail for a test result with the wrong number of tests now says how many tests it had, how many the harness selects, and to use `--test-id`.
+- `invaris ACTION --help` and `-h` now print that action's usage and exit `0` instead of `unknown flag` with exit `2`.
+
+### Added
+
+- `invaris validity-result tsc <executable> <tsconfig.json>` converts a TypeScript check into mutation validity evidence and distinguishes source diagnostics from an inconclusive setup failure.
+- `invaris explain` items carry optional `details`: for a mutation or campaign experiment that was neither killed nor survived, the failed stage's recorded detail and the baseline tests that did not pass, so the cause no longer needs the raw report. The explanation schema gains the optional field. See [diagnostics](docs/diagnostics.md#json).
+
 ## 0.5.0
 
 Closing the gaps found when Invaris was used on a real Node project. Default inputs, report versions and verification exit codes are unchanged; new fields are optional and omitted when unused.

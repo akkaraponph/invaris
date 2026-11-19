@@ -41,3 +41,43 @@ func TestTestResultCLI(t *testing.T) {
 		t.Fatalf("--report: code %d %s", code, e.String())
 	}
 }
+
+// A whole-suite run must be narrowed to a harness's testIds: the mutation
+// engine refuses results with any other set of tests.
+func TestTestResultSelectsTestIDs(t *testing.T) {
+	suite := `{"Action":"pass","Package":"p","Test":"TestA"}` + "\n" +
+		`{"Action":"fail","Package":"p","Test":"TestB"}` + "\n" +
+		`{"Action":"pass","Package":"p","Test":"TestC"}` + "\n"
+	code, out, errText := runTestResult(t, suite, "go-test-json", "--test-id", "p.TestC", "--test-id=p.TestA")
+	if code != 0 || out != `{"version":"invaris.test-result/v1alpha1","tests":[{"id":"p.TestC","status":"PASS"},{"id":"p.TestA","status":"PASS"}]}`+"\n" {
+		t.Fatalf("unselected failure must not count: code %d out %s err %s", code, out, errText)
+	}
+	if code, _, _ := runTestResult(t, suite, "go-test-json", "--test-id", "p.TestB", "-"); code != 1 {
+		t.Fatalf("selected failure: code %d", code)
+	}
+	code, out, errText = runTestResult(t, suite, "go-test-json", "--test-id", "p.TestMissing")
+	if code != 2 || out != "" || !strings.Contains(errText, "not in the reporter output") {
+		t.Fatalf("missing selection: code %d out %q err %q", code, out, errText)
+	}
+	for _, args := range [][]string{{"go-test-json", "--test-id"}, {"go-test-json", "--test-id="}, {"go-test-json", "a", "b"}, {"go-test-json", "--bogus"}} {
+		if code, _, _ := runTestResult(t, suite, args...); code != 2 {
+			t.Fatalf("%v: code %d", args, code)
+		}
+	}
+}
+
+func TestActionHelp(t *testing.T) {
+	for _, action := range []string{"run", "check", "challenge", "mutate", "campaign", "init", "migrate", "explain", "doctor", "test-result"} {
+		for _, flag := range []string{"--help", "-h"} {
+			var out, errb bytes.Buffer
+			code := runCLI(t.Context(), []string{action, flag}, &out, &errb)
+			if code != 0 || !strings.HasPrefix(out.String(), "usage: invaris") || !strings.Contains(out.String(), action) || errb.Len() != 0 {
+				t.Fatalf("%s %s: code %d out %q err %q", action, flag, code, out.String(), errb.String())
+			}
+		}
+	}
+	var out, errb bytes.Buffer
+	if code := runCLI(t.Context(), []string{"bogus", "--help"}, &out, &errb); code != 2 {
+		t.Fatalf("unknown action help: code %d", code)
+	}
+}

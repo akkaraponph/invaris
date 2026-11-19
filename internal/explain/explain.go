@@ -69,6 +69,42 @@ type Item struct {
 	Category *string `json:"category"`
 	Meaning  string  `json:"meaning"`
 	Next     *string `json:"next"`
+	// Details quotes recorded evidence behind an unfavorable outcome: a failed
+	// stage's detail and baseline tests that did not pass. Omitted when empty.
+	Details []string `json:"details,omitempty"`
+}
+
+// maxDetails bounds Details per item.
+const maxDetails = 20
+
+// mutationDetails lists what a mutation experiment recorded about why it did
+// not reach KILLED or SURVIVED: each failed stage's detail and each baseline
+// test that did not pass. It only quotes the report; nothing is inferred.
+func mutationDetails(x *evidence.MutationExperiment, prefix string) []string {
+	if x == nil || x.Verdict == domain.MutationKilled || x.Verdict == domain.MutationSurvived {
+		return nil
+	}
+	var out []string
+	for _, s := range x.Stages {
+		if s.Status != domain.StageOK && s.Detail != "" && s.Detail != x.Reason {
+			out = append(out, prefix+"stage "+s.Name+": "+s.Detail)
+		}
+	}
+	if x.Baseline != nil {
+		for _, t := range x.Baseline.Tests {
+			if t.Status != domain.TestPass {
+				out = append(out, prefix+"baseline test "+t.ID+": "+t.Status)
+			}
+		}
+	}
+	return out
+}
+
+func capDetails(d []string) []string {
+	if len(d) > maxDetails {
+		return append(d[:maxDetails:maxDetails], fmt.Sprintf("... %d more", len(d)-maxDetails))
+	}
+	return d
 }
 
 // Limit is something the report cannot show.
@@ -247,7 +283,9 @@ func explainReport(r evidence.Report) (Explanation, error) {
 		if !ok {
 			return e, unrecognized("mutation", x.ID, string(x.Verdict))
 		}
-		e.Items = append(e.Items, item(x.ID, "mutation", string(x.Verdict), class, x.Reason))
+		it := item(x.ID, "mutation", string(x.Verdict), class, x.Reason)
+		it.Details = capDetails(mutationDetails(x, ""))
+		e.Items = append(e.Items, it)
 	} else {
 		for _, group := range []struct {
 			kind   string
@@ -324,7 +362,13 @@ func explainCampaign(r evidence.CampaignReport) (Explanation, error) {
 				weak = true
 			}
 		}
-		e.Items = append(e.Items, item(x.ID, "experiment", outcome, class, reason))
+		it := item(x.ID, "experiment", outcome, class, reason)
+		var details []string
+		for j, a := range x.Attempts {
+			details = append(details, mutationDetails(a.Mutation, fmt.Sprintf("attempt %d: ", j+1))...)
+		}
+		it.Details = capDetails(details)
+		e.Items = append(e.Items, it)
 	}
 	e.Limits = limits(weak, r.SchemaVersion, false, r.SourceIdentity.GitDirty, r.Decision)
 	if excl := r.SourceIdentity.WorkspaceExclude; len(excl) > 0 {

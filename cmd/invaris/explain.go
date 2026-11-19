@@ -118,6 +118,9 @@ func explanationText(e explain.Explanation) string {
 			}
 			line("    reason: %s%s", token(*it.Reason), category)
 		}
+		for _, d := range it.Details {
+			line("    detail: %s", escapeLine(d))
+		}
 		line("    meaning: %s", escapeLine(it.Meaning))
 		if it.Next != nil {
 			line("    next: %s", escapeLine(*it.Next))

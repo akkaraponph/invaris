@@ -95,7 +95,9 @@ When the report recorded a reason, the item shows it with its [category](evidenc
 
 ### JSON
 
-`--format json` prints [`invaris.explanation/v1alpha1`](../schemas/explanation-v1alpha1.schema.json): `report` (schema version, action, run ID, decision and subject), `items` (`id`, `kind`, `outcome`, `class`, `reason`, `category`, `meaning`, `next`) and `limits`. `reason`, `category` and `next` are `null` when the report recorded no reason.
+`--format json` prints [`invaris.explanation/v1alpha1`](../schemas/explanation-v1alpha1.schema.json): `report` (schema version, action, run ID, decision and subject), `items` (`id`, `kind`, `outcome`, `class`, `reason`, `category`, `meaning`, `next`, and optional `details`) and `limits`. `reason`, `category` and `next` are `null` when the report recorded no reason.
+
+`details` quotes what the report recorded behind a mutation that was neither killed nor survived, for `mutate` reports and campaign experiments: each failed stage's detail (unless it only repeats the reason) and each baseline test that did not pass, at most 20 lines plus a count of the rest. Campaign lines start with the attempt number. Text output prints them as `detail:` lines under the reason. For example, a test command whose result lists the whole suite shows `detail: stage baseline: malformed_evidence: test evidence has 41 tests but the harness selects 1 testIds; ...`, and a suite whose selected test fails alone shows `detail: baseline test test/api.e2e-spec.ts::...: ASSERTION_FAILED`. Portable v1alpha5 reports withhold stage details, so fewer lines appear.
 
 ## A worked example
 

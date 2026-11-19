@@ -129,3 +129,21 @@ func TestConvertRefusals(t *testing.T) {
 		}
 	}
 }
+
+func TestSelectKeepsNamedTestsInOrder(t *testing.T) {
+	r := Result{Version: Version, Tests: []domain.TestCaseResult{
+		{ID: "a", Status: domain.TestPass},
+		{ID: "b", Status: domain.TestAssertionFailed},
+		{ID: "c", Status: domain.TestPass},
+	}}
+	got, err := r.Select([]string{"c", "a"})
+	if err != nil || len(got.Tests) != 2 || got.Tests[0].ID != "c" || got.Tests[1].ID != "a" || got.Failed() {
+		t.Fatalf("select = %+v, %v", got, err)
+	}
+	if _, err := r.Select([]string{"a", "missing"}); err == nil || !strings.Contains(err.Error(), "not in the reporter output") {
+		t.Fatalf("missing ID: %v", err)
+	}
+	if _, err := r.Select([]string{"a", "a"}); err == nil || !strings.Contains(err.Error(), "twice") {
+		t.Fatalf("duplicate ID: %v", err)
+	}
+}

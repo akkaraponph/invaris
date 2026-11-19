@@ -147,15 +147,40 @@ Set optional `preimageSha256` to 64 lowercase hexadecimal characters to require 
 
 Commands use `id`, `program`, optional `args`, `envAllowlist`, and `timeoutSeconds`. Their IDs must be distinct. Omitted timeouts and zero use 30 seconds. An omitted or empty environment allowlist uses the default PATH and inherits no ambient variables. `redactEnv` and `storeSensitiveOutput` are optional. Required fields cannot be omitted, and null, unknown, and duplicate fields are rejected.
 
-The same test command and case IDs apply to the baseline and mutant. The test command writes one JSON object to stdout, for example `{"version":"invaris.test-result/v1alpha1","tests":[{"id":"covered","status":"PASS"}]}`.
+The same test command and case IDs apply to the baseline and mutant. The test command writes one JSON object to stdout, for example `{"version":"invaris.test-result/v1alpha1","tests":[{"id":"covered","status":"PASS"}]}`. The object must list exactly the harness's `testIds`, no more and no fewer; any other set of tests makes the experiment inconclusive with `malformed_evidence`.
 
 Each selected case appears exactly once, in any order. Exit 0 requires all `PASS` and exit 1 requires at least one `ASSERTION_FAILED`.
 
 Validation emits `{"version":"invaris.validity-result/v1alpha1","status":"VALID"}` with exit 0 or `INVALID` with exit 1.
 
+### TypeScript validity helper
+
+`invaris validity-result tsc <executable> <tsconfig.json>` runs a trusted TypeScript
+compiler with plain diagnostics and no emitted source. For example, point a
+mutation harness at a locally installed compiler:
+
+```json
+{"id":"typecheck","program":"invaris","args":["validity-result","tsc","./node_modules/.bin/tsc","tsconfig.json"],"envAllowlist":["PATH"]}
+```
+
+The helper exits `0` with `VALID` for a clean type check and `1` with `INVALID`
+when the compiler reports recognized diagnostics in existing source files.
+Configuration errors, dependency diagnostics, missing tools, timeouts and
+unrecognized output exit `2` with diagnostics on stderr. Ambiguous diagnostics
+such as missing declarations stay inconclusive. The helper uses a fresh
+incremental cache outside the workspace, and its compiler receives `PATH`.
+Link `node_modules` through the harness workspace when needed. Use
+`invaris validity-result --help` for the command synopsis.
+
 ### Test-result converters
 
-`invaris test-result <format> [FILE|-]` turns a test reporter's output into this object, so a test command needs no hand-written converter. It reads FILE, or stdin when FILE is omitted or `-`, prints one object, and exits `0` when every test passed, `1` when at least one assertion failed, and `2` when the output cannot be converted. A test command runs it through a shell, for example `{"program": "sh", "args": ["-c", "go test -json ./... | invaris test-result go-test-json"]}`.
+`invaris test-result <format> [--test-id ID]... [FILE|-]` turns a test reporter's output into this object, so a test command needs no hand-written converter. It reads FILE, or stdin when FILE is omitted or `-`, prints one object, and exits `0` when every test passed, `1` when at least one assertion failed, and `2` when the output cannot be converted.
+
+Each `--test-id` keeps only that test, in the order given, so the whole suite can run while the object lists exactly the harness's `testIds`. This matters for suites whose tests share state, where running one test alone fails at baseline. The exit status then reflects only the selected tests, so an unrelated failing test does not count. A selected ID that is not in the output (not run, skipped or spelled differently) or selected twice exits `2`. Without `--test-id` every converted test is printed, which suits a harness whose `testIds` list the whole run. A test command runs it through a shell and passes the IDs as arguments, for example:
+
+```json
+{"program": "sh", "args": ["-c", "go test -json ./... | invaris test-result go-test-json --test-id \"$1\"", "sh", "example.com/app.TestOwnership"]}
+```
 
 | Format | Reporter | Test ID |
 | --- | --- | --- |
