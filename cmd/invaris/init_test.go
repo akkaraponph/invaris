@@ -94,6 +94,9 @@ func TestInitDetectAndDryRunWriteNothing(t *testing.T) {
 		if code != 0 || !strings.Contains(stderr, "nothing was written") || !strings.Contains(string(stdout), `"invaris.dev/v1alpha2"`) {
 			t.Fatalf("dry run %s: code=%d stdout=%s stderr=%q", preset, code, stdout, stderr)
 		}
+		if !json.Valid(stdout) || !strings.Contains(stderr, "`invaris --version`") {
+			t.Fatalf("dry run %s must keep the CLI version hint separate from the JSON: stdout=%s stderr=%q", preset, stdout, stderr)
+		}
 		sameManifest(t, before, treeManifest(t, dir))
 	}
 	if _, err := os.Stat(sentinel); err == nil {
@@ -104,7 +107,7 @@ func TestInitDetectAndDryRunWriteNothing(t *testing.T) {
 func TestInitCreatesValidConfigThatRefusesEmptyWork(t *testing.T) {
 	dir := t.TempDir()
 	code, stdout, stderr := invoke(t, dir, "init")
-	if code != 0 || !strings.HasPrefix(string(stdout), "created ") || !strings.Contains(stderr, "refuses") {
+	if code != 0 || !strings.HasPrefix(string(stdout), "created ") || !strings.Contains(stderr, "refuses") || !strings.Contains(stderr, "`invaris --version`") {
 		t.Fatalf("code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	info, err := os.Stat(filepath.Join(dir, ".invaris", "invaris.json"))

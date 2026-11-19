@@ -1,5 +1,18 @@
 # Harness configuration
 
+## Configuration versions
+
+The `version` field identifies the schema for a particular kind of harness. It is independent of the Invaris CLI release number. Choose a schema for the action and features you need:
+
+| Configuration | Version | Use |
+| --- | --- | --- |
+| Guard harness | `invaris.dev/v1alpha2` | New `run`, `check` and `challenge` configurations. `invaris init` creates this version. |
+| Mutation harness | `invaris.dev/v1alpha3` | A single `mutate` experiment. |
+| Guard harness with built-in operators | `invaris.dev/v1alpha4` | `run`, `check` and `challenge` with built-in challenge operators. |
+| Campaign | `invaris.campaign/v1alpha1` | Groups existing mutation and guardrail experiments. |
+
+Older `invaris.dev/v1alpha1` guard harnesses remain supported. `invaris doctor path/to/invaris.json` warns when it loads one and describes how to preview migration. To inspect a behavior-preserving upgrade to v1alpha2, run `invaris migrate --dry-run path/to/invaris.json`. Run the same command without `--dry-run` to migrate and create a backup. Upgrading the CLI does not rewrite existing configuration. Some examples retain v1alpha1 to demonstrate compatibility. The report's `schemaVersion` is a separate evidence contract.
+
 ## Configuration location
 
 The CLI defaults to `.invaris/invaris.json`, falling back to `invaris.json` in the current directory only when the workspace file is absent. An explicit path overrides discovery. For a harness directly inside `.invaris`, references to the “harness directory” below mean its parent project directory: all commands and project paths use that root. Other harness locations continue to use their containing directory. `invaris init` creates the workspace configuration; see [authoring](authoring.md#workspace-layout).

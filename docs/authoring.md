@@ -12,6 +12,8 @@ invaris init [--path DIR] [--preset generic|go] [--detect] [--dry-run]
 
 `--path` selects the project root (default `.`). Its own symbolic link is resolved once; the configuration is always `<root>/.invaris/invaris.json`. Each flag may appear once.
 
+Both presets generate `"version": "invaris.dev/v1alpha2"`. This field identifies the harness format. Run `invaris --version` to see the CLI release. CLI releases can share the same harness format, and updating the CLI leaves existing harness files as they are.
+
 | Form | Effect |
 |---|---|
 | `invaris init --detect` | Prints marker detection as JSON on stdout. Writes nothing. Cannot be combined with `--preset` or `--dry-run`. |

@@ -30,13 +30,13 @@
         <p class="intro">Define project checks in a JSON harness. Test whether a guard or test suite detects a controlled change, and keep the evidence for review.</p>
         <div class="actions">
           <a class="button primary" href="#quick-start">Get started</a>
-          <a class="button" href="https://github.com/refactorroom/invaris/tree/dev/examples/structured">Browse the example</a>
+          <a class="button" href="https://github.com/refactorroom/invaris/tree/dev/examples/v1alpha2">Browse the example</a>
         </div>
       </div>
       <figure class="terminal">
         <figcaption>Invaris example output</figcaption>
         <pre><code><span class="key">$</span> go run ./cmd/invaris challenge --format text \
-  examples/structured/invaris.json
+  examples/v1alpha2/invaris.json
 
 detect-marker  guard=fixture-guard
 baseline=PASS  observed=FAIL  proof=<span class="key">PROVEN</span>
@@ -52,9 +52,11 @@ Decision: <span class="key">ACCEPT</span></code></pre>
             <h3>Install the CLI</h3>
             <p>Use npm on Linux or macOS with Node.js 22.14+. On Windows, use WSL.</p>
             <div class="snippet">
-            <div class="snippet-head"><span>Check the npm release</span><button class="copy-button" type="button" aria-label="Copy check the npm release commands" hidden>Copy</button></div>
-            <pre><code>npx --yes --package=invaris-cli@latest invaris --version</code></pre>
+            <div class="snippet-head"><span>Check the CLI and preview a config</span><button class="copy-button" type="button" aria-label="Copy CLI version and config preview commands" hidden>Copy</button></div>
+            <pre><code>npx --yes --package=invaris-cli@latest invaris --version
+npx --yes --package=invaris-cli@latest invaris init --dry-run</code></pre>
           </div>
+            <p>The <code>version</code> in the JSON is the harness format. CLI releases can share the same format.</p>
             <p><a class="related" href="https://github.com/refactorroom/invaris/blob/dev/docs/installation.md">Install for a project or download an archive</a></p>
           </article>
           <article class="quick-card">
@@ -64,7 +66,7 @@ Decision: <span class="key">ACCEPT</span></code></pre>
             <div class="snippet-head"><span>Run the structured example</span><button class="copy-button" type="button" aria-label="Copy run the structured example commands" hidden>Copy</button></div>
             <pre><code>git clone https://github.com/refactorroom/invaris.git
 cd invaris
-go run ./cmd/invaris challenge --format text examples/structured/invaris.json</code></pre>
+go run ./cmd/invaris challenge --format text examples/v1alpha2/invaris.json</code></pre>
           </div>
             <p><code>PROVEN</code> means the guard detected the expected finding on the changed file.</p>
           </article>
@@ -110,6 +112,7 @@ go run ./cmd/invaris challenge --format text examples/structured/invaris.json</c
           <h3>Author a harness</h3>
           <ul>
             <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/harness-spec.md">Harness specification</a></li>
+            <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/harness-spec.md#configuration-versions">Configuration versions and migration</a></li>
             <li><a href="https://github.com/refactorroom/invaris/tree/dev/schemas">JSON schemas</a></li>
             <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/inspection.md">Structured inspection</a></li>
             <li><a href="https://github.com/refactorroom/invaris/blob/dev/docs/mutation-operators.md">Built-in operators</a></li>
