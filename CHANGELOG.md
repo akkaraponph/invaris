@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
 
 Fixes found by running 0.5.0 end to end on a real NestJS/Next.js remaster with Evaris. Report versions, decisions and exit codes are unchanged.
 

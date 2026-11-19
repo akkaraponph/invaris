@@ -1,6 +1,6 @@
 # Prepare and publish a release
 
-The latest GitHub release is [v0.4.0](https://github.com/refactorroom/invaris/releases/tag/v0.4.0); see its [release notes](releases/0.4.0.md). The examples below use v0.4.0; substitute the version you are preparing.
+See [GitHub releases](https://github.com/refactorroom/invaris/releases) for published versions. Replace the example version with the version you are preparing.
 
 ## Build and inspect archives
 
