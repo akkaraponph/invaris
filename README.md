@@ -6,13 +6,13 @@ Invaris is an experimental Go CLI that runs project checks and tests whether tho
 
 Use `challenge` to test a guard against an expected violation, or `mutate` to test whether selected tests catch a code change. The `campaign` action runs several of these experiments together, with repeats, a mutation score and an acceptance policy. Commands run with your user permissions, so use trusted harnesses and tools. The Go core uses only the standard library; optional adapters connect external tools. See the [Dependency-Cruiser example](docs/dependency-cruiser-example.md).
 
-[Documentation and quick start](https://refactorroom.github.io/invaris/) · [Invaris 0.5.1 release notes](docs/releases/0.5.1.md)
+[Documentation and quick start](https://refactorroom.github.io/invaris/) · [Invaris 0.5.2 release notes](docs/releases/0.5.2.md)
 
 ## Install the CLI
 
 The [`invaris-cli` npm package](https://www.npmjs.com/package/invaris-cli) is available for Node.js 22.14 or later on Linux and macOS (including WSL). Run `npx --package=invaris-cli@latest invaris check` in a project with a harness. See the [npm installation instructions](docs/installation.md#npm-installation-after-publication) for installation and updates.
 
-Download the archive for your system from the [v0.5.1 release](https://github.com/refactorroom/invaris/releases/tag/v0.5.1). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
+Download the archive for your system from the [v0.5.2 release](https://github.com/refactorroom/invaris/releases/tag/v0.5.2). Linux and macOS archives are available for `amd64` and `arm64`; each contains `invaris`, `invaris-command-provider`, the license, and a README. Go is not required to run these binaries.
 
 See the [installation and terminal guide](docs/installation.md) for commands to:
 
@@ -40,12 +40,14 @@ Requires Go 1.27.4 or later and a POSIX shell for the bundled demonstration.
 
 ```sh
 go test ./...
-go run ./cmd/invaris check examples/invaris.json
-go run ./cmd/invaris challenge examples/invaris.json
-go run ./cmd/invaris run examples/invaris.json
+go run ./cmd/invaris check examples/v1alpha2/invaris.json
+go run ./cmd/invaris challenge examples/v1alpha2/invaris.json
+go run ./cmd/invaris run examples/v1alpha2/invaris.json
 ```
 
 These three commands emit `invaris.evidence/v1alpha2` JSON for v1alpha1 and v1alpha2 harnesses. Exit `0` means acceptance, `1` means a step or policy failure or an unproven challenge, and `2` means refusal, inconclusive execution, or a CLI or evidence error. Add `--format text` or `--format compact` after `check` or `challenge` for a human-readable summary; JSON stays the default and the `--report` file is always JSON (see [output formats](docs/harness-spec.md#output-formats)). See the [output migration](docs/evidence-schema.md#output-migration) for consumers of the previous format.
+
+Run `invaris init --dry-run` to preview the starter config. Its `version` field is `invaris.dev/v1alpha2`, the guard harness format. Run `invaris --version` to see the CLI release. Mutation harnesses use v1alpha3, while v1alpha4 supports built-in challenge operators. For an existing v1alpha1 harness, preview an upgrade with `invaris migrate --dry-run path/to/invaris.json`. See [configuration versions](docs/harness-spec.md#configuration-versions).
 
 ## Go project example
 

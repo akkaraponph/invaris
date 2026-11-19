@@ -132,6 +132,9 @@ func Inspect(harnessPath string) Diagnosis {
 	version := spec.Version
 	i.d.HarnessVersion = &version
 	i.add("harness.load", Pass, "loaded %s", spec.Version)
+	if spec.Version == "invaris.dev/v1alpha1" {
+		i.add("harness.version", Warn, "legacy v1alpha1: preview with `invaris migrate --dry-run <harness>`; upgrade with `invaris migrate <harness>` (creates backup)")
+	}
 
 	for _, action := range []string{"run", "check", "challenge", "mutate"} {
 		if action == "challenge" && spec.SupportsAction(action) && len(spec.Challenges) == 0 {

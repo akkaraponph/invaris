@@ -33,6 +33,7 @@ Checks appear in this order. `<id>` is the ID of the step, guard, challenge or e
 | Check ID | Fails or warns when |
 | --- | --- |
 | `harness.load` | The harness does not load. Then `inspection` is skipped and nothing else is reported. |
+| `harness.version` | Warns when a loaded v1alpha1 harness can be previewed for migration to v1alpha2. Migration preserves the existing effective behavior and keeps a backup when written. |
 | `action.run`, `action.check`, `action.challenge`, `action.mutate` | Never fails. Skipped when the harness version does not support the action, or, for `challenge`, when it declares none. |
 | `workspace.copy` | The harness directory could not be copied into a workspace: a symbolic link, a file over 10 MiB, an unreadable file, a declared dependency that is not a directory, or more entries than the bound (2000, or the harness's `workspace.maxEntries`). The message names the path relative to the harness directory and the [`workspace` field](harness-spec.md#workspace-options) that resolves it. Paths the harness excludes or declares as dependencies are not checked. Checked only when there is a challenge or an experiment, because only those copy the directory; skipped otherwise. |
 | `program.<id>` | The command's program is not found. A bare name is searched only in the PATH the command would get: the allowlisted `PATH` when `envAllowlist` names it, otherwise `/usr/bin:/bin`. A relative path that leaves the directory or points into `.git` or `.invaris` warns, because a real run resolves it inside the workspace copy. |

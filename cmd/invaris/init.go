@@ -124,7 +124,8 @@ func runInitCLI(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	target := filepath.Join(root, configfile.WorkspaceDir, "invaris.json")
-	explain := initExplanation(preset)
+	explain := "The JSON version identifies the harness format. Use `invaris --version` to check the CLI release.\n" +
+		initExplanation(preset)
 	if f.bools["--dry-run"] {
 		fmt.Fprintf(stderr, "dry run: would create %s (nothing was written)\n%s", target, explain)
 		if _, err := stdout.Write(data); err != nil {
